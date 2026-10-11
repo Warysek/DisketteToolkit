@@ -13,5 +13,6 @@
     <Version>0.8.3</Version>
     <Company>HoroPC</Company>
     <Product>Diskette Toolkit</Product>
+    <Copyright>© Warysek — GNU GPL v3</Copyright>
   </PropertyGroup>
 </Project>

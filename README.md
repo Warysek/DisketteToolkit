@@ -16,6 +16,8 @@ which is part of Windows 10 and 11 (Windows 7 SP1 / 8.1 need it installed).
 
 Try it without hardware: `DisketteToolkit.exe --demo` (simulated drives).
 
+See also: [Privacy](#privacy) · [Code signing policy](#code-signing-policy)
+
 ## Supported drives
 
 | Drive | What it can do |
@@ -55,6 +57,25 @@ it helps with test disks and drives. Thank you!
 C# / .NET Framework 4.8. On Windows: `dotnet build src/Gui/Gui.csproj -c Release`.
 On Linux the build uses Mono reference assemblies (`/usr/lib/mono/4.8-api`); tests run with
 `mono tests/bin/Release/net48/AtariFloppy.Tests.exe`.
+
+## Privacy
+
+Diskette Toolkit does not collect or send any data about you or your computer. It only connects to the internet
+when you ask it to download an add-on, and then only to the official sources:
+GitHub (Greaseweazle Host Tools, `api.github.com` / `github.com`), ibiblio.org (FreeDOS for boot disks) and
+simonowen.com (fdrawcmd.sys driver installer). The *Support development* button opens Ko-fi in your browser.
+
+## Code signing policy
+
+Windows releases are going to be signed. Free code signing provided by [SignPath.io](https://signpath.io),
+certificate by [SignPath Foundation](https://signpath.org) *(application in progress)*.
+
+- Builds come only from this repository, built by GitHub Actions ([Build workflow](.github/workflows/build.yml)).
+- Committers and reviewers: [Warysek](https://github.com/Warysek)
+- Approvers (approve every signing request): [Warysek](https://github.com/Warysek)
+- All changes go through pull requests reviewed and merged by the maintainer.
+- Add-ons that the program downloads on request (Greaseweazle Host Tools, fdrawcmd.sys, FreeDOS) are not part of
+  the signed package and keep their own authors' signatures and licences.
 
 ## Licence
 

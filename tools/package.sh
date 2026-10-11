@@ -19,6 +19,10 @@ Sem patří další jazyky (xx.lang). Šablonu vytvoří Diskette Toolkit → Na
 Additional languages (xx.lang) go here. Create a template via Diskette Toolkit → Settings → "Create a template for a new language…".
 TXT
 rm -f "dist/DisketteToolkit-$V.zip"
-(cd dist/pkg && zip -qr "../DisketteToolkit-$V.zip" "DisketteToolkit-$V")
+if command -v zip >/dev/null; then
+  (cd dist/pkg && zip -qr "../DisketteToolkit-$V.zip" "DisketteToolkit-$V")
+else  # Windows (GitHub Actions): 7-Zip is preinstalled
+  (cd dist/pkg && 7z a -tzip -bso0 "../DisketteToolkit-$V.zip" "DisketteToolkit-$V")
+fi
 rm -rf dist/pkg
 echo "dist/DisketteToolkit-$V.zip"
