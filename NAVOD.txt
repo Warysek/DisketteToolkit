@@ -1,0 +1,343 @@
+Diskette Toolkit 0.8.1 (testovací verze)
+========================================
+
+Diskety a obrazy disket pro Atari ST a další 3,5" systémy ve Windows 10 / 11.
+Nic se neinstaluje, stačí .NET Framework 4.8, který je součástí Windows 10 a 11.
+
+V ZIPu jsou dva programy:
+  DisketteToolkit.exe   okno programu (nové ve verzi 0.6) — to budeš používat nejčastěji
+  dtk.exe               příkazová řádka (stejné funkce, pro skripty a pokročilé)
+
+
+SPUŠTĚNÍ
+--------
+1. Rozbal ZIP třeba do C:\DisketteToolkit (celý obsah, i soubor DisketteToolkit.exe.config).
+2. Pravým tlačítkem na ZIP (ještě před rozbalením) → Vlastnosti → dole zaškrtni
+   „Odblokovat“ → OK. (Pokud tam políčko není, nic nedělej.)
+3. Dvojklik na DisketteToolkit.exe. Windows se zeptá na práva správce (přímý přístup
+   k mechanice) → Ano.
+
+Když Windows ukáže „Systém Windows ochránil váš počítač“:
+klikni na „Další informace“ → „Přesto spustit“ (program není digitálně podepsaný).
+
+Bez mechaniky si okno vyzkoušíš v ukázkovém režimu se simulovanými mechanikami:
+  zástupce na DisketteToolkit.exe → Vlastnosti → Cíl: doplň na konec  --demo
+  (nebo v terminálu:  .\DisketteToolkit.exe --demo)
+
+
+OKNO PROGRAMU (NOVÉ VE VERZI 0.6)
+---------------------------------
+Nahoře:   výběr mechaniky (USB, interní, Greaseweazle), Obnovit (po výměně
+          mechaniky), jazyk (čeština / English) a Nastavení.
+Vlevo:    co je to za mechaniku, jaká disketa je vložená, co s ní jde dělat
+          (✓ jde, ! chybí disketa / ovladač / program, ✗ hardware neumí) a proč.
+Uprostřed: MAPA DISKETY jako ve FastCopy — sloupce jsou stopy, řádky sektory,
+          nahoře strana 0, dole strana 1. Během práce se barví sektor po sektoru
+          a bílý rámeček ukazuje, kde je právě hlava:
+             zelená   přečteno          fialová  naformátováno
+             modrá    zapsáno           tyrkys   ověřeno (zapsáno a přečteno zpět)
+             žlutá    slabé místo       červená  nečitelný sektor
+             růžová   selhal zápis      šedá     vynecháno
+          Najetím myší na políčko se ukáže stopa, strana, sektor a stav.
+          Pod mapou průběh a tlačítko Přerušit (dokončí rozdělanou stopu a zastaví).
+          Dole výpis všeho, co program udělal (pravé tlačítko = kopírovat / uložit).
+Vpravo:   akce. Když akce s touto mechanikou nebo disketou nejde, je šedá a pod
+          názvem je důvod.
+   DISKETA        Záloha do obrazu, Zapsat obraz na disketu, Formátovat…,
+                  Test povrchu a kontrola (volitelně zápisový test a oprava),
+                  Magneticky smazat (jen Greaseweazle)
+   OBRAZY DISKET  Otevřít obraz (formát, systém, soubory, rozbalení, mapa s daty),
+                  Kontrola a oprava obrazu (oprava vždy do kopie), Převést formát,
+                  Nový prázdný obraz (všechny systémy)
+   PŘEHLED        Formáty všech systémů — co jde přes USB, interní mechaniku
+                  s fdrawcmd.sys a Greaseweazle
+
+Formátovat…: seznam formátů všech systémů (Atari, PC, MSX, Mac, Amiga, Amstrad,
+MINIX, Linux…). Formáty, které s vloženou disketou a mechanikou teď nejdou,
+jsou šedé a vpravo je napsané proč. Tlačítko „Jen prázdný obraz…“ uloží formát
+do souboru (pro emulátor, Gotek nebo pozdější zápis).
+
+Jazyk se přepíná hned, bez restartu. Další jazyk přidáš souborem ve složce
+„lang“ vedle programu — Nastavení → „Vytvořit šablonu nového jazyka…“ uloží
+všechny texty s anglickým překladem, stačí přepsat text za „ = “.
+
+Nastavení (ukládá se do %APPDATA%\DisketteToolkit\settings.ini):
+  rychlost krokování (step rate) pro fdrawcmd.sys a Greaseweazle, vynucení
+  fdrawcmd.sys, cesta ke gw.exe, mechanika na kabelu Greaseweazle (A/B),
+  otáčky a počet stop pro zálohu toku, složka pro automatické zálohy
+  (výchozí Dokumenty\Diskette Toolkit — jen jako návrh, program se vždy zeptá).
+
+Co vyzkoušet v 0.6 (Sony USB-FDU):
+  1. Spusť DisketteToolkit.exe — vlevo musí být „A: USB disketovka“ a vložená disketa.
+  2. Test povrchu a kontrola → Jen čtení → sleduj, jak se mapa barví.
+  3. Záloha do obrazu → ulož .st → pak Otevřít obraz… a podívej se na soubory.
+  4. Formátovat… → Atari ST — TOS 720 KB (na disketu, kterou nepotřebuješ).
+  5. Přepni jazyk na English a zpět.
+  Pošli mi prosím snímek obrazovky, hlavně kdyby něco vypadalo divně
+  (velikost písma, oříznuté texty) — okno jsem ladil bez skutečných Windows.
+
+
+NOVÉ VE VERZI 0.8.1
+-------------------
+ • Licence GNU GPL v3 (svobodný software, zdrojové kódy na GitHubu).
+ • Po destruktivním testu program už nehlásí „Disketa je znovu naformátovaná“, když se nový
+   souborový systém nepodařilo zapsat.
+ • dtk: test přes Greaseweazle s obnovou dat se před přepsáním diskety zeptá.
+ • Úklid nepoužívaného kódu, verze programu se zadává na jednom místě.
+
+
+NOVÉ VE VERZI 0.8
+-----------------
+ • Program se jmenuje Diskette Toolkit (dřív AtariFloppy): okno DisketteToolkit.exe,
+   příkazová řádka dtk.exe (dřív afloppy.exe). Nastavení ze starší verze se převezme samo.
+ • Vlevo u vložené diskety je i její souborový systém (Atari, PC, MSX, Mac, Amiga, MINIX,
+   Linux, CP/M…), jmenovka, obsazené a volné místo, jestli ji otevřou Windows a jestli
+   je spouštěcí. Program čte jen začátek diskety, nic nemění.
+ • Greaseweazle Host Tools a FreeDOS se stahují do složek „greaseweazle“ a „freedos“
+   vedle programu (když tam nejde zapisovat, tak do %LOCALAPPDATA%\DisketteToolkit).
+   Dřív stažené gw.exe v AppData program pořád najde.
+ • Rychlost krokování v Nastavení je šedá, dokud není připojená mechanika, která ji
+   umí (interní s fdrawcmd.sys nebo Greaseweazle). USB disketovka si ji řídí sama.
+
+ZÁLOHY PŘI TESTU POVRCHU (UPRAVENO V 0.7.1)
+------------------------------------------
+V okně „Test povrchu a kontrola“ je sekce „Záloha diskety“ — záloha je obraz celé
+diskety (.ST), který můžeš zapsat zpět, otevřít v emulátoru nebo z něj vytáhnout soubory.
+ • Jen čtení: záloha je volitelná (test disketu nemění).
+ • Zápisový test: záloha je povinná a uloží se před prvním zápisem.
+ • Kam se uloží, vybereš tlačítkem „Procházet…“; program si pamatuje naposledy
+   použitou složku. Když je potřeba záloha před opravou a předem jsi ji nezadal,
+   program se zeptá, kam ji uložit — bez zálohy opravu nezapíše.
+
+SPOUŠTĚCÍ DISKETY (NOVÉ V 0.7)
+------------------------------
+Vpravo tlačítko „Spouštěcí disketa…“ (funguje i bez mechaniky — disketu pak uložíš jako obraz):
+ • FreeDOS — spouštěcí DOS disketa pro PC (1,44 MB nebo 720 KB). Soubory FreeDOS 1.3 se
+   při prvním použití stáhnou z oficiálního repozitáře (asi 3,5 MB) a uloží se do
+   složky „freedos“ vedle programu. Disketa naběhne na A:\> a DOSové programy
+   na ni můžeš nahrát v Průzkumníku. Volitelně přidá nástroje jako spouštěcí disketa
+   Windows 98: FORMAT, FDISK, SYS, EDIT, MEM, XCOPY, ATTRIB, DELTREE, MORE, CHOICE.
+   V Průzkumníku uvidíš COMMAND.COM, AUTOEXEC.BAT a nástroje; KERNEL.SYS je skrytý
+   systémový soubor (stejně jako IO.SYS a MSDOS.SYS na disketě z Windows).
+ • MS-DOS z Windows — to samé, co dělaly Windows XP až 10 při formátování („Vytvořit
+   spouštěcí disketu MS-DOS“). Program si obraz vezme z tvých Windows (diskcopy.dll).
+   Když ho Windows 11 už nemají, volba je šedá a napíše proč. Pokud máš starší Windows
+   (XP, 7, 10), zkopíruj z nich C:\Windows\System32\diskcopy.dll a vyber ho odkazem
+   „Mám diskcopy.dll ze starších Windows…“ — program si ho zapamatuje.
+ • Amiga (Kickstart 2.0+ i 1.3) — disketa s bootblokem jako po příkazu „install“.
+   Zapíše ji jen Greaseweazle, jinak ji uložíš jako .ADF pro Gotek nebo emulátor.
+ • Atari ST — vybereš program (.PRG) a ten se po zapnutí Atari spustí sám (složka AUTO).
+ • Hotový obraz (jako RawWrite) — zapíše stažený obraz spouštěcí diskety sektor po sektoru.
+Odkaz „Jak se z diskety spouštěly jiné počítače?“ vysvětlí, co potřebuje Atari, Amiga,
+Mac, MSX, Amstrad PCW, Acorn a C64.
+Příkazová řádka: dtk boot freedos A:  |  dtk boot msdos A:  |
+                 dtk boot amiga hra.adf  |  dtk boot atari A: --prg HRA.PRG
+
+GREASEWEAZLE A fdrawcmd.sys SE STÁHNOU SAMY (NOVÉ V 0.6.1)
+----------------------------------------------------------
+Nemusíš nic hledat ani rozbalovat ručně:
+ • Greaseweazle: vyber ho nahoře v „Mechanika“ → vpravo tlačítko
+   „Stáhnout Greaseweazle Host Tools“. Program stáhne nejnovější gw.exe z GitHubu
+   (i s CAPSImg.dll pro zápis .IPF) do složky „greaseweazle“ vedle programu.
+   Když už gw.exe máš, tlačítko se jmenuje „Aktualizace Greaseweazle“ a nabídne:
+     – Stáhnout nejnovější Host Tools (gw.exe)
+     – Aktualizovat firmware v Greaseweazle (doporučeno hned po koupi)
+ • Interní mechanika bez ovladače: vpravo tlačítko „Nainstalovat ovladač fdrawcmd.sys“.
+   Stáhne autorův podepsaný instalátor FdInstall.exe ze simonowen.com, ověří podpis
+   a spustí ho — v jeho okně potvrď instalaci. Pak případně restartuj počítač.
+   Ovladač je z roku 2010 (novější neexistuje); na Windows 11 ho může zablokovat
+   „Integrita paměti“: Start → Zabezpečení Windows → Zabezpečení zařízení →
+   Podrobnosti izolace jádra → Integrita paměti: Vypnuto → restart.
+ • Totéž najdeš v Nastavení (sekce Interní mechanika a Greaseweazle).
+ • Příkazová řádka: dtk install gw  /  dtk firmware GW  /  dtk install fdrawcmd
+Stahování potřebuje internet; nic dalšího se neinstaluje.
+
+PŘÍKAZOVÁ ŘÁDKA (dtk.exe)
+-----------------------------
+Start → napiš „Terminal“ → pravým tlačítkem → Spustit jako správce → Ano, pak:
+   cd C:\DisketteToolkit
+Dvojklik na dtk.exe otevře jednoduché textové menu.
+
+Příkazy:
+  .\dtk detect                         najde mechaniky a vypíše, co která umí
+  .\dtk info hra.msa                   popis image + jestli jde zapsat + seznam souborů
+  .\dtk read A: zaloha.st              načte disketu do image (.st, .msa nebo .dim)
+  .\dtk write hra.st A:                zapíše image na disketu (s kontrolou)
+  .\dtk write hra.st A: --format       totéž, ale disketu nejdřív naformátuje
+  .\dtk format A:                      naformátuje 720 KB (hybrid: čte Atari i Windows)
+  .\dtk format A: --atari              formát přesně jako z Atari TOS
+  .\dtk format A: --label HRY          se jmenovkou
+  .\dtk format A: --size 1440          1,44 MB (HD disketa bez pásky); --size 640 = 640 KB
+  .\dtk check A:                       test povrchu (jen čtení) + mapa + kontrola souborů
+  .\dtk check A: --write-test obnova   + zápisový test, data na disketě zůstanou
+  .\dtk check A: --write-test prazdna  + důkladný zápisový test, SMAŽE disketu
+  .\dtk check A: --repair              kontrola a oprava souborového systému
+  .\dtk check hra.st --repair          oprava obrazu (vznikne hra-opraveno.st)
+  .\dtk formats                        přehled 3,5" formátů různých počítačů
+  .\dtk profiles A:                    formáty všech systémů — co jde s vloženou disketou a proč ne
+  .\dtk format A: --profile mac-hfs    naformátuje pro jiný systém (msx, mac-hfs, pcw, minix, ext2 …)
+  .\dtk convert hra.msa hra.st         převod ST / MSA / DIM / IMG / ADF
+  .\dtk new prazdna.st                 prázdný image
+  .\dtk new hry.adf --label "Hry"      prázdná Amiga disketa (.ADF) pro Gotek / WinUAE
+  .\dtk format A: --profile amiga-crossdos   PC disketa, kterou přečte Amiga (CrossDOS)
+  .\dtk extract hra.msa slozka         vytáhne soubory z image
+  .\dtk help                           nápověda
+
+Soubor můžeš do terminálu přetáhnout myší, cesta se doplní sama.
+Ctrl+C operaci bezpečně přeruší.
+
+
+NOVÉ VE VERZI 0.5 — GREASEWEAZLE A INTERNÍ MECHANIKA (fdrawcmd.sys)
+-------------------------------------------------------------------
+Program si sám vybere, čím s disketou pracovat:
+ • USB mechanika → přes Windows (720 KB, 1,44 MB, 640 KB).
+ • Interní mechanika na základní desce + fdrawcmd.sys → i Atari 800–900 KB, 81–84 stop,
+   DMF 1,68 MB, sektory 128–1024 B (Acorn …), nastavitelná rychlost krokování.
+   Když Windows disketu nepřečtou (nestandardní formát), přepne se na fdrawcmd sám.
+ • Greaseweazle → všechno: PC, Atari (i 10/11 sektorů, 82 stop), MSX, Amiga, Mac 400/800 KB,
+   Commodore 1581, Acorn, PC-98 a záloha jako magnetický tok (.scp / .hfe) i s ochranami.
+
+Příprava Greaseweazle:
+  1. dtk install gw   (nebo v okně tlačítko „Stáhnout Greaseweazle Host Tools“).
+     Ručně: github.com/keirf/greaseweazle/releases → greaseweazle-1.xx-win64.zip,
+     rozbalit do složky „greaseweazle“ vedle programu; jinak --gw C:\cesta\gw.exe
+  2. dtk firmware GW  — aktualizace firmwaru v Greaseweazle.
+  3. Připoj Greaseweazle; Windows ho vezme jako sériový port COMx (ovladač netřeba).
+  4. .\dtk detect    → u Greaseweazle musí být „funguje“ a výpis z gw info.
+
+  .\dtk read GW hra.st              záloha; formát pozná sám (Atari/PC/MSX/Amiga/Mac)
+  .\dtk read GW hra.adf             Amiga disketa do .ADF
+  .\dtk read GW hra.scp             magnetický tok — i chráněné hry (82 stop, 3 otáčky)
+  .\dtk write hra.msa GW            zápis (i 800–900 KB Atari formáty)
+  .\dtk write hra.adf GW            Amiga disketa
+  .\dtk write hra.ipf GW            chráněná hra z IPF (gw potřebuje capsimg.dll)
+  .\dtk format GW --profile amiga   formát pro libovolný systém z přehledu
+  .\dtk check GW                    test povrchu + kontrola souborů
+  .\dtk erase GW                    magnetické smazání
+  Volby: --profile <id> (když chceš formát určit sám), --gw-drive B (druhá mechanika),
+         --step-rate 6 (pomalejší krokování pro staré mechaniky)
+  Formát .STX (Pasti) gw zapsat neumí — použij stejnou hru v .IPF nebo .SCP.
+
+Příprava interní mechaniky (starší PC s konektorem pro disketu):
+  1. Windows 7 / 8 / 10 / 11; na Windows 7 nainstaluj .NET Framework 4.8.
+  2. dtk install fdrawcmd  (nebo v okně „Nainstalovat ovladač fdrawcmd.sys“);
+     ručně: simonowen.com/fdrawcmd → FdInstall.exe.
+  3. .\dtk detect   → „Interní mechanika (fdrawcmd.sys nainstalován)“ a typ řadiče.
+  Pak fungují stejné příkazy s A: — např. .\dtk read A: demo.st na 820 KB disketě.
+  --fdraw vynutí fdrawcmd i pro běžné diskety, --step-rate 3 = rychlost Atari.
+
+Co je nové a nevyzkoušené na skutečném hardwaru:
+  Greaseweazle je ověřený proti skutečnému programu gw (simulovaná disketa), fdrawcmd proti
+  simulovanému řadiči. Na skutečném hardwaru to zatím nikdo nezkoušel — pošli mi prosím
+  výstup, hlavně „detect“ a první čtení.
+
+
+NOVÉ VE VERZI 0.4 — AMIGA
+-------------------------
+USB mechanika Amiga diskety (880 KB) fyzicky nepřečte ani nezapíše — Amiga zapisuje
+celou stopu jako jeden blok. Proto:
+ • Přenos souborů na skutečnou Amigu: formát „Amiga — CrossDOS 720 KB“
+   (menu 5, nebo .\dtk format A: --profile amiga-crossdos). Amiga s Workbench 2.1+
+   ji otevře jako PC0:. Jen DD disketa (nebo HD s páskou), 1,44 MB Amiga nepřečte.
+ • Obrazy .ADF (Gotek, WinUAE, pozdější zápis přes Greaseweazle): menu 7 vytvoří
+   prázdný OFS / FFS / HD obraz, „info“ vypíše soubory, „extract“ je vytáhne.
+Test G:  .\dtk info nejaka_hra.adf   a   .\dtk extract nejaka_hra.adf slozka
+
+
+NOVÉ VE VERZI 0.3 — CO TESTOVAT
+-------------------------------
+Test E – co program pozná o mechanice a disketě
+   .\dtk detect
+   Nově ukazuje, jaká disketa je vložená (DD / HD / žádná), jestli je naformátovaná,
+   a u každé činnosti (záloha, zápis, formát, test, kontrola) jestli jde a proč ne.
+   Zkus: bez diskety, s DD (nebo přelepenou HD) a s HD disketou bez pásky.
+
+Test F – formáty jiných systémů
+   V menu volba 5, nebo:  .\dtk profiles A:
+   Očíslované jsou formáty, které jdou s vloženou disketou vytvořit hned, pod nimi
+   ostatní s důvodem (jiná disketa / jiný hardware).
+   Vyzkoušej třeba MSX, Mac HFS (HD disketa) nebo Amstrad PCW, pak
+   .\dtk check A:   — program musí disketu poznat jako ten systém.
+   Pokud máš počítač, pro který formát je, zkus disketu i v něm.
+
+
+NOVÉ VE VERZI 0.2
+-----------------
+Test A – test povrchu (nic nemění)
+   .\dtk check A:
+   Uvidíš mapu diskety (80 stop × 2 strany), zelená = v pořádku, žlutá = slabé
+   místo, červená = nečitelné. Pod ní kontrola souborového systému.
+   Zkus disketu, o které víš, že je dobrá, a jednu starou / podezřelou.
+
+Test B – zápisový test s obnovou (data zůstanou, před zápisem se uloží záloha)
+   .\dtk check A: --write-test obnova
+   Záloha se uloží do aktuální složky jako zaloha-A-datum-čas.st.
+
+Test C – oprava (jen když kontrola něco najde)
+   .\dtk check A: --repair
+   Program ukáže, co přesně opraví, uloží zálohu a zeptá se.
+   Na disketě s poškozeným začátkem (boot / FAT / adresář) opravu odmítne a poradí,
+   jak opravit obraz a zapsat ho na jinou disketu.
+
+Test D – přehled formátů
+   .\dtk formats
+
+JAK SPOLEHLIVÁ JE OPRAVA
+------------------------
+Oprava mění jen FAT a adresářové záznamy, nikdy data souborů. Ztracená data uloží
+jako FILE0000.CHK, soubory se sdíleným místem od sebe oddělí kopií, soubory na vadných
+sektorech jen nahlásí (tam už data nejsou). Před zápisem na disketu vždy uloží zálohu,
+zapíše jen změněné sektory a každý hned ověří. Nejbezpečnější je opravit obraz
+(check obraz.st --repair) a zapsat ho na jinou, dobrou disketu.
+
+
+PŮVODNÍ TESTY Z VERZE 0.1
+-------------------------
+Test 1 – detekce (nic nezapisuje)
+   .\dtk detect
+   Čekám: A: USB disketovka — SONY USB-FDU, formáty 720 KB a 1,44 MB,
+   u 720 KB „funguje“, u 10 sektorů / step rate / ochran „hardware neumí“.
+   Zkus to jednou s vloženou a jednou bez vložené diskety.
+
+Test 2 – čtení (nic nezapisuje)
+   Vlož disketu, na které něco je (klidně tu z Atari).
+   .\dtk read A: test.st
+   .\dtk info test.st
+   Čekám: průběh 160 stop, žádné vadné sektory, výpis souborů.
+
+Test 3 – zápis (PŘEPÍŠE disketu, použij takovou, kterou nepotřebuješ)
+   .\dtk write test.st A:
+   Čekám: zápis + kontrola bez chyb. Pak disketu zkus na Atari.
+
+Test 4 – formát
+   .\dtk format A: --label TEST
+   Pak disketu otevři v Průzkumníku a zkus ji na Atari.
+   Pak ještě:  .\dtk format A: --atari
+   a zkus, jestli ji přečtou Windows a Atari.
+
+Test 5 – zápis hry
+   Vezmi nějakou hru v .ST nebo .MSA (720 KB, 9 sektorů):
+   .\dtk info hra.msa        (má svítit ZELENÁ)
+   .\dtk write hra.msa A:
+   a zkus ji nabootovat na Atari.
+
+
+CO TATO VERZE UMÍ A NEUMÍ
+------------------------
+Umí:   USB a interní mechaniky přes Windows — 640 KB, 720 KB a 1,44 MB,
+       čtení / zápis / formát, test povrchu s mapou, kontrola a oprava FAT12
+       (Atari, PC, MSX), formát pro Atari, PC, MSX, Mac HFS, Amstrad PCW, MINIX
+       (PC i Atari), Linux ext2, rozpoznání Mac HFS, Amiga, MINIX, ext2, CP/M, Sinclair QL,
+       formáty .ST, .MSA, .DIM (FastCopy Pro), .IMG/.IMA/.VFD, .ADF, .D81,
+       jednostranné (360 KB) image, výpis a rozbalení souborů, rozpoznání Greaseweazle
+       a ovladače fdrawcmd.sys.
+Amiga: obrazy .ADF (tvorba OFS/FFS/HD, výpis a rozbalení souborů), CrossDOS disketa.
+Greaseweazle (přes gw.exe) a fdrawcmd.sys: čtení, zápis, formát, test a oprava i nestandardních
+       formátů, rozpoznání formátu, záloha a zápis magnetického toku.
+Zatím ne: nahrávání souborů do .ADF, kopírování chráněných her přes fdrawcmd (jen přes Greaseweazle),
+       soubory uvnitř Mac/MINIX/CP/M disků (jen rozpoznání), formát QDOS, .STX / .IPF / .SCP / .HFE
+       umí jen rozpoznat (zápis IPF/SCP/HFE přes Greaseweazle funguje), přebalení
+       10sektorových image na 720 KB, příkazová řádka zatím jen česky.
+
+Licence: GNU GPL v3 (soubor licence/LICENSE-GPL-3.0.txt). Svobodný software — smíš ho používat, šířit
+a upravovat; upravené verze musí zůstat pod GPL. Zdrojové kódy jsou volně k dispozici.
