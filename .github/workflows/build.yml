@@ -1,0 +1,33 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build window app and command line
+        run: |
+          dotnet build src/Gui/Gui.csproj -c Release -nologo
+          dotnet build src/Cli/Cli.csproj -c Release -nologo
+
+      - name: Package release ZIP
+        shell: bash
+        run: sh tools/package.sh
+
+      - name: Upload ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: DisketteToolkit
+          path: dist/DisketteToolkit-*.zip
+          if-no-files-found: error
