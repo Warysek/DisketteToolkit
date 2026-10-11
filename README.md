@@ -4,7 +4,7 @@ Read, write, format and test floppy disks and disk images for the **Atari ST** a
 (PC, MSX, Mac, Amiga, Amstrad PCW, MINIX, Linux…) on Windows. Inspired by the Atari program FastCopy:
 a live sector map shows every track being read, formatted, written and verified.
 
-*Česky: návod je v souboru [NAVOD.txt](NAVOD.txt).*
+*Česky: návod je v souboru [NAVOD.txt](NAVOD.txt), přehled mechanik v [docs/drives-cs.png](docs/drives-cs.png).*
 
 ![Diskette Toolkit](docs/screenshot.png)
 
@@ -24,7 +24,7 @@ Try it without hardware: `DisketteToolkit.exe --demo` (simulated drives).
 | Internal drive + [fdrawcmd.sys](https://simonowen.com/fdrawcmd/) | also Atari 800–900 KB (10/11 sectors, up to 84 tracks), DMF, 128–1024 byte sectors, step rate |
 | [Greaseweazle](https://github.com/keirf/greaseweazle) | everything incl. Amiga, Mac GCR, flux backups (.scp/.hfe) and writing IPF/SCP/HFE |
 
-![Drive capabilities](docs/drives.png)
+![Drive capabilities](docs/drives-en.png)
 
 The program downloads gw.exe and fdrawcmd.sys itself when you need them.
 

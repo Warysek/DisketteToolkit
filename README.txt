@@ -3,12 +3,19 @@ Diskette Toolkit 0.8.3 (test version)
 
 Read, write, format and test floppy disks and disk images for the Atari ST and many
 other 3.5" systems (PC, MSX, Mac, Amiga, Amstrad PCW, MINIX, Linux, ...) on
-Windows 10 / 11. Inspired by the Atari program FastCopy. No installation needed —
-only .NET Framework 4.8, which is part of Windows 10 and 11.
+Windows 10 / 11 (7 SP1 and 8.1 with .NET Framework 4.8 installed). Inspired by the
+Atari program FastCopy. No installation needed — only .NET Framework 4.8, which is
+part of Windows 10 and 11.
 
-Programs in the ZIP:
-  DisketteToolkit.exe   window (GUI), English or Czech — switch in the top right corner
-  dtk.exe       command line (Czech only for now)
+Project page, downloads and bug reports: https://github.com/Warysek/DisketteToolkit
+
+Files in the ZIP:
+  DisketteToolkit.exe        window (GUI), English or Czech — switch in the top right corner
+  dtk.exe                    command line (Czech only for now)
+  README.txt                 this file (English)
+  NAVOD.txt                  full guide in Czech
+  Drives-EN.png              which drive can do what (Mechaniky-CZ.png = the same in Czech)
+  licence/                   GNU GPL v3 and the FreeDOS boot sector licence
 
 Start: unzip everything (including DisketteToolkit.exe.config), double-click
 DisketteToolkit.exe and allow administrator rights (needed for direct drive access).
