@@ -162,7 +162,14 @@ public sealed class WinFloppyDevice : ISectorDevice
         BitConverter.GetBytes(target.Sides - 1).CopyTo(p, 16);
         var bad = new byte[64];
         if (!Native.DeviceIoControl(_h, Native.IOCTL_DISK_FORMAT_TRACKS, p, p.Length, bad, bad.Length, out _, IntPtr.Zero))
-            throw IoError(Marshal.GetLastWin32Error(), true);
+        {
+            var e = IoError(Marshal.GetLastWin32Error(), true);
+            // Odmítnutí hned první stopy DD formátu = typicky USB disketovka, která DD diskety neumí.
+            if (cylinder == 0 && !target.IsHighDensity && e is SectorIOException)
+                throw new OperationException(Tr.F("Mechanika odmítla formát {0}: {1}.", target, e.Message) + " " +
+                                             Tr.T("Některé USB disketovky diskety 720 KB (DD) neumějí vůbec — zkus jinou USB mechaniku, interní mechaniku nebo Greaseweazle."));
+            throw e;
+        }
     }
 
     public bool SupportsGeometry(DiskGeometry g) => StandardGeometry.Supports(g);

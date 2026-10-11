@@ -33,6 +33,7 @@ The program downloads gw.exe and fdrawcmd.sys itself when you need them.
 - Backup to image (.ST, .MSA, .IMG, .DIM, .ADF, flux .SCP/.HFE) and write images back with verification
 - Format profiles for Atari, PC, MSX, Mac HFS, Amiga CrossDOS, Amstrad PCW, MINIX, ext2
 - Surface test (read-only, write test with restore, destructive) with a FastCopy-style map
+- Experimental repair format (internal drive + fdrawcmd.sys): a defect on a track is covered by an extra sector instead of being marked bad in the FAT
 - FAT12 check and safe repair (backup first, only changed sectors written, repairs of images go to a copy)
 - Boot disks: FreeDOS, MS-DOS from your own Windows (`diskcopy.dll`), Amiga bootblock, Atari AUTO folder, RawWrite
 - Image tools: open and extract files, check/repair, convert, create blank images

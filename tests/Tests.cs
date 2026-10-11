@@ -1242,7 +1242,7 @@ internal static class Tests
     {
         var usb = new DetectedDrive { Kind = DriveKind.Usb, Letter = "A", Supports720 = true, Supports1440 = true };
         usb.ComputeFeatures();
-        Eq(Availability.Available, usb.Get(Feature.Standard720), "USB 720");
+        Eq(Availability.Maybe, usb.Get(Feature.Standard720), "USB 720 bez informací o disketě = neověřeno");
         Eq(Availability.Unsupported, usb.Get(Feature.ExtendedGeometry), "USB 10 sektorů");
         Eq(Availability.Unsupported, usb.Get(Feature.StepRate), "USB step rate");
 
@@ -1607,5 +1607,101 @@ internal static class Tests
             throw new Exception("prošlo");
         }
         catch (OperationException ex) { Assert(ex.Message.Contains("601A"), ex.Message); }
+    }
+
+    // ------------------------------------------------------------------ USB a 720 KB
+
+    private static DetectedDrive UsbDrive(MediaState state, DiskGeometry? fmt, bool reports720, params string[] media)
+    {
+        var d = new DetectedDrive
+        {
+            Kind = DriveKind.Usb, Letter = "A", Name = "test", Supports720 = true, Supports1440 = true,
+            Reports720 = reports720, MediaTypes = media.ToList(),
+        };
+        d.MediaState = state;
+        d.FormattedAs = fmt;
+        d.Media = state == MediaState.NoDisk ? InsertedMedia.None : reports720 ? InsertedMedia.DD : InsertedMedia.Unknown;
+        d.ComputeFeatures();
+        return d;
+    }
+
+    private static void T_Usb720_Detection()
+    {
+        var read = UsbDrive(MediaState.Ready, DiskGeometry.Dd720, false, "3,5\" 1,44 MB");
+        Eq(Availability.Available, read.Get(Feature.Standard720), "přečtená DD disketa");
+        var offered = UsbDrive(MediaState.Unrecognized, null, true, "3,5\" 720 KB");
+        Eq(Availability.Available, offered.Get(Feature.Standard720), "nabízí 720 KB");
+        var none = UsbDrive(MediaState.NoDisk, null, false);
+        Eq(Availability.Maybe, none.Get(Feature.Standard720), "bez diskety");
+        Assert(!none.Likely720Missing, "bez diskety nesmí hlásit „nejspíš ne“");
+        var bad = UsbDrive(MediaState.Unrecognized, null, false, "3,5\" 1,44 MB");
+        Eq(Availability.Maybe, bad.Get(Feature.Standard720), "nečitelná disketa bez 720 KB");
+        Assert(bad.Likely720Missing && bad.Note720!.Contains("nejspíš ne"), bad.Note720 ?? "");
+
+        // formát Atari zůstane povolený, jen s varováním; „neověřeno“ bez varování
+        var atari = FormatProfiles.Find("atari")!;
+        var v = FormatProfiles.Evaluate(atari, bad, InsertedMedia.Unknown);
+        Assert(v.Status == ProfileStatus.Ready && v.Reason.Contains("nejspíš neumí"), v.Status + " " + v.Reason);
+        v = FormatProfiles.Evaluate(atari, UsbDrive(MediaState.Ready, DiskGeometry.Hd1440, false, "3,5\" 1,44 MB"), InsertedMedia.DD);
+        Assert(v.Status == ProfileStatus.Ready && !v.Reason.Contains("nejspíš"), v.Status + " " + v.Reason);
+    }
+
+    // ------------------------------------------------------------------ opravný formát (posun sektorů)
+
+    private static (FakeFdc fdc, OperationResult result) RepairFormat(DiskGeometry g, bool shift, params (int cyl, int head, int from, int to)[] defects)
+    {
+        var fdc = FakeFdc.WithImage(DiskFormatter.CreateBlank(g, FormatStyle.Atari),
+                                    g.IsHighDensity ? AtariFloppy.Core.Drives.Fdraw.DataRate.R500K : AtariFloppy.Core.Drives.Fdraw.DataRate.R250K);
+        foreach (var d in defects) fdc.Defects[(d.cyl, d.head)] = (d.from, d.to);
+        var dev = new AtariFloppy.Core.Drives.Fdraw.FdrawDevice(fdc, "A: (fdraw)");
+        var result = new OperationResult();
+        DiskOperations.Format(dev, g, FormatStyle.Atari, null, quick: false, verify: true, result, shiftSectors: shift);
+        return (fdc, result);
+    }
+
+    private static void T_RepairFormat_ShiftsAroundDefect()
+    {
+        var g = DiskGeometry.Dd720;
+        // bez opravného formátu: vada zasáhne sektory → označí se ve FAT
+        var (_, plain) = RepairFormat(g, false, (10, 0, 2000, 2200));
+        Assert(plain.BadSectors.Count > 0, "bez posunu má být vadný sektor");
+
+        // s opravným formátem: sektor navíc padne na vadu, disketa je bez chyb
+        var (fdc, r) = RepairFormat(g, true, (10, 0, 2000, 2200), (0, 0, 2600, 2900));
+        Eq(0, r.BadSectors.Count, "vadné sektory po opravném formátu");
+        Assert(r.Notes.Any(n => n.Contains("Stopa 10, strana 0")), string.Join(" | ", r.Notes));
+        Assert(r.Warnings.Any(w => w.Contains("experimentální")), "chybí varování");
+        var t10 = fdc.Tracks[(10, 0)];
+        Eq(10, t10.Count, "sektorů na opravené stopě");
+        Assert(t10.Any(x => x.Id.Sector == AtariFloppy.Core.Drives.Fdraw.FdrawDevice.SpareSectorId && x.Damaged), "sektor navíc má ležet na vadě");
+        Assert(t10.Where(x => x.Id.Sector != AtariFloppy.Core.Drives.Fdraw.FdrawDevice.SpareSectorId).All(x => !x.Damaged), "skutečné sektory mimo vadu");
+
+        // stopa 0 se sektorem navíc: disketa se dál rozpozná jako 720 KB a dá se přečíst celá
+        var dev = new AtariFloppy.Core.Drives.Fdraw.FdrawDevice(fdc, "A:");
+        Eq(9, dev.MediaGeometry!.SectorsPerTrack, "rozpoznaná geometrie");
+        var read = new OperationResult();
+        var img = DiskOperations.ReadDisk(dev, SideMode.Auto, read);
+        Eq(0, read.BadSectors.Count, "čtení opravené diskety");
+        Eq(737280, img.Data.Length, "velikost obrazu");
+    }
+
+    private static void T_RepairFormat_FallsBackWhenDefectTooBig()
+    {
+        // vada přes víc než jeden sektor: posun nepomůže → běžný formát a označení ve FAT
+        var (fdc, r) = RepairFormat(DiskGeometry.Dd720, true, (20, 1, 1000, 3500));
+        Assert(r.BadSectors.Count > 0, "vadné sektory mají zůstat");
+        Eq(9, fdc.Tracks[(20, 1)].Count, "stopa vrácená do běžného formátu");
+        Assert(r.Warnings.Any(w => w.Contains("označil jsem")), string.Join(" | ", r.Warnings));
+
+        // 10 sektorů (Atari 800 KB): na stopě není místo → poznámka a běžný formát
+        var g10 = new DiskGeometry(80, 2, 10, 512);
+        var (_, r10) = RepairFormat(g10, true);
+        Assert(r10.Notes.Any(n => n.Contains("není místo")), string.Join(" | ", r10.Notes));
+    }
+
+    private static void T_RepairFormat_HighDensity()
+    {
+        var (_, r) = RepairFormat(DiskGeometry.Hd1440, true, (40, 1, 5150, 5400));
+        Eq(0, r.BadSectors.Count, "HD: vadné sektory po opravném formátu");
     }
 }

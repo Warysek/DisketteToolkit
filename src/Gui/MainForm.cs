@@ -516,7 +516,8 @@ internal sealed class MainForm : Form, IJobHost
         foreach (var kv in d.Features.OrderBy(k => k.Key))
         {
             var (g, c) = Theme.Mark(kv.Value);
-            _info.Item(g, c, Capabilities.Describe(kv.Key), Capabilities.Describe(kv.Value));
+            string what = kv.Key == Feature.Standard720 && d.Note720 != null ? d.Note720 : Capabilities.Describe(kv.Value);
+            _info.Item(g, c, Capabilities.Describe(kv.Key), what);
         }
         if (d.Kind == DriveKind.Internal && !d.FdrawcmdInstalled)
             _info.Note(Tr.T("Tip: po instalaci ovladače fdrawcmd.sys (simonowen.com/fdrawcmd) půjdou i nestandardní formáty (10/11 sektorů, 82 stop, step rate)."), Theme.Accent);
@@ -682,9 +683,10 @@ internal sealed class MainForm : Form, IJobHost
         if (f.ImagePath != null) { CreateImage(f.Profile, f.ImagePath, f.DiskLabel); return; }
         var p = f.Profile;
         if (!ConfirmDanger(Tr.F("Všechna data na disketě {0} budou smazána a disketa se naformátuje jako {1}. Pokračovat?", d.Id, p.Title))) return;
-        bool quick = f.Quick, verify = f.Verify;
+        bool quick = f.Quick, verify = f.Verify, shift = f.ShiftSectors;
+        if (shift && !Confirm(Tr.T("Opravný formát je EXPERIMENTÁLNÍ. Vadná místa na stopách zkusí obejít vloženým sektorem navíc, místo aby je jen označil ve FAT. Disketa pak bude normálně čitelná v Atari i PC, ale vada se může časem rozšířit — na archiv a důležitá data ji nepoužívej. Pokračovat?"))) return;
         string? label = f.DiskLabel;
-        RunJob(j => j.Format(d, p, quick, label, verify));
+        RunJob(j => j.Format(d, p, quick, label, verify, shift));
     }
 
     private void DoTest()
@@ -1088,6 +1090,10 @@ internal sealed class MainForm : Form, IJobHost
             case "test" when d != null: RunJob(j => j.CheckDisk(d, WriteTestMode.None, false, null)); break;
             case "format" when d != null: RunJob(j => j.Format(d, FormatProfiles.Find("atari")!, false, "DEMO", true)); break;
             case "formatdialog" when d != null: BeginInvoke(new Action(() => { using var f = new FormatDialog(d); f.ShowDialog(this); })); break;
+            case "formatdialog-internal" when _drives.Count > 1:
+                _driveBox.SelectedIndex = 1;
+                BeginInvoke(new Action(() => { using var f = new FormatDialog(Selected!); f.ShowDialog(this); }));
+                break;
             case "testdialog" when d != null: BeginInvoke(new Action(() => { using var f = new TestDialog(d, _settings.BackupFolder); f.ShowDialog(this); })); break;
             case "settings": BeginInvoke(new Action(() => { using var f = new SettingsDialog(_settings, _drives); f.ShowDialog(this); })); break;
             case "formats": BeginInvoke(new Action(() => new FormatsDialog().ShowDialog(this))); break;

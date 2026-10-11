@@ -100,7 +100,7 @@ internal static class ProfilesCommand
     }
 
     /// <summary>Naformátuje disketu podle profilu — ověří mechaniku i vloženou disketu.</summary>
-    public static int Format(string driveArg, FormatProfile p, bool quick, string? label, bool verify)
+    public static int Format(string driveArg, FormatProfile p, bool quick, string? label, bool verify, bool shift = false)
     {
         if (Backends.IsGwArg(driveArg)) return GwCommands.Format(driveArg, p, label, verify);
         var drive = Program.ResolveDrive(driveArg, p.Density == Density.HD ? Feature.Standard1440 : Feature.Standard720);
@@ -119,6 +119,7 @@ internal static class ProfilesCommand
         if (label != null && p.SupportsLabel) Ui.Field("Jmenovka", label);
         if (label != null && !p.SupportsLabel) Ui.Dim("  (tento formát jmenovku nepodporuje, ignoruji ji)");
         if (p.Note != null) Ui.Warn("  " + p.Note);
+        if (shift) Ui.Warn("  Opravný formát je EXPERIMENTÁLNÍ: vadná místa obejde sektorem navíc. Disketa bude normálně čitelná, ale na archiv ji nepoužívej.");
         if (!Ui.Confirm($"Všechna data na disketě {drive.Id} budou smazána. Pokračovat?")) return 1;
 
         using var dev = Backends.OpenForGeometry(drive, p.Geometry);
@@ -127,7 +128,7 @@ internal static class ProfilesCommand
         try
         {
             if (fatDs)
-                DiskOperations.Format(dev, p.Geometry, p.FatStyle!.Value, label, quick, verify, result, Ui.Progress, Program.Cancel.Token);
+                DiskOperations.Format(dev, p.Geometry, p.FatStyle!.Value, label, quick, verify || shift, result, Ui.Progress, Program.Cancel.Token, shift);
             else
             {
                 var blank = p.Build!(p.SupportsLabel ? label : null);

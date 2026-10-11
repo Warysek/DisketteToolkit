@@ -67,6 +67,7 @@ public static class DriveDetector
                 FdrawcmdInstalled = driveFdraw,
                 MediaTypes = media.Select(Native.MediaTypeName).Distinct().ToList(),
                 Supports720 = MediaSupport.Supports720(media),
+                Reports720 = media.Contains(5),
                 Supports1440 = MediaSupport.Supports1440(media),
             };
             d.Media = MediaSupport.Density(media);

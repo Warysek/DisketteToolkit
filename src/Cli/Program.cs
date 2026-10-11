@@ -103,9 +103,9 @@ internal static class Program
                     if (pid != null)
                     {
                         var prof = FormatProfiles.Find(pid) ?? throw new ArgumentException($"Neznámý formát „{pid}“. Seznam: dtk profiles");
-                        return ProfilesCommand.Format(a.Pos(0, "mechanika"), prof, a.Flag("quick"), a.Opt("label"), !a.Flag("no-verify"));
+                        return ProfilesCommand.Format(a.Pos(0, "mechanika"), prof, a.Flag("quick"), a.Opt("label"), !a.Flag("no-verify"), a.Flag("posun"));
                     }
-                    return Format(a.Pos(0, "mechanika"), ParseStyle(a), ParseSize(a), a.Flag("quick"), a.Opt("label"), !a.Flag("no-verify"));
+                    return Format(a.Pos(0, "mechanika"), ParseStyle(a), ParseSize(a), a.Flag("quick"), a.Opt("label"), !a.Flag("no-verify"), a.Flag("posun"));
                 }
             case "profiles": case "profily": return ProfilesCommand.Profiles(a.PosOrNull(0));
             case "check": case "kontrola":
@@ -342,8 +342,8 @@ internal static class Program
         return result.Success ? 0 : 4;
     }
 
-    public static int Format(string driveArg, FormatStyle style, DiskGeometry g, bool quick, string? label, bool verify) =>
-        ProfilesCommand.Format(driveArg, FormatProfiles.ForFat(style, g), quick, label, verify);
+    public static int Format(string driveArg, FormatStyle style, DiskGeometry g, bool quick, string? label, bool verify, bool shift = false) =>
+        ProfilesCommand.Format(driveArg, FormatProfiles.ForFat(style, g), quick, label, verify, shift);
 
     public static int Convert(string input, string output)
     {
@@ -413,6 +413,11 @@ internal static class Program
             throw new OperationException($"Jednotka {a}: není disketová mechanika (nebo není připojená). Spusť „dtk detect“.");
 
         var av = drive.Get(needed);
+        if (av == Availability.Maybe && drive.Note720 != null)
+        {
+            if (drive.Likely720Missing) Ui.Warn($"  {drive.Id}: 720 KB {drive.Note720}");
+            return drive;
+        }
         if (av != Availability.Available)
             throw new OperationException($"{drive.Id} ({drive.KindText}): {Capabilities.Describe(needed)} — {Capabilities.Describe(av)}.");
         return drive;
@@ -486,8 +491,10 @@ Bez parametrů se spustí jednoduché menu.
                                          načte disketu do image
   dtk write <image> <A:> [--format] [--no-verify]
                                          zapíše image na disketu
-  dtk format <A:> [--hybrid|--atari|--pc] [--size 640|720|1440] [--quick] [--label JMENO] [--no-verify]
+  dtk format <A:> [--hybrid|--atari|--pc] [--size 640|720|1440] [--quick] [--label JMENO] [--no-verify] [--posun]
                                          naformátuje disketu (výchozí: hybrid, 720 KB)
+                                         --posun: opravný formát (EXPERIMENTÁLNÍ, jen fdrawcmd.sys) — vadné
+                                         místo na stopě překryje sektorem navíc místo označení ve FAT
   dtk format <A:> --profile <id> [--label JMENO]
                                          formát jiného systému: msx, mac-hfs, pcw, minix, ext2 …
   dtk profiles [A:]                  všechny formáty; s mechanikou ukáže, co jde s vloženou disketou

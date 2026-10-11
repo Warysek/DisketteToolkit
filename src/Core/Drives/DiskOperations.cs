@@ -241,9 +241,21 @@ public static class DiskOperations
 
     // ------------------------------------------------------------------ formát
 
+    /// <param name="shiftSectors">Opravný formát (experimentální, jen fdrawcmd.sys): vadné místo na stopě překryje sektorem navíc.</param>
     public static void Format(ISectorDevice dev, DiskGeometry g, FormatStyle style, string? label, bool quick, bool verify,
-                              OperationResult result, ProgressHandler? progress = null, CancellationToken ct = default)
+                              OperationResult result, ProgressHandler? progress = null, CancellationToken ct = default,
+                              bool shiftSectors = false)
     {
+        var fdraw = dev as Fdraw.FdrawDevice;
+        if (shiftSectors && (quick || !verify)) shiftSectors = false;
+        if (shiftSectors && (fdraw == null || !Fdraw.FdrawDevice.CanShiftSectors(g)))
+        {
+            result.Notes.Add(fdraw == null
+                ? Tr.T("Opravný formát umí jen interní mechanika s fdrawcmd.sys — formátuji běžně.")
+                : Tr.T("Opravný formát u tohoto formátu nejde (na stopě není místo na sektor navíc) — formátuji běžně."));
+            shiftSectors = false;
+        }
+        int shifted = 0;
         if (!dev.SupportsGeometry(g) || g.Sides != 2)
             throw new OperationException(Tr.F("Formát {0} tahle mechanika neumí. {1}", g, dev.GeometryLimits));
 
@@ -277,10 +289,25 @@ public static class DiskOperations
                         ct.ThrowIfCancellationRequested();
                         progress?.Invoke(done++, total, Tr.F("Kontroluji povrch: stopa {0}, strana {1}", t, s));
                         TrackActivity.Head(t, s, TrackPhase.Verifying);
+                        int before = scan.BadSectors.Count;
                         ReadTrack(dev, media, t, s, scan);
+                        if (shiftSectors && scan.BadSectors.Count > before)
+                        {
+                            progress?.Invoke(done, total, Tr.F("Opravný formát: stopa {0}, strana {1}", t, s));
+                            TrackActivity.Head(t, s, TrackPhase.Formatting);
+                            int pos = fdraw!.ShiftSectors(g, t, s);
+                            if (pos >= 0)
+                            {
+                                scan.BadSectors.RemoveRange(before, scan.BadSectors.Count - before);
+                                shifted++;
+                                result.Notes.Add(Tr.F("Stopa {0}, strana {1}: vadné místo překryté sektorem navíc (pozice {2}).", t, s, pos + 1));
+                            }
+                        }
                         TrackActivity.Track(t, s, CellState.Verified);
                     }
                 bad = scan.BadSectors;
+                if (shifted > 0)
+                    result.Warnings.Add(Tr.F("Opravný formát (experimentální) obešel vadná místa na {0} stopách. Disketa je normálně čitelná, ale vada se může časem rozšířit — na archiv ji nepoužívej.", shifted));
             }
             var blank = BuildFilesystem(g, style, label, bad.Select(b => g.Lba(b.Track, b.Side, b.Sector - 1)), out int marked);
             result.BadSectors.AddRange(bad);
