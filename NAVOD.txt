@@ -4,9 +4,15 @@ Diskette Toolkit 0.8.3 (testovací verze)
 Diskety a obrazy disket pro Atari ST a další 3,5" systémy ve Windows 10 / 11.
 Nic se neinstaluje, stačí .NET Framework 4.8, který je součástí Windows 10 a 11.
 
-V ZIPu jsou dva programy:
-  DisketteToolkit.exe   okno programu (nové ve verzi 0.6) — to budeš používat nejčastěji
+Stránka projektu, stažení a hlášení chyb: https://github.com/Warysek/DisketteToolkit
+
+V ZIPu je:
+  DisketteToolkit.exe   okno programu — to budeš používat nejčastěji
   dtk.exe               příkazová řádka (stejné funkce, pro skripty a pokročilé)
+  NAVOD.txt             tento návod (česky)
+  README.txt            stručný popis anglicky
+  Mechaniky-CZ.png      co umí která mechanika (Drives-EN.png = totéž anglicky)
+  licence/              GNU GPL v3 a licence boot sektoru FreeDOS
 
 
 SPUŠTĚNÍ
