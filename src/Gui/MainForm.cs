@@ -53,7 +53,7 @@ internal sealed class MainForm : Form, IJobHost
     private readonly Label _secDisk = new(), _secImages = new(), _secHelp = new();
     private readonly ActionButton _aRead = new(), _aWrite = new(), _aFormat = new(), _aTest = new(), _aErase = new(), _aSetup = new(), _aBoot = new();
     private readonly ActionButton _iOpen = new(), _iCheck = new(), _iConvert = new(), _iNew = new();
-    private readonly ActionButton _hFormats = new(), _hAbout = new();
+    private readonly ActionButton _hFormats = new(), _hAbout = new(), _hDonate = new();
     private readonly ToolTip _tips = new();
 
     private List<DetectedDrive> _drives = new();
@@ -263,6 +263,7 @@ internal sealed class MainForm : Form, IJobHost
         Section(_secHelp);
         Add(_hFormats, "☰", (_, _) => { using var f = new FormatsDialog(); f.ShowDialog(this); }, 44);
         Add(_hAbout, "ⓘ", (_, _) => ShowAbout(), 44);
+        Add(_hDonate, "♥", (_, _) => OpenLink(Program.DonateUrl), 52);
     }
 
     private void BuildCenter()
@@ -397,6 +398,8 @@ internal sealed class MainForm : Form, IJobHost
         _iNew.Subtitle = Tr.T("Atari, PC, MSX, Mac, Amiga, Linux…");
         _hFormats.Text = Tr.T("Formáty všech systémů");
         _hAbout.Text = Tr.T("O programu");
+        _hDonate.Text = Tr.T("Podpořit vývoj");
+        _hDonate.Subtitle = Tr.T("dobrovolný příspěvek přes Ko-fi");
         UpdateActionButtons();
         if (!_busy) _status.Text = Tr.T("Připraveno.");
         LayoutTop();
@@ -890,8 +893,17 @@ internal sealed class MainForm : Form, IJobHost
             Tr.T("Nastavení:") + " " + AppSettings.FilePath + "\n" +
             Tr.T("Zálohy:") + " " + _settings.BackupFolder + "\n" +
             Tr.T("Jazyky:") + " " + Tr.LangFolder + "\n\n" +
-            Tr.T("Licence: GNU GPL v3 — svobodný software, zdrojové kódy jsou volně k dispozici."),
+            Tr.T("Licence: GNU GPL v3 — svobodný software, zdrojové kódy jsou volně k dispozici.") + "\n\n" +
+            Tr.T("Stránka projektu:") + " " + Program.ProjectUrl + "\n" +
+            Tr.T("Podpořit vývoj:") + " " + Program.DonateUrl,
             Tr.T("O programu"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+    }
+
+    /// <summary>Otevře odkaz v prohlížeči. Přes explorer.exe, aby prohlížeč neběžel s právy správce jako program.</summary>
+    private void OpenLink(string url)
+    {
+        try { System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", "\"" + url + "\"") { UseShellExecute = false }); }
+        catch (Exception) { MessageBox.Show(this, url, Text, MessageBoxButtons.OK, MessageBoxIcon.Information); }
     }
 
     // ================================================================ běh úloh
@@ -944,7 +956,7 @@ internal sealed class MainForm : Form, IJobHost
         _refreshBtn.Enabled = !busy && !_detecting;
         _settingsBtn.Enabled = !busy;
         foreach (Control c in _actions.Controls)
-            if (c is ActionButton b && b != _hFormats && b != _hAbout) b.Enabled = !busy;
+            if (c is ActionButton b && b != _hFormats && b != _hAbout && b != _hDonate) b.Enabled = !busy;
         UseWaitCursor = false;
     }
 
@@ -1119,6 +1131,9 @@ internal sealed class MainForm : Form, IJobHost
                 WindowState = FormWindowState.Normal;
                 Size = MinimumSize;
                 BeginInvoke(new Action(() => { foreach (Control c in _left.Controls) foreach (Control i in c.Controls) if (i is InfoPanel ip) ip.AutoScrollPosition = new Point(0, 400); }));
+                break;
+            case "help":
+                BeginInvoke(new Action(() => _actions.AutoScrollPosition = new Point(0, 10000)));
                 break;
             case "internal":
                 _driveBox.SelectedIndex = Math.Min(1, _driveBox.Items.Count - 1);

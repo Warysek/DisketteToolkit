@@ -8,6 +8,7 @@ Atari program FastCopy. No installation needed — only .NET Framework 4.8, whic
 part of Windows 10 and 11.
 
 Project page, downloads and bug reports: https://github.com/Warysek/DisketteToolkit
+Support development (voluntary donation): https://ko-fi.com/wary
 
 Files in the ZIP:
   DisketteToolkit.exe        window (GUI), English or Czech — switch in the top right corner
