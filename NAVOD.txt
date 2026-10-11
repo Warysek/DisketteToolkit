@@ -1,4 +1,4 @@
-Diskette Toolkit 0.8.2 (testovací verze)
+Diskette Toolkit 0.8.3 (testovací verze)
 ========================================
 
 Diskety a obrazy disket pro Atari ST a další 3,5" systémy ve Windows 10 / 11.
@@ -75,6 +75,25 @@ Co vyzkoušet v 0.6 (Sony USB-FDU):
   5. Přepni jazyk na English a zpět.
   Pošli mi prosím snímek obrazovky, hlavně kdyby něco vypadalo divně
   (velikost písma, oříznuté texty) — okno jsem ladil bez skutečných Windows.
+
+
+NOVÉ VE VERZI 0.8.3
+-------------------
+ • USB disketovka a 720 KB: některé USB mechaniky DD diskety (720 KB) neumějí. V levém panelu
+   v části „Co umí mechanika“ je u řádku 720 KB napsané, co program zjistil:
+     ano — disketa 720 KB se přečetla / mechanika formát 720 KB nabízí,
+     neověřeno — vlož DD disketu 720 KB a klikni na ⟳ Obnovit,
+     nejspíš ne — DD disketu mechanika nepřečte a 720 KB nenabízí.
+   Když mechanika formát 720 KB hned na první stopě odmítne, program to řekne přímo.
+ • Opravný formát (EXPERIMENTÁLNÍ, jen interní mechanika s fdrawcmd.sys): Formátovat… →
+   zaškrtni „Opravný formát“. Když kontrola povrchu najde na stopě vadné místo, program stopu
+   přeformátuje se sektorem navíc (číslo F0, nikdo ho nečte) a zkouší ho postupně na každé
+   pozici, dokud všechny skutečné sektory nejdou zapsat a přečíst. Vadné místo tak padne do
+   sektoru navíc a disketa zůstane plná (720 KB / 1,44 MB) bez vadných clusterů.
+   Jde u formátů 720 KB, 640 KB a 1,44 MB; u 10/11 sektorů na stopě není místo.
+   Pomůže na menší vadu (do zhruba jednoho sektoru); větší vada se označí ve FAT jako dřív.
+   Výpis ukáže, které stopy se opravily. Disketu s opravenými stopami nepoužívej na archiv.
+   Příkazová řádka: dtk format A: --atari --posun
 
 
 NOVÉ VE VERZI 0.8.2

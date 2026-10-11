@@ -246,7 +246,12 @@ public static class FormatProfiles
         if (p.Build == null)
             return new(p, ProfileStatus.Planned, p.Note ?? Tr.T("Tento souborový systém program zatím neumí vytvořit."));
         var needed = p.Density == Density.HD ? Feature.Standard1440 : Feature.Standard720;
-        if (drive.Get(needed) != Availability.Available)
+        var av = drive.Get(needed);
+        if (av == Availability.Maybe && drive.Note720 != null && p.Density == Density.DD)
+        {
+            if (drive.Likely720Missing) exp = Tr.T("Tahle USB disketovka 720 KB nejspíš neumí — formát se může hned na začátku odmítnout.");
+        }
+        else if (av != Availability.Available)
             return new(p, ProfileStatus.Unsupported, Tr.F("Mechanika neumí {0} diskety.", (p.Density == Density.HD ? "HD (1,44 MB)" : "DD (720 KB)")));
 
         switch (media)

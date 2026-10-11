@@ -102,6 +102,15 @@ public sealed class DetectedDrive
         _ => "",
     });
     public bool Supports720 { get; init; }
+    /// <summary>Windows (u USB podle vložené diskety) nabízí formát 720 KB.</summary>
+    public bool Reports720 { get; init; }
+    /// <summary>
+    /// U USB disketovky: co víme o podpoře 720 KB (některé USB mechaniky DD diskety neumějí).
+    /// Vyplní ComputeFeatures; null u ostatních mechanik.
+    /// </summary>
+    public string? Note720 { get; private set; }
+    /// <summary>USB disketovka nejspíš 720 KB neumí (viz Note720).</summary>
+    public bool Likely720Missing { get; private set; }
     public bool Supports1440 { get; init; }
     public Dictionary<Feature, Availability> Features { get; } = new();
 
@@ -124,7 +133,7 @@ public sealed class DetectedDrive
         switch (Kind)
         {
             case DriveKind.Usb:
-                Features[Feature.Standard720] = Supports720 ? Availability.Available : Availability.Unsupported;
+                Features[Feature.Standard720] = Usb720();
                 Features[Feature.Standard1440] = Supports1440 ? Availability.Available : Availability.Unsupported;
                 foreach (var f in new[] { Feature.ExtendedGeometry, Feature.ElevenSectors, Feature.StepRate,
                                           Feature.SimpleProtection, Feature.FluxProtection, Feature.WriteStxIpf })
@@ -151,6 +160,34 @@ public sealed class DetectedDrive
                 if (gw == Availability.Available) Features[Feature.WriteStxIpf] = Availability.Maybe;
                 break;
         }
+    }
+
+    /// <summary>
+    /// Některé USB disketovky DD diskety (720 KB) neumějí. Mechanika to sama nehlásí, poznáme to jen
+    /// z vložené diskety: přečtená DD disketa nebo nabídka formátu 720 KB = umí; DD disketa, kterou
+    /// mechanika nepřečte a 720 KB pro ni nenabízí = nejspíš neumí. Jinak to zatím nevíme.
+    /// </summary>
+    private Availability Usb720()
+    {
+        Likely720Missing = false;
+        if (MediaState == Drives.MediaState.Ready && FormattedAs != null && !FormattedAs.IsHighDensity)
+        {
+            Note720 = Tr.T("ano — disketa 720 KB (DD) se přečetla");
+            return Availability.Available;
+        }
+        if (Reports720)
+        {
+            Note720 = Tr.T("ano — mechanika pro vloženou disketu nabízí formát 720 KB");
+            return Availability.Available;
+        }
+        if (MediaState == Drives.MediaState.Unrecognized && MediaTypes.Count > 0)
+        {
+            Likely720Missing = true;
+            Note720 = Tr.T("nejspíš ne — vloženou disketu mechanika nepřečte a formát 720 KB pro ni nenabízí. Pokud je to disketa 720 KB (DD), tahle USB mechanika DD diskety neumí (u některých modelů je to běžné).");
+            return Availability.Maybe;
+        }
+        Note720 = Tr.T("neověřeno — vlož disketu 720 KB (DD) a klikni na Obnovit, program to zjistí");
+        return Availability.Maybe;
     }
 
     /// <summary>Zvládne tato verze programu standardní čtení/zápis přes Windows?</summary>

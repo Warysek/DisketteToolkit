@@ -180,7 +180,7 @@ internal sealed class Jobs
 
     // ================================================================ formát
 
-    public void Format(DetectedDrive d, FormatProfile p, bool quick, string? label, bool verify)
+    public void Format(DetectedDrive d, FormatProfile p, bool quick, string? label, bool verify, bool shiftSectors = false)
     {
         var verdict = FormatProfiles.Evaluate(p, d, d.Kind == DriveKind.Greaseweazle ? InsertedMedia.Unknown : d.Media);
         if (!verdict.IsReady) throw new OperationException($"{p.Title}: {verdict.Reason}");
@@ -200,7 +200,10 @@ internal sealed class Jobs
         using var dev = _h.Factory.OpenForGeometry(d, p.Geometry);
         var result = new OperationResult();
         if (fatDs)
-            DiskOperations.Format(dev, p.Geometry, p.FatStyle!.Value, label, quick, verify, result, P, Ct);
+        {
+            if (shiftSectors) Warn(Tr.T("Opravný formát (experimentální): vadná místa zkusím obejít sektorem navíc."));
+            DiskOperations.Format(dev, p.Geometry, p.FatStyle!.Value, label, quick, verify || shiftSectors, result, P, Ct, shiftSectors);
+        }
         else
             DiskOperations.WriteImage(dev, p.Build!(p.SupportsLabel ? label : null), format: true, verify: verify, result, P, Ct);
         Report(result);
