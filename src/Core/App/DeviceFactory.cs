@@ -100,12 +100,23 @@ public sealed class DeviceFactory
         return dev;
     }
 
+    /// <summary>
+    /// „Vždy použít fdrawcmd.sys“ platí jen pro mechaniky, které ho mají; u ostatních (USB disketovka)
+    /// se volba nepoužije a do výpisu se o tom napíše poznámka.
+    /// </summary>
+    private bool ForceFdraw(DetectedDrive d)
+    {
+        if (!Settings.ForceFdraw) return false;
+        if (d.FdrawcmdInstalled) return true;
+        Log?.Invoke(Tr.F("{0}: tahle mechanika fdrawcmd.sys nemá, používám Windows.", d.Id));
+        return false;
+    }
+
     /// <summary>Pro čtení/test: Windows, a když disketa vypadá nestandardně a je k dispozici fdrawcmd.sys, přepne se.</summary>
     public ISectorDevice OpenForRead(DetectedDrive d, bool write)
     {
         if (Simulator != null) return Simulator(d, write, null);
-        if (d.FdrawcmdInstalled && Settings.ForceFdraw) return OpenFdraw(d);
-        if (!d.FdrawcmdInstalled && Settings.ForceFdraw) throw new OperationException(Tr.F("{0}: fdrawcmd.sys pro tuto mechaniku není k dispozici.", d.Id));
+        if (ForceFdraw(d)) return OpenFdraw(d);
         // rychlost krokování se u mechaniky bez fdrawcmd.sys tiše nepoužije (USB disketovka si ji řídí sama)
 
         var win = new WinFloppyDevice(d.Letter!, write);
@@ -130,7 +141,7 @@ public sealed class DeviceFactory
     public ISectorDevice OpenForGeometry(DetectedDrive d, DiskGeometry g)
     {
         if (Simulator != null) return Simulator(d, true, g);
-        if (!Settings.ForceFdraw && Settings.StepRateMs == null && StandardGeometry.Supports(g)) return new WinFloppyDevice(d.Letter!, write: true);
+        if (!ForceFdraw(d) && Settings.StepRateMs == null && StandardGeometry.Supports(g)) return new WinFloppyDevice(d.Letter!, write: true);
         if (d.FdrawcmdInstalled) return OpenFdraw(d);
         if (StandardGeometry.Supports(g)) return new WinFloppyDevice(d.Letter!, write: true);
         throw new OperationException(Tr.F("Formát {0} tahle mechanika nezvládne. {1} ", g, StandardGeometry.Limits) +
