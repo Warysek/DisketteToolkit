@@ -11,6 +11,8 @@ namespace AtariFloppy.Gui;
 internal static class Program
 {
     public static string Version => AtariFloppy.Core.App.AppPaths.Version;
+    public const string ProjectUrl = "https://github.com/Warysek/DisketteToolkit";
+    public const string DonateUrl = "https://ko-fi.com/wary";
 
     /// <summary>Ukázkový režim se simulovanými mechanikami (DisketteToolkit.exe --demo).</summary>
     public static bool Demo { get; private set; }

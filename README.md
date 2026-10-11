@@ -45,6 +45,11 @@ The program downloads gw.exe and fdrawcmd.sys itself when you need them.
 Bug reports and ideas are welcome in [Issues](../../issues). Please include the program version, Windows version,
 drive type and the log (right-click the log → *Save log to file…*).
 
+## Support
+
+Diskette Toolkit is free. If it saved your disks, you can buy me a coffee on [Ko-fi](https://ko-fi.com/wary) —
+it helps with test disks and drives. Thank you!
+
 ## Building
 
 C# / .NET Framework 4.8. On Windows: `dotnet build src/Gui/Gui.csproj -c Release`.
