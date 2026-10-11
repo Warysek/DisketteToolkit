@@ -1,0 +1,17 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <Deterministic>true</Deterministic>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <!-- .NET Framework 4.8 je součástí Windows 10/11, nic se nemusí instalovat.
+         Na Linuxu (sestavovací prostředí) bereme referenční sestavení z Mono. -->
+    <AutomaticallyUseReferenceAssemblyPackages>false</AutomaticallyUseReferenceAssemblyPackages>
+    <FrameworkPathOverride Condition="'$(OS)' != 'Windows_NT'">/usr/lib/mono/4.8-api</FrameworkPathOverride>
+    <Version>0.8.1</Version>
+    <Company>HoroPC</Company>
+    <Product>Diskette Toolkit</Product>
+  </PropertyGroup>
+</Project>
