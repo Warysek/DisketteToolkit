@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>DisketteToolkit</AssemblyName>
+    <RootNamespace>AtariFloppy.Gui</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <AssemblyTitle>Diskette Toolkit — diskety a obrazy pro Atari ST a další 3,5" systémy</AssemblyTitle>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <!-- Jádro kompilujeme přímo do .exe, ať je program jeden soubor. -->
+  <ItemGroup>
+    <Compile Include="..\Core\**\*.cs" Exclude="..\Core\obj\**;..\Core\bin\**" LinkBase="Core" />
+    <EmbeddedResource Include="..\Core\I18n\en.lang" LogicalName="AtariFloppy.Core.I18n.en.lang" />
+    <EmbeddedResource Include="..\Core\Boot\freedos-fat12.bin" LogicalName="AtariFloppy.Core.Boot.freedos-fat12.bin" />
+    <Reference Include="System.Management" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+    <EmbeddedResource Include="app.ico" LogicalName="AtariFloppy.Gui.app.ico" />
+  </ItemGroup>
+</Project>

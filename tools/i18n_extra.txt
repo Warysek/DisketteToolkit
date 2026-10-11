@@ -1,0 +1,19 @@
+# Texty bez diakritiky, které jsou také k překladu (přesně jak jsou ve zdrojovém kódu)
+USB disketovka
+Hotovo
+Zapisuji
+Test povrchu
+funguje
+strana
+strany
+HD disketa
+HD disketa: image 1,44 MB.
+cluster
+jen 3-mode mechanika
+varianta big-endian (Atari ST / 68000)
+varianta little-endian (PC)
+Atari (68000 skok BRA)
+, gw.exe nenalezen
+.STX (Pasti — s ochranami)
+Apple Macintosh — HFS (Hierarchical File System), Mac OS od roku 1985 do Mac OS 9. 
+Obraz 3\" diskety Amstrad CPC / ZX Spectrum +3 — ty se do 3,5\" mechaniky nevejdou a tento program je nepodporuje.

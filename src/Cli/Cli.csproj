@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>dtk</AssemblyName>
+    <RootNamespace>AtariFloppy.Cli</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyTitle>Diskette Toolkit — příkazová řádka</AssemblyTitle>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <!-- Jádro kompilujeme přímo do .exe, ať je program jeden soubor. -->
+  <ItemGroup>
+    <Compile Include="..\Core\**\*.cs" Exclude="..\Core\obj\**;..\Core\bin\**" LinkBase="Core" />
+    <Reference Include="System.Management" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.Runtime.Serialization" />
+    <EmbeddedResource Include="..\Core\I18n\en.lang" LogicalName="AtariFloppy.Core.I18n.en.lang" />
+    <EmbeddedResource Include="..\Core\Boot\freedos-fat12.bin" LogicalName="AtariFloppy.Core.Boot.freedos-fat12.bin" />
+  </ItemGroup>
+</Project>

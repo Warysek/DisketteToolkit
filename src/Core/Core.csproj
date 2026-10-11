@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <AssemblyName>AtariFloppy.Core</AssemblyName>
+    <RootNamespace>AtariFloppy.Core</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System.Management" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.Runtime.Serialization" />
+    <EmbeddedResource Include="I18n\en.lang" LogicalName="AtariFloppy.Core.I18n.en.lang" />
+    <EmbeddedResource Include="Boot\freedos-fat12.bin" LogicalName="AtariFloppy.Core.Boot.freedos-fat12.bin" />
+  </ItemGroup>
+</Project>
