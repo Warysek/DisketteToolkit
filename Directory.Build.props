@@ -10,7 +10,7 @@
          Na Linuxu (sestavovací prostředí) bereme referenční sestavení z Mono. -->
     <AutomaticallyUseReferenceAssemblyPackages>false</AutomaticallyUseReferenceAssemblyPackages>
     <FrameworkPathOverride Condition="'$(OS)' != 'Windows_NT'">/usr/lib/mono/4.8-api</FrameworkPathOverride>
-    <Version>0.8.2</Version>
+    <Version>0.8.3</Version>
     <Company>HoroPC</Company>
     <Product>Diskette Toolkit</Product>
   </PropertyGroup>

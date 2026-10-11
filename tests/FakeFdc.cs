@@ -15,7 +15,12 @@ internal sealed class FakeFdc : IFdc
         public SectorId Id;
         public byte[] Data = Array.Empty<byte>();
         public bool CrcError;
+        /// <summary>Sektor leží přes fyzickou vadu stopy — co se do něj zapíše, nejde přečíst.</summary>
+        public bool Damaged;
     }
+
+    /// <summary>Fyzické vady povrchu: (stopa, strana) → úsek stopy v bajtech od indexu.</summary>
+    public Dictionary<(int cyl, int head), (int from, int to)> Defects = new();
 
     public Dictionary<(int cyl, int head), List<Sector>> Tracks = new();
     public DataRate DiskRate = DataRate.R250K;
@@ -87,7 +92,7 @@ internal sealed class FakeFdc : IFdc
         {
             var sec = t.FirstOrDefault(x => x.Id.Sector == firstSector + i) ?? throw new SectorIOException("sektor nenalezen", 27);
             Buffer.BlockCopy(data, offset + i * sec.Data.Length, sec.Data, 0, sec.Data.Length);
-            sec.CrcError = false;
+            sec.CrcError = sec.Damaged;
         }
     }
 
@@ -98,7 +103,19 @@ internal sealed class FakeFdc : IFdc
         if (cyl != Cyl) throw new SectorIOException("špatná stopa", 27);
         if (ids.Count == 11 && sizeCode == 2 && !Supports11Sectors) throw new SectorIOException("řadič 11 sektorů nezvládne", 27);
         DiskRate = CurrentRate;
-        Tracks[(cyl, head)] = ids.Select(id => new Sector { Id = id, Data = Enumerable.Repeat(fill, 128 << sizeCode).ToArray() }).ToList();
+        var sectors = ids.Select(id => new Sector { Id = id, Data = Enumerable.Repeat(fill, 128 << sizeCode).ToArray() }).ToList();
+        if (Defects.TryGetValue((cyl, head), out var d))
+        {
+            // poloha na stopě: úvod 146 B, pak každý sektor = 62 B režie (ID, synchronizace) + data + mezera
+            int pitch = 62 + (128 << sizeCode) + gap3;
+            for (int i = 0; i < sectors.Count; i++)
+            {
+                int start = 146 + i * pitch, end = start + 62 + (128 << sizeCode);
+                sectors[i].Damaged = start < d.to && d.from < end;
+                sectors[i].CrcError = sectors[i].Damaged;
+            }
+        }
+        Tracks[(cyl, head)] = sectors;
         FormatLog.Add((cyl, head, gap3, ids.Count));
     }
 

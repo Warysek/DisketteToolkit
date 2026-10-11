@@ -27,6 +27,7 @@ internal sealed class FormatDialog : DialogBase
     private readonly RadioButton _full = new() { AutoSize = false, Size = new Size(330, 36), CheckAlign = ContentAlignment.TopLeft, TextAlign = ContentAlignment.TopLeft, Checked = true };
     private readonly RadioButton _quick = new() { AutoSize = false, Size = new Size(330, 36), CheckAlign = ContentAlignment.TopLeft, TextAlign = ContentAlignment.TopLeft };
     private readonly CheckBox _verify = new() { AutoSize = false, Size = new Size(330, 36), CheckAlign = ContentAlignment.TopLeft, TextAlign = ContentAlignment.TopLeft, Checked = true };
+    private readonly CheckBox _shift = new() { AutoSize = false, Size = new Size(330, 52), CheckAlign = ContentAlignment.TopLeft, TextAlign = ContentAlignment.TopLeft };
     private readonly Button _formatBtn;
     private readonly Button _imageBtn;
     private readonly Dictionary<ListViewItem, ProfileVerdict> _verdicts = new();
@@ -37,6 +38,8 @@ internal sealed class FormatDialog : DialogBase
     public string? DiskLabel => _label.Text.Trim().Length > 0 ? _label.Text.Trim() : null;
     public bool Quick => _quick.Checked && _quick.Enabled;
     public bool Verify => _verify.Checked;
+    /// <summary>Opravný formát (posun sektorů) — experimentální, jen interní mechanika s fdrawcmd.sys.</summary>
+    public bool ShiftSectors => _shift.Checked && _shift.Enabled;
 
     public FormatDialog(DetectedDrive? drive)
         : base(drive != null ? Tr.F("Formátování — {0} {1}", drive.Id, drive.KindText) : Tr.T("Nový prázdný obraz diskety"), new Size(940, 620))
@@ -75,8 +78,12 @@ internal sealed class FormatDialog : DialogBase
         _full.Text = Tr.T("Úplný formát (nízkoúrovňově, s kontrolou povrchu)");
         _quick.Text = Tr.T("Rychlý — jen smazat obsah (disketa už má tento formát)");
         _verify.Text = Tr.T("Zkontrolovat povrch / ověřit zápis");
+        _shift.Text = Tr.T("Opravný formát (EXPERIMENTÁLNÍ) — vadné místo obejít sektorem navíc místo označení ve FAT");
+        _shift.ForeColor = Theme.Warn;
+        _shift.CheckedChanged += (_, _) => { if (_shift.Checked) _verify.Checked = true; _verify.Enabled = !_shift.Checked; };
+        _full.CheckedChanged += (_, _) => ShowSelected();
         side.Controls.AddRange(new Control[] { _title, _usedFor, _geometry, _reason, _note, _labelCaption, _label });
-        if (drive != null) side.Controls.AddRange(new Control[] { new Label { Height = 8 }, _full, _quick, _verify });
+        if (drive != null) side.Controls.AddRange(new Control[] { new Label { Height = 8 }, _full, _quick, _verify, _shift });
         layout.Controls.Add(side, 1, 1);
         Body.Controls.Add(layout);
 
@@ -172,6 +179,9 @@ internal sealed class FormatDialog : DialogBase
                              _drive.FormattedAs?.SectorsPerTrack == p.Geometry.SectorsPerTrack;
         _quick.Enabled = quickPossible;
         if (!quickPossible) _full.Checked = true;
+        _shift.Enabled = _drive is { Kind: DriveKind.Internal, FdrawcmdInstalled: true } && fatDs && _full.Checked &&
+                         AtariFloppy.Core.Drives.Fdraw.FdrawDevice.CanShiftSectors(p.Geometry);
+        if (!_shift.Enabled) _shift.Checked = false;
     }
 
     private void SaveImage()

@@ -65,7 +65,9 @@ public sealed class FdrawDevice : ISectorDevice
             var ids = _fdc.ScanTrack(0);
             if (ids.Count == 0) continue;
 
-            var sectors = ids.Select(i => i.Sector).Distinct().OrderBy(x => x).ToList();
+            // sektor navíc z opravného formátu (SpareSectorId) do geometrie nepočítáme
+            var sectors = ids.Where(i => i.Sector != SpareSectorId).Select(i => i.Sector).Distinct().OrderBy(x => x).ToList();
+            if (sectors.Count == 0) continue;
             int size = ids.GroupBy(i => i.SizeCode).OrderByDescending(g => g.Count()).First().Key;
             _firstSectorId = sectors[0];
             int spt = sectors.Count;
@@ -195,6 +197,52 @@ public sealed class FdrawDevice : ISectorDevice
         // Po formátu stopy 0 platí nová geometrie, i když zbytek ještě není hotový.
         MediaGeometry = target;
         MediaState = MediaState.Ready;
+    }
+
+    // ------------------------------------------------------------------ opravný formát (experimentální)
+
+    /// <summary>Číslo sektoru navíc, který opravný formát položí přes vadné místo. Žádný systém ho nečte.</summary>
+    public const byte SpareSectorId = 0xF0;
+
+    /// <summary>Vejde se na stopu ještě jeden sektor? (DD do 9, HD do 18 sektorů po 512 B; 10/11 sektorů ne.)</summary>
+    public static bool CanShiftSectors(DiskGeometry g) =>
+        g.BytesPerSector == 512 && g.SectorsPerTrack <= (g.IsHighDensity ? 18 : 9);
+
+    /// <summary>
+    /// Opravný formát jedné stopy: přeformátuje ji se sektorem navíc (SpareSectorId) a zkouší ho postupně
+    /// na každé pozici, dokud všechny skutečné sektory nejdou zapsat a dvakrát bez chyby přečíst. Vadné místo
+    /// tak padne do sektoru, který nikdo nečte. Vrátí pozici sektoru navíc, nebo -1 — pak stopu vrátí
+    /// do běžného formátu (vadné sektory se označí ve FAT jako dřív).
+    /// </summary>
+    public int ShiftSectors(DiskGeometry g, int cyl, int head)
+    {
+        if (!CanShiftSectors(g)) return -1;
+        SetRate(g.IsHighDensity ? DataRate.R500K : DataRate.R250K);
+        SeekTo(cyl);
+        int spt = g.SectorsPerTrack;
+        int gap = Gap3(new DiskGeometry(g.Tracks, g.Sides, spt + 1, 512));
+        var pattern = new byte[spt * 512];
+        new Random(cyl * 2 + head).NextBytes(pattern);
+        var fill = Enumerable.Repeat((byte)0xE5, spt * 512).ToArray();
+
+        for (int pos = 0; pos <= spt; pos++)
+        {
+            var ids = Enumerable.Range(1, spt).Select(r => new SectorId((byte)cyl, (byte)head, (byte)r, 2)).ToList();
+            ids.Insert(pos, new SectorId((byte)cyl, (byte)head, SpareSectorId, 2));
+            try
+            {
+                _fdc.Format(cyl, head, 2, ids, gap, 0xE5);
+                _fdc.Write(cyl, head, 1, 2, spt, pattern, 0);
+                if (!_fdc.Read(cyl, head, 1, 2, spt).SequenceEqual(pattern) || !_fdc.Read(cyl, head, 1, 2, spt).SequenceEqual(pattern))
+                    continue;
+                _fdc.Write(cyl, head, 1, 2, spt, fill, 0);   // jako po běžném formátu
+                return pos;
+            }
+            catch (SectorIOException) { }
+        }
+        var standard = Enumerable.Range(1, spt).Select(r => new SectorId((byte)cyl, (byte)head, (byte)r, 2)).ToList();
+        _fdc.Format(cyl, head, 2, standard, Gap3(g), 0xE5);
+        return -1;
     }
 
     /// <summary>Mezera za sektorem při formátu — převzato z definic Greaseweazle / standardu PC.</summary>
