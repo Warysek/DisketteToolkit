@@ -1,4 +1,4 @@
-Diskette Toolkit 0.8.1 (testovací verze)
+Diskette Toolkit 0.8.2 (testovací verze)
 ========================================
 
 Diskety a obrazy disket pro Atari ST a další 3,5" systémy ve Windows 10 / 11.
@@ -75,6 +75,12 @@ Co vyzkoušet v 0.6 (Sony USB-FDU):
   5. Přepni jazyk na English a zpět.
   Pošli mi prosím snímek obrazovky, hlavně kdyby něco vypadalo divně
   (velikost písma, oříznuté texty) — okno jsem ladil bez skutečných Windows.
+
+
+NOVÉ VE VERZI 0.8.2
+-------------------
+ • Volba „Vždy použít fdrawcmd.sys“ platí jen pro mechaniky, které fdrawcmd.sys mají. U USB
+   disketovky se nepoužije (dřív čtení odmítla chybou) a ve výpisu je o tom šedá poznámka.
 
 
 NOVÉ VE VERZI 0.8.1
