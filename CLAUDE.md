@@ -4,6 +4,11 @@ Windows tool for reading, writing, formatting and testing floppies and disk imag
 Mac, Amiga, PCW, MINIX, ext2). Formerly "AtariFloppy" — namespaces, Core/Tests assembly names and resource
 LogicalNames still use `AtariFloppy.*` on purpose; don't rename them.
 
+## Language
+English is the project's main language on GitHub: README.md, commit messages, issues, release notes.
+The program UI follows the Windows language (Czech/Slovak → Czech, otherwise English). Czech users get
+`NAVOD.txt` (full guide) and `Mechaniky-CZ.png` in the ZIP; `README.txt` and `Drives-EN.png` are English.
+
 ## Owner
 Wary (HoroPC) does not program. He decides WHAT, Claude writes all code. Talk to him in Czech, about behaviour he
 can see in the program, with exact click paths. He tests on real hardware: Sony USB-FDU (USB drive), an old PC with
@@ -19,7 +24,10 @@ an internal drive + fdrawcmd.sys, and a Greaseweazle.
 - `src/Cli` — command line `dtk.exe` (Czech strings, not translated yet)
 - `tests/Tests.cs` — own test runner (methods `T_*` run by reflection), simulated devices, `tests/data`
 - `third_party/freedos` — GPL boot sector source; `tools/i18n_*.py` — translation helpers
-- `dist/` — release ZIPs (gitignored)
+- `dist/` — release ZIPs (gitignored); `tools/package.sh` builds `dist/DisketteToolkit-<version>.zip`
+- `tools/capabilities.py` — renders `docs/drives-en.png` / `drives-cs.png` (drive capability table); update its
+  rows when features change
+- `NAVOD.txt` (Czech guide, has the per-version changelog) and `README.txt` (English) go into the ZIP
 
 ## Build & check (Linux sandbox)
 - `dotnet build src/Gui/Gui.csproj -c Release` (also `src/Cli/Cli.csproj`, `tests/Tests.csproj`); Mono reference
