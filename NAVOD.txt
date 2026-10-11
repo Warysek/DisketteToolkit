@@ -5,6 +5,7 @@ Diskety a obrazy disket pro Atari ST a další 3,5" systémy ve Windows 10 / 11.
 Nic se neinstaluje, stačí .NET Framework 4.8, který je součástí Windows 10 a 11.
 
 Stránka projektu, stažení a hlášení chyb: https://github.com/Warysek/DisketteToolkit
+Podpořit vývoj (dobrovolný příspěvek): https://ko-fi.com/wary
 
 V ZIPu je:
   DisketteToolkit.exe   okno programu — to budeš používat nejčastěji
