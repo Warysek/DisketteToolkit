@@ -39,6 +39,15 @@ an internal drive + fdrawcmd.sys, and a Greaseweazle.
 - Version: only `<Version>` in `Directory.Build.props` (read via `AppPaths.Version`)
 - Real floppy hardware cannot be tested here — always say what was verified in simulation and what Wary must test.
 
+## Git workflow
+- Never push to `main` directly. For every change: new branch `claude/<short-topic>` from `origin/main`, commit,
+  push the branch and open a pull request against `main` (English title and description: what changed, what was
+  verified, what Wary should test on real hardware).
+- Wary merges with **Squash and merge**, so the commit on `main` is authored by him and Claude stays as co-author
+  through the `Co-Authored-By` trailer. Never rewrite authorship or history yourself.
+- Release ZIP: `sh tools/package.sh`, send it to Wary; he publishes GitHub releases himself (tag `vX.Y.Z`,
+  pre-release while in testing).
+
 ## Licence
 GPL-3.0 (`LICENSE`). The embedded FreeDOS boot sector is GPL-2.0-or-later. FreeDOS kernel, gw.exe and fdrawcmd.sys
 are downloaded at runtime, never bundled. MS-DOS comes only from the user's own `diskcopy.dll`.
