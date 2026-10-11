@@ -28,6 +28,7 @@ internal sealed class FormatDialog : DialogBase
     private readonly RadioButton _quick = new() { AutoSize = false, Size = new Size(330, 36), CheckAlign = ContentAlignment.TopLeft, TextAlign = ContentAlignment.TopLeft };
     private readonly CheckBox _verify = new() { AutoSize = false, Size = new Size(330, 36), CheckAlign = ContentAlignment.TopLeft, TextAlign = ContentAlignment.TopLeft, Checked = true };
     private readonly CheckBox _shift = new() { AutoSize = false, Size = new Size(330, 52), CheckAlign = ContentAlignment.TopLeft, TextAlign = ContentAlignment.TopLeft };
+    private readonly Label _shiftNote = Note("", Theme.TextDim, 330);
     private readonly Button _formatBtn;
     private readonly Button _imageBtn;
     private readonly Dictionary<ListViewItem, ProfileVerdict> _verdicts = new();
@@ -83,7 +84,7 @@ internal sealed class FormatDialog : DialogBase
         _shift.CheckedChanged += (_, _) => { if (_shift.Checked) _verify.Checked = true; _verify.Enabled = !_shift.Checked; };
         _full.CheckedChanged += (_, _) => ShowSelected();
         side.Controls.AddRange(new Control[] { _title, _usedFor, _geometry, _reason, _note, _labelCaption, _label });
-        if (drive != null) side.Controls.AddRange(new Control[] { new Label { Height = 8 }, _full, _quick, _verify, _shift });
+        if (drive != null) side.Controls.AddRange(new Control[] { new Label { Height = 8 }, _full, _quick, _verify, _shift, _shiftNote });
         layout.Controls.Add(side, 1, 1);
         Body.Controls.Add(layout);
 
@@ -182,6 +183,9 @@ internal sealed class FormatDialog : DialogBase
         _shift.Enabled = _drive is { Kind: DriveKind.Internal, FdrawcmdInstalled: true } && fatDs && _full.Checked &&
                          AtariFloppy.Core.Drives.Fdraw.FdrawDevice.CanShiftSectors(p.Geometry);
         if (!_shift.Enabled) _shift.Checked = false;
+        _shiftNote.Text = _shift.Enabled
+            ? Tr.T("Když kontrola povrchu najde na stopě vadné místo, stopa se přeformátuje se sektorem navíc, který vadu překryje. Disketa zůstane plná a čitelná všude, vadné clustery nebudou potřeba. Větší vada se označí ve FAT jako obvykle.")
+            : Tr.T("Jen interní mechanika s ovladačem fdrawcmd.sys, úplný formát a formáty 640 KB, 720 KB nebo 1,44 MB (u 10 a 11 sektorů na stopě není místo).");
     }
 
     private void SaveImage()
