@@ -61,6 +61,13 @@ with Greaseweazle:
    PC/Atari MFM, Amiga and Mac.
 3. **Show the `gw …` command** that is run (in the log), optionally with extra user arguments.
 
+From Greaseweazle-EasyRead (github.com/eetume2/Greaseweazle-EasyRead):
+4. **One-click quick backup** — no save dialog: straight into the backup folder (`AppSettings.BackupFolder`)
+   with an automatic name (like `Backups.SuggestPath`: drive, date, time) and auto-detected format.
+5. **Flux first, image second (Greaseweazle)** — read the disk once as flux (.scp), then decode the image from
+   that file (`gw convert`); keeps an archival flux copy, less disk wear, and a failed format detection can be
+   retried from the file without touching the disk. Do it together with item 2.
+
 ## Licence
 GPL-3.0 (`LICENSE`). The embedded FreeDOS boot sector is GPL-2.0-or-later. FreeDOS kernel, gw.exe and fdrawcmd.sys
 are downloaded at runtime, never bundled. MS-DOS comes only from the user's own `diskcopy.dll`.
