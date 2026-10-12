@@ -51,7 +51,7 @@ internal sealed class MainForm : Form, IJobHost
     private readonly Panel _right = new();
     private readonly FlowLayoutPanel _actions = new();
     private readonly Label _secDisk = new(), _secImages = new(), _secHelp = new();
-    private readonly ActionButton _aRead = new(), _aWrite = new(), _aFormat = new(), _aTest = new(), _aErase = new(), _aSetup = new(), _aBoot = new();
+    private readonly ActionButton _aRead = new(), _aWrite = new(), _aFormat = new(), _aTest = new(), _aErase = new(), _aSetup = new(), _aBoot = new(), _aBatch = new();
     private readonly ActionButton _iOpen = new(), _iCheck = new(), _iConvert = new(), _iNew = new();
     private readonly ActionButton _hFormats = new(), _hAbout = new(), _hDonate = new();
     private readonly ToolTip _tips = new();
@@ -248,6 +248,7 @@ internal sealed class MainForm : Form, IJobHost
 
         Section(_secDisk);
         Add(_aRead, "⭳", (_, _) => DoRead());
+        Add(_aBatch, "⭳", (_, _) => DoRead(batch: true));
         Add(_aWrite, "⭱", (_, _) => DoWrite(null));
         Add(_aFormat, "▦", (_, _) => DoFormat());
         Add(_aTest, "✚", (_, _) => DoTest());
@@ -382,6 +383,7 @@ internal sealed class MainForm : Form, IJobHost
         _secHelp.Text = Tr.T("PŘEHLED A NÁPOVĚDA").ToUpperInvariant();
 
         _aRead.Text = Tr.T("Záloha do obrazu");
+        _aBatch.Text = Tr.T("Hromadná záloha…");
         _aWrite.Text = Tr.T("Zapsat obraz na disketu");
         _aFormat.Text = Tr.T("Formátovat…");
         _aTest.Text = Tr.T("Test povrchu a kontrola");
@@ -599,6 +601,7 @@ internal sealed class MainForm : Form, IJobHost
             _tips.SetToolTip(b, d == null ? "" : v?.Reason ?? "");
         }
         Set(_aRead, Op(OperationAdvisor.Read), d?.Kind == DriveKind.Greaseweazle ? Tr.T("formát pozná sám; i tok .SCP / .HFE") : Tr.T("disketa → .ST / .MSA / .IMG"));
+        Set(_aBatch, Op(OperationAdvisor.Read), Tr.T("víc disket za sebou, soubory se očíslují"));
         Set(_aWrite, Op(OperationAdvisor.Write), Tr.T("obraz → disketa (jako RawWrite), s kontrolou"));
         Set(_aFormat, Op(OperationAdvisor.Format), Tr.T("Atari, PC, MSX, Mac, Amiga…"));
         var surface = Op(OperationAdvisor.Surface);
@@ -639,22 +642,23 @@ internal sealed class MainForm : Form, IJobHost
 
     // ================================================================ akce s disketou
 
-    private void DoRead()
+    private void DoRead(bool batch = false)
     {
-        if (!CheckReady(_aRead)) return;
+        if (!CheckReady(batch ? _aBatch : _aRead)) return;
         var d = Selected!;
         bool gw = d.Kind == DriveKind.Greaseweazle;
         using var dlg = new SaveFileDialog
         {
-            Title = Tr.T("Kam uložit obraz diskety"),
+            Title = batch ? Tr.T("Hromadná záloha — název a formát prvního obrazu (další se očíslují)") : Tr.T("Kam uložit obraz diskety"),
             Filter = ImageFilters.Save(gw),
-            FileName = Tr.T("disketa") + ".st",
+            FileName = Tr.T("disketa") + (batch ? "-001" : "") + ".st",
             InitialDirectory = InitialFolder(),
-            OverwritePrompt = true,
+            OverwritePrompt = !batch,
         };
         if (dlg.ShowDialog(this) != DialogResult.OK) return;
         Remember(dlg.FileName);
-        RunJob(j => j.ReadDisk(d, dlg.FileName, SideMode.Auto));
+        if (batch) RunJob(j => j.BatchRead(d, dlg.FileName));
+        else RunJob(j => j.ReadDisk(d, dlg.FileName, SideMode.Auto));
     }
 
     private void DoWrite(string? path)
@@ -756,6 +760,55 @@ internal sealed class MainForm : Form, IJobHost
     }
 
     // ================================================================ obrazy
+
+    // ------------------------------------------------------------------ přetažení obrazu do okna
+    // Program běží jako správce a Windows mezi neprivilegovaným Průzkumníkem a takovým oknem běžné (OLE)
+    // přetahování blokuje. Starší zpráva WM_DROPFILES jde povolit — proto DragAcceptFiles místo AllowDrop.
+
+    private const int WM_DROPFILES = 0x0233, WM_COPYDATA = 0x004A, WM_COPYGLOBALDATA = 0x0049;
+
+    [System.Runtime.InteropServices.DllImport("shell32.dll")] private static extern void DragAcceptFiles(IntPtr hWnd, bool accept);
+    [System.Runtime.InteropServices.DllImport("shell32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+    private static extern uint DragQueryFile(IntPtr hDrop, uint index, System.Text.StringBuilder? file, uint size);
+    [System.Runtime.InteropServices.DllImport("shell32.dll")] private static extern void DragFinish(IntPtr hDrop);
+    [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool ChangeWindowMessageFilterEx(IntPtr hWnd, uint msg, uint action, IntPtr info);
+
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        try
+        {
+            foreach (uint m in new uint[] { WM_DROPFILES, WM_COPYDATA, WM_COPYGLOBALDATA })
+                ChangeWindowMessageFilterEx(Handle, m, 1 /* MSGFLT_ALLOW */, IntPtr.Zero);
+            DragAcceptFiles(Handle, true);
+        }
+        catch (Exception) { } // jiný systém než Windows (ukázky pod Mono) — přetahování prostě nebude
+    }
+
+    protected override void WndProc(ref Message m)
+    {
+        if (m.Msg == WM_DROPFILES)
+        {
+            string? file = null;
+            try
+            {
+                var sb = new System.Text.StringBuilder(1024);
+                if (DragQueryFile(m.WParam, 0xFFFFFFFF, null, 0) > 0 && DragQueryFile(m.WParam, 0, sb, (uint)sb.Capacity) > 0) file = sb.ToString();
+            }
+            finally { DragFinish(m.WParam); }
+            if (file != null) BeginInvoke(new Action(() => OnFileDropped(file)));
+            return;
+        }
+        base.WndProc(ref m);
+    }
+
+    private void OnFileDropped(string path)
+    {
+        if (_busy) { Log(Tr.T("Počkej, až doběhne aktuální operace."), LogKind.Warn); return; }
+        if (!File.Exists(path)) return;
+        Remember(path);
+        DoOpenImage(path);
+    }
 
     private void DoOpenImage(string? path)
     {
@@ -1131,6 +1184,9 @@ internal sealed class MainForm : Form, IJobHost
                 WindowState = FormWindowState.Normal;
                 Size = MinimumSize;
                 BeginInvoke(new Action(() => { foreach (Control c in _left.Controls) foreach (Control i in c.Controls) if (i is InfoPanel ip) ip.AutoScrollPosition = new Point(0, 400); }));
+                break;
+            case "batch" when d != null:
+                RunJob(j => j.BatchRead(d, Path.Combine(tmp, "hra.st")));
                 break;
             case "help":
                 BeginInvoke(new Action(() => _actions.AutoScrollPosition = new Point(0, 10000)));

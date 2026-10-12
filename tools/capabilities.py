@@ -53,6 +53,8 @@ ROWS = [
 
 FEATURES = [
     (("Read, write, format standard disks", "Čtení, zápis, formát standardních disket"), Y, Y, Y, ("", "")),
+    (("Batch backup of many disks", "Hromadná záloha více disket"), Y, Y, Y,
+     ("numbered images, a disk that wasn't swapped is detected", "číslované obrazy, nevyměněnou disketu pozná")),
     (("Surface test with sector map", "Test povrchu s mapou sektorů"), Y, Y, Y, ("", "")),
     (("FAT check and safe repair", "Kontrola a bezpečná oprava FAT"), Y, Y, Y,
      ("backup first, only changed sectors are written", "nejdřív záloha, zapisují se jen změněné sektory")),

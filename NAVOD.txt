@@ -1,4 +1,4 @@
-Diskette Toolkit 0.8.3 (testovací verze)
+Diskette Toolkit 0.8.4 (testovací verze)
 ========================================
 
 Diskety a obrazy disket pro Atari ST a další 3,5" systémy ve Windows 10 / 11.
@@ -82,6 +82,20 @@ Co vyzkoušet v 0.6 (Sony USB-FDU):
   5. Přepni jazyk na English a zpět.
   Pošli mi prosím snímek obrazovky, hlavně kdyby něco vypadalo divně
   (velikost písma, oříznuté texty) — okno jsem ladil bez skutečných Windows.
+
+
+NOVÉ VE VERZI 0.8.4
+-------------------
+ • Hromadná záloha: tlačítko „Hromadná záloha…“ pod „Záloha do obrazu“. Vybereš název a formát
+   prvního obrazu (např. hra-001.st), program disketu zálohuje a zeptá se na další — vlož ji
+   a klikni na Ano. Soubory se samy očíslují (hra-002.st, hra-003.st…), existující se nepřepíšou.
+   Když zapomeneš disketu vyměnit, program pozná, že je stejná jako minulá, a duplikát smaže.
+   Ne = konec.
+ • Přetažení obrazu: soubor .st/.msa/.img/.adf… přetáhni myší z Průzkumníku do okna programu —
+   otevře se jako přes „Otevřít obraz…“ (odtud ho jde i zapsat na disketu).
+ • Formátovat…: pod volbou „Opravný formát“ je vysvětlení, co dělá, a když je šedá, proč.
+ • Tlačítko „Podpořit vývoj“ (Ko-fi) v sekci Přehled a nápověda; odkazy i v okně O programu.
+ • Program se nově sestavuje i na skutečných Windows přes GitHub Actions.
 
 
 NOVÉ VE VERZI 0.8.3

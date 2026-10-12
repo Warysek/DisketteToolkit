@@ -64,6 +64,51 @@ internal sealed class Jobs
         Ok(Tr.F("Uloženo: {0} ({1})", output, img.Geometry));
     }
 
+    /// <summary>
+    /// Hromadná záloha: disketu po disketě do číslovaných souborů (hra-001.st, hra-002.st…). Po každé se zeptá
+    /// na další; stejnou disketu dvakrát po sobě (nevyměněnou) neuloží.
+    /// </summary>
+    public void BatchRead(DetectedDrive d, string firstPath)
+    {
+        string path = Backups.FirstBatchPath(firstPath);
+        string? lastHash = null;
+        int saved = 0;
+        while (true)
+        {
+            Ct.ThrowIfCancellationRequested();
+            try
+            {
+                ReadDisk(d, path, SideMode.Auto);
+                string? hash = DeviceFactory.IsFlux(path) ? null : Sha256(path);
+                if (hash != null && hash == lastHash)
+                {
+                    File.Delete(path);
+                    Warn(Tr.F("Disketa je stejná jako předchozí — nejspíš nebyla vyměněná. Soubor {0} jsem proto smazal.", Path.GetFileName(path)));
+                }
+                else
+                {
+                    lastHash = hash;
+                    saved++;
+                    path = Backups.NextBatchPath(path);
+                }
+            }
+            catch (Exception e) when (e is OperationException || e is SectorIOException)
+            {
+                Err(e.Message);
+            }
+            if (!_h.Confirm(Tr.F("Uloženo disket: {0}. Vlož další disketu a klikni na Ano — uloží se jako {1}.\n\nNe = konec hromadné zálohy.", saved, Path.GetFileName(path))))
+                break;
+        }
+        Ok(Tr.F("Hromadná záloha skončila. Uložených disket: {0}, složka {1}.", saved, Path.GetDirectoryName(Path.GetFullPath(path))));
+    }
+
+    private static string Sha256(string file)
+    {
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        using var f = File.OpenRead(file);
+        return BitConverter.ToString(sha.ComputeHash(f));
+    }
+
     private void GwRead(DetectedDrive d, string output)
     {
         var gw = _h.Factory.OpenGw(d, Ct);
