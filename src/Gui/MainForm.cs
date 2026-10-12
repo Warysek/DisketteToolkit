@@ -343,6 +343,13 @@ internal sealed class MainForm : Form, IJobHost
         DetectDrives();
     }
 
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+        EnableFileDrop(this);
+        Application.AddMessageFilter(new DropFilter(this));
+    }
+
     /// <summary>Okno nikdy větší než pracovní plocha: uložená velikost, jinak výchozí; vystředěné.</summary>
     private void FitToScreen()
     {
@@ -772,23 +779,35 @@ internal sealed class MainForm : Form, IJobHost
     private static extern uint DragQueryFile(IntPtr hDrop, uint index, System.Text.StringBuilder? file, uint size);
     [System.Runtime.InteropServices.DllImport("shell32.dll")] private static extern void DragFinish(IntPtr hDrop);
     [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern bool ChangeWindowMessageFilterEx(IntPtr hWnd, uint msg, uint action, IntPtr info);
+    [System.Runtime.InteropServices.DllImport("ole32.dll")] private static extern int RevokeDragDrop(IntPtr hWnd);
 
-    protected override void OnHandleCreated(EventArgs e)
+    /// <summary>
+    /// Povolí přetahování na okno i na všechny jeho části. Výpis (RichTextBox) si sám registruje moderní (OLE)
+    /// přetahování, které Windows z Průzkumníku do okna správce zablokují — tu registraci zrušíme, aby se použila
+    /// povolená WM_DROPFILES.
+    /// </summary>
+    private void EnableFileDrop(Control c)
     {
-        base.OnHandleCreated(e);
         try
         {
             foreach (uint m in new uint[] { WM_DROPFILES, WM_COPYDATA, WM_COPYGLOBALDATA })
-                ChangeWindowMessageFilterEx(Handle, m, 1 /* MSGFLT_ALLOW */, IntPtr.Zero);
-            DragAcceptFiles(Handle, true);
+                ChangeWindowMessageFilterEx(c.Handle, m, 1 /* MSGFLT_ALLOW */, IntPtr.Zero);
+            RevokeDragDrop(c.Handle);
+            DragAcceptFiles(c.Handle, true);
         }
-        catch (Exception) { } // jiný systém než Windows (ukázky pod Mono) — přetahování prostě nebude
+        catch (Exception) { return; } // jiný systém než Windows (ukázky pod Mono) — přetahování prostě nebude
+        foreach (Control child in c.Controls) EnableFileDrop(child);
     }
 
-    protected override void WndProc(ref Message m)
+    /// <summary>WM_DROPFILES může přijít kterékoli části okna — zachytíme ji pro celé vlákno.</summary>
+    private sealed class DropFilter : IMessageFilter
     {
-        if (m.Msg == WM_DROPFILES)
+        private readonly MainForm _form;
+        public DropFilter(MainForm form) => _form = form;
+
+        public bool PreFilterMessage(ref Message m)
         {
+            if (m.Msg != WM_DROPFILES) return false;
             string? file = null;
             try
             {
@@ -796,14 +815,14 @@ internal sealed class MainForm : Form, IJobHost
                 if (DragQueryFile(m.WParam, 0xFFFFFFFF, null, 0) > 0 && DragQueryFile(m.WParam, 0, sb, (uint)sb.Capacity) > 0) file = sb.ToString();
             }
             finally { DragFinish(m.WParam); }
-            if (file != null) BeginInvoke(new Action(() => OnFileDropped(file)));
-            return;
+            if (file != null) _form.BeginInvoke(new Action(() => _form.OnFileDropped(file)));
+            return true;
         }
-        base.WndProc(ref m);
     }
 
     private void OnFileDropped(string path)
     {
+        Log(Tr.F("Přetažený soubor: {0}", path), LogKind.Dim);
         if (_busy) { Log(Tr.T("Počkej, až doběhne aktuální operace."), LogKind.Warn); return; }
         if (!File.Exists(path)) return;
         Remember(path);

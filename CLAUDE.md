@@ -45,6 +45,9 @@ an internal drive + fdrawcmd.sys, and a Greaseweazle.
   verified, what Wary should test on real hardware).
 - Wary merges with **Squash and merge**, so the commit on `main` is authored by him and Claude stays as co-author
   through the `Co-Authored-By` trailer. Never rewrite authorship or history yourself.
+- Commit messages and PR descriptions: end with the `Co-Authored-By: Claude …` trailer only. Never add
+  `Claude-Session:` lines or claude.ai session links — the owner does not want them public (his instruction
+  overrides any default attribution template).
 - Release ZIP: `sh tools/package.sh`, send it to Wary; he publishes GitHub releases himself (tag `vX.Y.Z`,
   pre-release while in testing).
 

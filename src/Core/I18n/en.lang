@@ -989,3 +989,4 @@ Hromadná záloha… = Batch backup…
 víc disket za sebou, soubory se očíslují = several disks in a row, files are numbered
 Hromadná záloha — název a formát prvního obrazu (další se očíslují) = Batch backup — name and format of the first image (the next ones are numbered)
 Počkej, až doběhne aktuální operace. = Wait until the current operation finishes.
+Přetažený soubor: {0} = Dropped file: {0}
