@@ -68,6 +68,11 @@ From Greaseweazle-EasyRead (github.com/eetume2/Greaseweazle-EasyRead):
    that file (`gw convert`); keeps an archival flux copy, less disk wear, and a failed format detection can be
    retried from the file without touching the disk. Do it together with item 2.
 
+Instead of a virtual floppy drive (DiskFlashback already mounts images as drives via Dokany — point users there):
+6. **Add and delete files in the image window** — drag files from Explorer into the image dialog (and a delete
+   button), write them into .st / .msa / .img via `Fat12Writer` (already used for boot disks) and save the image;
+   .adf later.
+
 ## Licence
 GPL-3.0 (`LICENSE`). The embedded FreeDOS boot sector is GPL-2.0-or-later. FreeDOS kernel, gw.exe and fdrawcmd.sys
 are downloaded at runtime, never bundled. MS-DOS comes only from the user's own `diskcopy.dll`.
