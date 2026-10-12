@@ -76,6 +76,16 @@ Instead of a virtual floppy drive (DiskFlashback already mounts images as drives
    button), write them into .st / .msa / .img via `Fat12Writer` (already used for boot disks) and save the image;
    .adf later.
 
+Requested by users (Old Computer Club, Facebook):
+7. **D64 (Commodore 1541) via Greaseweazle** — gw reads and writes D64 (GCR) and D71; add GwFormat + profile.
+   Needs a 5.25" drive on the Greaseweazle.
+8. **5.25" drives via Greaseweazle** (and internal drive with fdrawcmd.sys): 360 KB / 1.2 MB, 40-track disks in
+   80-track drives (double step). Test on real hardware first.
+9. **D81 file listing** — 1581 images already read/write as raw images; add a CBM DOS directory reader so the
+   image window shows the files (like FAT / AmigaDOS).
+10. **SuperCard Pro hardware** — only if a tester with an SCP board is available (a user offered on Facebook);
+    the program already handles .scp files, the board needs its own USB protocol.
+
 ## Licence
 GPL-3.0 (`LICENSE`). The embedded FreeDOS boot sector is GPL-2.0-or-later. FreeDOS kernel, gw.exe and fdrawcmd.sys
 are downloaded at runtime, never bundled. MS-DOS comes only from the user's own `diskcopy.dll`.
