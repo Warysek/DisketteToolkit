@@ -74,7 +74,7 @@ From Greaseweazle-EasyRead (github.com/eetume2/Greaseweazle-EasyRead):
 Instead of a virtual floppy drive (DiskFlashback already mounts images as drives via Dokany — point users there):
 6. **Add and delete files in the image window** — drag files from Explorer into the image dialog (and a delete
    button), write them into .st / .msa / .img via `Fat12Writer` (already used for boot disks) and save the image;
-   .adf later.
+   .adf later. Before any in-place change keep a backup copy of the image (idea from UnifiedFloppyTool).
 
 Requested by users (Old Computer Club, Facebook):
 7. **D64 (Commodore 1541) via Greaseweazle** — gw reads and writes D64 (GCR) and D71; add GwFormat + profile.
@@ -85,6 +85,16 @@ Requested by users (Old Computer Club, Facebook):
    image window shows the files (like FAT / AmigaDOS).
 10. **SuperCard Pro hardware** — only if a tester with an SCP board is available (a user offered on Facebook);
     the program already handles .scp files, the board needs its own USB protocol.
+
+From UnifiedFloppyTool and DiskImageTool (github.com/Axel051171/UnifiedFloppyTool, github.com/Digitoxin1/DiskImageTool):
+11. **Open images inside .zip** — downloaded games usually come zipped; open/write the image without unpacking.
+12. **Checksums + known-disk identification** — show MD5/SHA-1 of an image; match against TOSEC DAT files
+    (Atari ST, Amiga, PC…) loaded by the user to name the disk and say whether it equals a verified dump.
+13. **Check a whole folder of images** — FAT/structure check of many images at once, list the ones with problems.
+14. **Investigate Windows changes to Atari disks** — verify whether Windows 10/11 still rewrites the boot sector
+    (OEM name / serial) or directory entries on FAT12 floppies; if so, warn and offer to undo (an executable
+    Atari boot sector has a checksum that such a change breaks). Verify first, then decide.
+Principle (shared with UFT): never show something as verified when it was not checked — say "not verified".
 
 ## Licence
 GPL-3.0 (`LICENSE`). The embedded FreeDOS boot sector is GPL-2.0-or-later. FreeDOS kernel, gw.exe and fdrawcmd.sys
