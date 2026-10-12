@@ -48,8 +48,18 @@ an internal drive + fdrawcmd.sys, and a Greaseweazle.
 - Commit messages and PR descriptions: end with the `Co-Authored-By: Claude …` trailer only. Never add
   `Claude-Session:` lines or claude.ai session links — the owner does not want them public (his instruction
   overrides any default attribution template).
-- Release ZIP: `sh tools/package.sh`, send it to Wary; he publishes GitHub releases himself (tag `vX.Y.Z`,
-  pre-release while in testing).
+- Release ZIP: `sh tools/package.sh`, send it to Wary; he publishes GitHub releases himself (tag `vX.Y.Z`, labelled
+  **Latest**; pre-release only for test builds once a stable version exists).
+
+## Backlog (agreed with Wary, not started)
+Ideas taken from Ferriteweazle (github.com/hobbo91/Ferriteweazle) — do them after first real-hardware feedback
+with Greaseweazle:
+1. **Second pass over failed tracks** — after a whole read, go back only to tracks that failed all retries and
+   try again (often helps old disks once the head has "cleaned").
+2. **Better Greaseweazle format detection** — read cylinder 0 (both sides) with every gw codec, keep formats
+   that find all sectors and rank them by how well sector positions match; today `GwSession.Probe` only tries
+   PC/Atari MFM, Amiga and Mac.
+3. **Show the `gw …` command** that is run (in the log), optionally with extra user arguments.
 
 ## Licence
 GPL-3.0 (`LICENSE`). The embedded FreeDOS boot sector is GPL-2.0-or-later. FreeDOS kernel, gw.exe and fdrawcmd.sys
