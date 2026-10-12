@@ -649,6 +649,9 @@ internal sealed class MainForm : Form, IJobHost
 
     // ================================================================ akce s disketou
 
+    /// <summary>Naposledy zvolený formát zálohy (položka „Uložit jako typ“) — platí, dokud běží program.</summary>
+    private int _saveFilterIndex = 1;
+
     private void DoRead(bool batch = false)
     {
         if (!CheckReady(batch ? _aBatch : _aRead)) return;
@@ -656,13 +659,18 @@ internal sealed class MainForm : Form, IJobHost
         bool gw = d.Kind == DriveKind.Greaseweazle;
         using var dlg = new SaveFileDialog
         {
-            Title = batch ? Tr.T("Hromadná záloha — název a formát prvního obrazu (další se očíslují)") : Tr.T("Kam uložit obraz diskety"),
+            Title = batch ? Tr.T("Hromadná záloha — název prvního obrazu, formát vyber v „Uložit jako typ“ (další se očíslují)") : Tr.T("Kam uložit obraz diskety"),
             Filter = ImageFilters.Save(gw),
-            FileName = Tr.T("disketa") + (batch ? "-001" : "") + ".st",
+            // bez přípony — tu doplní zvolený „Uložit jako typ“ (.st, .msa, .img, .adf, u Greaseweazle i .scp/.hfe)
+            FileName = Tr.T("disketa") + (batch ? "-001" : ""),
+            AddExtension = true,
+            DefaultExt = "st",
+            FilterIndex = !gw && _saveFilterIndex > 4 ? 1 : _saveFilterIndex,
             InitialDirectory = InitialFolder(),
             OverwritePrompt = !batch,
         };
         if (dlg.ShowDialog(this) != DialogResult.OK) return;
+        _saveFilterIndex = dlg.FilterIndex;
         Remember(dlg.FileName);
         if (batch) RunJob(j => j.BatchRead(d, dlg.FileName));
         else RunJob(j => j.ReadDisk(d, dlg.FileName, SideMode.Auto));

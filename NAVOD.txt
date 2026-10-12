@@ -87,7 +87,8 @@ Co vyzkoušet v 0.6 (Sony USB-FDU):
 NOVÉ VE VERZI 0.8.4
 -------------------
  • Hromadná záloha: tlačítko „Hromadná záloha…“ pod „Záloha do obrazu“. Vybereš název a formát
-   prvního obrazu (např. hra-001.st), program disketu zálohuje a zeptá se na další — vlož ji
+   prvního obrazu (např. hra-001; formát .st / .msa / .img / .adf vybereš dole v „Uložit jako
+   typ“, program si ho do příště pamatuje), program disketu zálohuje a zeptá se na další — vlož ji
    a klikni na Ano. Soubory se samy očíslují (hra-002.st, hra-003.st…), existující se nepřepíšou.
    Když zapomeneš disketu vyměnit, program pozná, že je stejná jako minulá, a duplikát smaže.
    Ne = konec.
