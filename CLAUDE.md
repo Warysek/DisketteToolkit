@@ -94,6 +94,17 @@ From UnifiedFloppyTool and DiskImageTool (github.com/Axel051171/UnifiedFloppyToo
 14. **Investigate Windows changes to Atari disks** — verify whether Windows 10/11 still rewrites the boot sector
     (OEM name / serial) or directory entries on FAT12 floppies; if so, warn and offer to undo (an executable
     Atari boot sector has a checksum that such a change breaks). Verify first, then decide.
+From the "Copy That Floppy!" preservation guide, libdsk and fdformat-ng:
+15. **Combine several reads into one image** — read a bad disk several times (other settings / another drive) and
+    take the good sectors from each read; extends item 1.
+16. **Archive log next to each backup** — a small .txt beside the image: date, drive, controller, settings,
+    retries, bad sectors, checksums.
+17. **Head cleaning** — offer `gw clean` (Greaseweazle) with a cleaning disk; useful for drives after years in storage.
+18. **Extended DSK (Amstrad CPC / PCW / ZX Spectrum +3)** — read/write the EDSK/CPCEMU `.dsk` format (header
+    "MV - CPC" / "EXTENDED CPC DSK"; today `.dsk` is treated as a raw MSX image) and list CP/M files.
+19. **Sector skew when formatting (fdrawcmd.sys)** — shift the sector order between tracks so reading is faster
+    (like Atari Twister formats); low priority.
+
 Principle (shared with UFT): never show something as verified when it was not checked — say "not verified".
 
 ## Licence
