@@ -97,4 +97,30 @@ public static class Backups
     }
 
     public static string DriveTag(DetectedDrive d) => d.Letter ?? "GW";
+
+    /// <summary>
+    /// Hromadná záloha: první název s pořadovým číslem (hra.st → hra-001.st; hra-07.st zůstane) a bez přepsání
+    /// existujícího souboru.
+    /// </summary>
+    public static string FirstBatchPath(string path)
+    {
+        string name = Path.GetFileNameWithoutExtension(path);
+        if (!System.Text.RegularExpressions.Regex.IsMatch(name, @"\d+$"))
+            path = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(path)) ?? ".", name + "-001" + Path.GetExtension(path));
+        return File.Exists(path) ? NextBatchPath(path) : path;
+    }
+
+    /// <summary>Další volný název v řadě: hra-001.st → hra-002.st (počet číslic zůstane, existující soubory přeskočí).</summary>
+    public static string NextBatchPath(string path)
+    {
+        string dir = Path.GetDirectoryName(Path.GetFullPath(path)) ?? ".", ext = Path.GetExtension(path);
+        var m = System.Text.RegularExpressions.Regex.Match(Path.GetFileNameWithoutExtension(path), @"^(.*?)(\d+)$");
+        string stem = m.Success ? m.Groups[1].Value : Path.GetFileNameWithoutExtension(path) + "-";
+        int width = m.Success ? m.Groups[2].Value.Length : 3;
+        long n = m.Success ? long.Parse(m.Groups[2].Value) : 0;
+        string next;
+        do next = Path.Combine(dir, stem + (++n).ToString().PadLeft(width, '0') + ext);
+        while (File.Exists(next));
+        return next;
+    }
 }

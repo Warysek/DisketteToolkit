@@ -34,6 +34,8 @@ The program downloads gw.exe and fdrawcmd.sys itself when you need them.
 
 - Backup to image (.ST, .MSA, .IMG, .DIM, .ADF, flux .SCP/.HFE) and write images back with verification
 - Format profiles for Atari, PC, MSX, Mac HFS, Amiga CrossDOS, Amstrad PCW, MINIX, ext2
+- Batch backup: a box of disks one after another into numbered images (disk-001.st, disk-002.st…)
+- Drag an image file onto the window to open it
 - Surface test (read-only, write test with restore, destructive) with a FastCopy-style map
 - Experimental repair format (internal drive + fdrawcmd.sys): a defect on a track is covered by an extra sector instead of being marked bad in the FAT
 - FAT12 check and safe repair (backup first, only changed sectors written, repairs of images go to a copy)
@@ -41,6 +43,11 @@ The program downloads gw.exe and fdrawcmd.sys itself when you need them.
 - Image tools: open and extract files, check/repair, convert, create blank images
 - Czech and English UI; add a language with a `xx.lang` file (Settings → *Create a template for a new language*)
 - Command line: `dtk.exe` (Czech only for now)
+
+## How it is made
+
+I design, test and maintain Diskette Toolkit myself; the code is written with AI assistance (Claude).
+Every change goes through a pull request that I review and test before it is merged.
 
 ## Feedback
 

@@ -1,4 +1,4 @@
-Diskette Toolkit 0.8.3 (test version)
+Diskette Toolkit 0.8.4 (test version)
 =====================================
 
 Read, write, format and test floppy disks and disk images for the Atari ST and many
@@ -47,6 +47,10 @@ Boot disks ("Boot disk..." button, or dtk boot ...):
   startup disk"), Amiga bootblock ("install", KS 1.3 and 2.0+), Atari ST disk that
   autostarts a program from the AUTO folder, and RawWrite of ready-made images.
   The FreeDOS boot sector is assembled from FreeDOS boot.asm (GPL, see third_party).
+
+Batch backup ("Batch backup..." button): back up a box of disks one after another into
+numbered images (disk-001.st, disk-002.st, ...); a disk that wasn't swapped is detected.
+Drag an image file from Explorer onto the window to open it.
 
 The program detects the drive and the inserted disk (DD/HD, formatted or not) and
 shows for every operation and every format whether it is possible and why not.

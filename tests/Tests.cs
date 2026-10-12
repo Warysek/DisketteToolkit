@@ -1704,4 +1704,21 @@ internal static class Tests
         var (_, r) = RepairFormat(DiskGeometry.Hd1440, true, (40, 1, 5150, 5400));
         Eq(0, r.BadSectors.Count, "HD: vadné sektory po opravném formátu");
     }
+
+    // ------------------------------------------------------------------ hromadná záloha
+
+    private static void T_BatchBackup_Naming()
+    {
+        string dir = Path.Combine(_tmp, "batch");
+        Directory.CreateDirectory(dir);
+        string P(string n) => Path.Combine(dir, n);
+        Eq(P("hra-001.st"), AtariFloppy.Core.App.Backups.FirstBatchPath(P("hra.st")), "bez čísla → -001");
+        Eq(P("disk07.msa"), AtariFloppy.Core.App.Backups.FirstBatchPath(P("disk07.msa")), "číslo zůstane");
+        Eq(P("hra-002.st"), AtariFloppy.Core.App.Backups.NextBatchPath(P("hra-001.st")), "další");
+        Eq(P("disk10.msa"), AtariFloppy.Core.App.Backups.NextBatchPath(P("disk09.msa")), "přetečení šířky");
+        File.WriteAllText(P("hra-001.st"), "x");
+        File.WriteAllText(P("hra-002.st"), "x");
+        Eq(P("hra-003.st"), AtariFloppy.Core.App.Backups.FirstBatchPath(P("hra.st")), "existující se přeskočí");
+        Eq(P("hra-003.st"), AtariFloppy.Core.App.Backups.NextBatchPath(P("hra-001.st")), "další volný");
+    }
 }

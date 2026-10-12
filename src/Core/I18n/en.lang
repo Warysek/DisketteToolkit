@@ -982,3 +982,11 @@ Podpořit vývoj = Support development
 dobrovolný příspěvek přes Ko-fi = voluntary donation via Ko-fi
 Stránka projektu: = Project page:
 Podpořit vývoj: = Support development:
+Disketa je stejná jako předchozí — nejspíš nebyla vyměněná. Soubor {0} jsem proto smazal. = The disk is the same as the previous one — it probably wasn't swapped, so I deleted {0}.
+Uloženo disket: {0}. Vlož další disketu a klikni na Ano — uloží se jako {1}.\n\nNe \= konec hromadné zálohy. = Disks saved: {0}. Insert the next disk and click Yes — it will be saved as {1}.\n\nNo \= finish the batch backup.
+Hromadná záloha skončila. Uložených disket: {0}, složka {1}. = Batch backup finished. Disks saved: {0}, folder {1}.
+Hromadná záloha… = Batch backup…
+víc disket za sebou, soubory se očíslují = several disks in a row, files are numbered
+Hromadná záloha — název prvního obrazu, formát vyber v „Uložit jako typ“ (další se očíslují) = Batch backup — name of the first image, choose the format in “Save as type” (the next ones are numbered)
+Počkej, až doběhne aktuální operace. = Wait until the current operation finishes.
+Přetažený soubor: {0} = Dropped file: {0}
