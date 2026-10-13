@@ -105,6 +105,59 @@ From the "Copy That Floppy!" preservation guide, libdsk and fdformat-ng:
 19. **Sector skew when formatting (fdrawcmd.sys)** — shift the sector order between tracks so reading is faster
     (like Atari Twister formats); low priority.
 
+From the overnight research of old and modern floppy tools (report "Inspirace z disketových nástrojů", 2026-10).
+Wary's direction: drives and disks are no longer made, so **diagnosing drives/disks and helping repair drives
+comes first** (items 20–26), then understanding disks (27–33), then image work (34–40). Boot-sector virus
+recognition was rejected (signature databases are dead, homebrew boot sectors are what matters today).
+Drive diagnostics and repair help:
+20. **Drive speed (RPM) test** — "Test drive" button with live RPM, min/max/wobble and a verdict (target 300/360,
+    ±2–3 ok; wobble 0.1–0.3 = healthy belt) so the user can turn the speed trimmer while watching it
+    (1541 Speed Test, DrawBridge, SAMdisk `rpm`). Greaseweazle: `gw rpm` (check `gw --help`) or index times in
+    .scp; fdrawcmd.sys: timed scan track time (verify); USB drives: not possible. Also log RPM after each gw read.
+21. **Dirty head or damaged disk?** — after repeated reads compare where errors were: moving errors = clean the
+    head (offer item 17), errors always at the same place = damaged surface (nibtools / pagetable.com).
+22. **Head service mode** — buttons "head to track 0 / last track / sweep" for cleaning and lubricating the rails;
+    also a track-0 sensor, index, write-protect and disk-change sensor check (fdrawcmd / Greaseweazle).
+23. **Drive profiles** — remember per drive: last track, measured RPM, double step, note ("head cleaned 10/2026")
+    (Applesauce).
+24. **Extra erase before write** for old disks (DrawBridge; Greaseweazle `gw erase`).
+25. **Smart write** — write without formatting, format only tracks where the write fails (CopyQM SMART).
+26. **Error reason in the sector map** — hover a red track: "sector missing", "data CRC", "no header",
+    "verify failed", with a legend (X-Copy error codes).
+Understanding and rescuing disks:
+27. **Track layout listing** — per track: sector IDs (C/H/R/N), order, deleted marks, duplicates, gaps; warn
+    "non-standard track, probably copy protection — back up as flux (.scp)"; Amiga "non-DOS disk" label instead
+    of "bad disk"; text export/print (AnaDisk, ProCopy ANALYZE, SAMdisk scan, CPCDiskXP). fdrawcmd / Greaseweazle.
+28. **Weak-sector rebuild by statistics** — read a bad sector many times (up to hundreds), vote each byte/bit and
+    check the CRC (SpinRite DynaStat). fdrawcmd returns sector data even with a CRC error; Greaseweazle can use
+    many revolutions. Extends items 1 and 15. Large and uncertain — prototype first.
+29. **Move a weak sector's data to a free cluster** and mark the old cluster bad in the FAT (AnaDisk Repair → Move)
+    — only on an image or a copy, never in place on the original (lesson from Amiga Disk-Doctor).
+30. **Flux histogram per track** — click a sector-map cell → timing histogram from the saved .scp ("sharp peaks =
+    healthy track"), guess the encoding of an unknown disk; scatter plot later (KryoFlux, FluxEngine). Builds on 5.
+31. **Compare two images / an image with a disk** — list differing sectors and the files they belong to (ImageDisk,
+    Aaru, DirMaster); "check finished copies" mode reads only.
+32. **Undelete and "save everything readable to a folder"** for FAT images (later Amiga OFS/FFS); always into a
+    folder, never onto the original (Norton UnErase, AnaDisk, DiskSalv).
+33. **Sector viewer (hex + text)** with search across the whole disk incl. free space and "next sector of this
+    file"; editing later (AnaDisk, DirMaster, Disc Doctor). Plus **file map**: click a file → its sectors light up
+    in the map; FAT map with free/used/bad/cross-linked clusters (Copy II Plus, DirMaster).
+Copying and images:
+34. **Gotek USB stick wizard** — pick the stick and target machine, copy images as `DSKA0000_name.ext`, write
+    `FF.CFG` and `IMG.CFG` for odd geometries, print a slot list, warn about HxC mode (FlashFloppy wiki). No drive.
+35. **Disk → disk copy and "more copies"** — read the master once, then "insert next blank disk" with a sound,
+    new serial number per copy, optional refusal of a master that is not write-protected (CopyQM, FCopy Pro).
+36. **Copy used sectors only** (FAT/bitmap) — faster writes and less wear; warn that backups then lack deleted
+    files (Teledisk DOS Allocated, CopyQM QUICK).
+37. **New image formats** — DiskCopy 4.2 (Mac, with data/tag checksum check), TR-DOS .trd/.scl (Spectrum/Beta
+    clones), D88 container (PC-98/X68000, existing profile), MGT listing (existing SAM profile).
+38. **DMS import (Amiga)** — open .dms as ADF, show the embedded text, warn on bad/password DMS. Extends item 11.
+39. **2M / extra-capacity formats** — read existing 2M disks (up to 1886 KiB on HD) and possibly create them
+    (fdrawcmd.sys); low priority, non-standard disks only readable with the 2M driver elsewhere.
+40. Small extensions: create image from a folder and keep ADF comments/protection bits (item 6); several outputs
+    from one flux read and replaying analysis from .scp (item 5); JSON metadata and directory export with MD5
+    per file (items 12, 16); Applesauce-style sector source colouring (item 15).
+
 Principle (shared with UFT): never show something as verified when it was not checked — say "not verified".
 
 ## Licence
