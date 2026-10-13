@@ -119,5 +119,26 @@ internal sealed class FakeFdc : IFdc
         FormatLog.Add((cyl, head, gap3, ids.Count));
     }
 
+    // ---- diagnostika
+    public int? RevolutionUs = 199_500;
+    public bool WriteProtected;
+    public bool Track0SensorStuck;
+    public bool MotorOn;
+
+    public int? TrackTimeUs() => DiskPresent ? RevolutionUs : null;
+
+    public TimedScan? TimedScanTrack(int head)
+    {
+        var t = Track(head);
+        if (RevolutionUs == null) return null;
+        var list = (t ?? new List<Sector>()).Select((s, i) => (3000 + i * 21000, s.Id)).ToList();
+        return new TimedScan(RevolutionUs.Value, list);
+    }
+
+    public byte? DriveStatus(int head) =>
+        (byte)((Cyl == 0 || Track0SensorStuck ? St3.Track0 : 0) | (WriteProtected ? St3.WriteProtect : 0) | St3.Ready);
+
+    public void Motor(bool on) => MotorOn = on;
+
     public void Dispose() { }
 }

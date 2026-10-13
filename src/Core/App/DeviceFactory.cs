@@ -137,6 +137,21 @@ public sealed class DeviceFactory
         return OpenFdraw(d);
     }
 
+    /// <summary>Simulace diagnostiky mechaniky (ukázkový režim, testy).</summary>
+    public Func<DetectedDrive, Drives.Diag.IDriveDiag>? DiagSimulator { get; set; }
+
+    /// <summary>Umí mechanika diagnostiku (otáčky, čidla, hlava)? Greaseweazle a interní s fdrawcmd.sys ano, USB ne.</summary>
+    public static bool SupportsDiag(DetectedDrive d) =>
+        d.Kind == DriveKind.Greaseweazle || d.Kind == DriveKind.Internal && d.FdrawcmdInstalled;
+
+    public Drives.Diag.IDriveDiag OpenDiag(DetectedDrive d, System.Threading.CancellationToken ct = default)
+    {
+        if (DiagSimulator != null) return DiagSimulator(d);
+        if (d.Kind == DriveKind.Greaseweazle) return new Drives.Diag.GwDiag(OpenGw(d, ct), d.Name);
+        if (d.Kind == DriveKind.Internal && d.FdrawcmdInstalled) return new Drives.Diag.FdrawDiag(OpenFdraw(d));
+        throw new OperationException(Tr.T("Diagnostiku mechaniky umí jen interní mechanika s ovladačem fdrawcmd.sys a Greaseweazle. USB disketovka k tomu Windows přístup nedá."));
+    }
+
     /// <summary>Pro zápis/formát dané geometrie: Windows, když to jde, jinak fdrawcmd.sys.</summary>
     public ISectorDevice OpenForGeometry(DetectedDrive d, DiskGeometry g)
     {

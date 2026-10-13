@@ -1,5 +1,5 @@
-Diskette Toolkit 0.8.4 (test version)
-=====================================
+Diskette Toolkit 0.9 (test version)
+===================================
 
 Read, write, format and test floppy disks and disk images for the Atari ST and many
 other 3.5" systems (PC, MSX, Mac, Amiga, Amstrad PCW, MINIX, Linux, ...) on
@@ -16,6 +16,7 @@ Files in the ZIP:
   README.txt                 this file (English)
   NAVOD.txt                  full guide in Czech
   Drives-EN.png              which drive can do what (Mechaniky-CZ.png = the same in Czech)
+  Testy-Tests.html           test checklist for testers — open in a browser, fill in, save
   licence/                   GNU GPL v3 and the FreeDOS boot sector licence
 
 Start: unzip everything (including DisketteToolkit.exe.config), double-click
@@ -51,6 +52,13 @@ Boot disks ("Boot disk..." button, or dtk boot ...):
 Batch backup ("Batch backup..." button): back up a box of disks one after another into
 numbered images (disk-001.st, disk-002.st, ...); a disk that wasn't swapped is detected.
 Drag an image file from Explorer onto the window to open it.
+
+Drive diagnostics ("Drive diagnostics..." button; internal drive with fdrawcmd.sys or
+Greaseweazle, not USB drives): speed (rpm) with wobble and a live gauge for adjusting
+the speed trimmer, sensor check (track 0, write protect, disk, index), head to track 0 /
+last track / sweep, head cleaning with a cleaning disk, repeated read of one track
+(dirty head vs. damaged disk), track layout listing (fdrawcmd.sys only) and a note,
+last speed and last cleaning date remembered per drive.
 
 The program detects the drive and the inserted disk (DD/HD, formatted or not) and
 shows for every operation and every format whether it is possible and why not.

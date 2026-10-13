@@ -1,5 +1,5 @@
-Diskette Toolkit 0.8.4 (testovací verze)
-========================================
+Diskette Toolkit 0.9 (testovací verze)
+======================================
 
 Diskety a obrazy disket pro Atari ST a další 3,5" systémy ve Windows 10 / 11.
 Nic se neinstaluje, stačí .NET Framework 4.8, který je součástí Windows 10 a 11.
@@ -13,6 +13,7 @@ V ZIPu je:
   NAVOD.txt             tento návod (česky)
   README.txt            stručný popis anglicky
   Mechaniky-CZ.png      co umí která mechanika (Drives-EN.png = totéž anglicky)
+  Testy-Tests.html      seznam testů pro testery — otevři v prohlížeči, vyplň a ulož
   licence/              GNU GPL v3 a licence boot sektoru FreeDOS
 
 
@@ -82,6 +83,25 @@ Co vyzkoušet v 0.6 (Sony USB-FDU):
   5. Přepni jazyk na English a zpět.
   Pošli mi prosím snímek obrazovky, hlavně kdyby něco vypadalo divně
   (velikost písma, oříznuté texty) — okno jsem ladil bez skutečných Windows.
+
+
+NOVÉ VE VERZI 0.9
+-----------------
+ • Diagnostika mechaniky — nové tlačítko „Diagnostika mechaniky…“ (jen interní mechanika
+   s fdrawcmd.sys a Greaseweazle; USB disketovce Windows takový přístup nedají):
+   – Změřit otáčky: 10 otáček, výsledek (cíl 300 ot./min), rozsah a kolísání s hodnocením.
+   – Živé měření otáček: okénko s velkým číslem pro seřizování trimrem rychlosti.
+   – Kontrola čidel: stopa 0 (hlava na stopě 0 i mimo ni), ochrana proti zápisu,
+     vložená disketa, index.
+   – Hlava na stopu 0 / na poslední stopu / projet dráhu 10× (servis, promazání vodítek).
+   – Vyčistit hlavu čisticí disketou (hlava jezdí cik-cak, jako gw clean).
+   – Opakované čtení jedné stopy: kolikrát se přečetla celá a jestli chyby skáčou
+     (špinavá hlava) nebo zůstávají na místě (poškozená disketa).
+   – Výpis rozložení všech stop (jen fdrawcmd.sys): pořadí sektorů, poloha od indexu,
+     odchylky typické pro ochrany proti kopírování.
+   – Záznam o mechanice: poznámka, naposledy změřené otáčky a datum čištění se pamatují.
+   Výsledky jsou ve výpisu dole — pravé tlačítko myši → Kopírovat celý výpis.
+   Ukázka bez hardwaru: DisketteToolkit.exe --demo, mechanika B:.
 
 
 NOVÉ VE VERZI 0.8.4

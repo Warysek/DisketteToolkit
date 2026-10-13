@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Diskette Toolkit Tests</title>
+<style>
+:root{
+  --bg:#f6f5f2; --card:#ffffff; --text:#1d1d1b; --dim:#6b6a66; --line:#e3e1dc;
+  --accent:#2f6fdb; --ok:#1f8a4c; --bad:#c43d32; --warn:#b7791f; --chip:#eef2fb;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#16171a; --card:#1f2125; --text:#ecebe8; --dim:#9a9993; --line:#2e3036;
+    --accent:#6fa0ff; --ok:#4cc27d; --bad:#ff7b6e; --warn:#e3b55a; --chip:#23293a;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#16171a; --card:#1f2125; --text:#ecebe8; --dim:#9a9993; --line:#2e3036;
+  --accent:#6fa0ff; --ok:#4cc27d; --bad:#ff7b6e; --warn:#e3b55a; --chip:#23293a;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 "Segoe UI",system-ui,-apple-system,sans-serif}
+.wrap{max-width:920px;margin:0 auto;padding:24px 16px 80px}
+h1{font-size:26px;margin:0 0 4px}
+.sub{color:var(--dim);margin:0 0 14px}
+.top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.lang button{min-width:44px}
+.lang button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.saved{background:var(--chip);border-radius:8px;padding:8px 12px;margin:0 0 14px;font-size:14px;display:none}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:0 0 16px}
+.card h2{font-size:17px;margin:0 0 10px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px 16px}
+label.f{display:flex;flex-direction:column;font-size:13px;color:var(--dim);gap:3px}
+input[type=text],textarea{font:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--text);width:100%}
+.hw{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:14px}
+.hw label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.bar{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 0;border-bottom:1px solid var(--line);margin-bottom:16px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.prog{flex:1;min-width:140px;height:10px;background:var(--line);border-radius:6px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--ok);width:0;transition:width .2s}
+.count{font-variant-numeric:tabular-nums;color:var(--dim);font-size:14px}
+button{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:8px;padding:6px 12px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
+.tabs{display:flex;gap:8px;margin:0 0 14px;flex-wrap:wrap}
+.tabs button{padding:8px 14px}
+.tabs button.on{background:var(--text);color:var(--bg);border-color:var(--text)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--dim);margin:0 0 14px}
+.legend b{display:inline-block;width:22px;text-align:center;border-radius:5px;margin-right:4px}
+section{background:var(--card);border:1px solid var(--line);border-radius:12px;margin:0 0 16px;overflow:hidden}
+section>header{padding:14px 16px;display:flex;justify-content:space-between;gap:10px;align-items:baseline;border-bottom:1px solid var(--line)}
+section h3{font-size:17px;margin:0}
+section .need{color:var(--dim);font-size:13px}
+section .sc{color:var(--dim);font-size:13px;white-space:nowrap}
+.item{padding:12px 16px;border-bottom:1px solid var(--line)}
+.item:last-of-type{border-bottom:none}
+.t{font-weight:600}
+.how{margin:3px 0 0}
+.exp{margin:4px 0 0;font-size:14px;color:var(--dim)}
+.exp b{color:var(--text)}
+.rows{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.row{display:grid;grid-template-columns:120px auto 1fr;gap:8px;align-items:start}
+.row .hwname{font-size:13px;color:var(--dim);padding-top:5px}
+.st{display:flex;gap:4px}
+.st button{width:32px;height:30px;padding:0;font-weight:600}
+.st button.on[data-v="ok"]{background:var(--ok);color:#fff;border-color:var(--ok)}
+.st button.on[data-v="bad"]{background:var(--bad);color:#fff;border-color:var(--bad)}
+.st button.on[data-v="skip"]{background:var(--dim);color:#fff;border-color:var(--dim)}
+.row textarea{min-height:32px;height:32px;resize:vertical}
+.row.bad textarea{border-color:var(--bad)}
+kbd{font:inherit;font-size:13px;background:var(--chip);border-radius:4px;padding:0 5px}
+.pri{font-size:11px;font-weight:700;border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:2px;background:var(--chip);color:var(--accent)}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+.toast.show{opacity:1}
+#log{min-height:140px;font-family:Consolas,monospace;font-size:13px}
+@media (max-width:600px){ .row{grid-template-columns:1fr} section>header{flex-direction:column;gap:2px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <h1 id="h1"></h1>
+      <p class="sub" id="intro"></p>
+    </div>
+    <div class="lang"><button data-l="cs">CZ</button> <button data-l="en">EN</button></div>
+  </div>
+  <div class="saved" id="savedNote"></div>
+
+  <div class="card">
+    <h2 id="infoH"></h2>
+    <div class="grid" id="info"></div>
+    <div class="hw" id="hw"></div>
+  </div>
+
+  <div class="bar">
+    <div class="prog"><i id="pbar"></i></div>
+    <span class="count" id="pcount"></span>
+    <button class="primary" id="saveHtml"></button>
+    <button id="saveTxt"></button>
+    <button id="copy"></button>
+    <button id="reset"></button>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+  <div class="legend" id="legend"></div>
+  <div id="list"></div>
+
+  <div class="card">
+    <h2 id="logH"></h2>
+    <p class="sub" id="logHelp" style="margin:0 0 8px"></p>
+    <textarea id="log"></textarea>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script id="saved" type="application/json">null</script>
+<script>
+const VERSION = "0.9";
+const SRC = "<!doctype html>\n" + document.documentElement.outerHTML;
+
+const UI = {
+ cs:{h1:"Diskette Toolkit "+VERSION+" — testy",
+  intro:"U každého bodu: co udělat a co má program udělat. Klikni ✓ funguje, ✗ chyba (napiš, co se stalo), – nejde otestovat. Vyplněné se samo pamatuje v prohlížeči. Na konci klikni na <b>Uložit vyplněný soubor</b> a pošli ho autorovi (e-mailem, Messengerem…).",
+  infoH:"Kdo a na čem testuje", name:"Jméno / přezdívka", contact:"Kontakt (nepovinné)", windows:"Windows (např. 11 24H2)",
+  drive:"Mechanika (model)", controller:"Řadič z výpisu (fdrawcmd)", gw:"Greaseweazle (model, firmware)",
+  hwQ:"Testuji na:", usb:"USB disketovka", fd:"interní + fdrawcmd.sys", gwhw:"Greaseweazle",
+  saveHtml:"Uložit vyplněný soubor", saveTxt:"Uložit jako text", copy:"Kopírovat text", reset:"Vymazat vše",
+  tabNew:"Nové ve verzi "+VERSION, tabAll:"Celý program",
+  lgOk:"funguje", lgBad:"chyba — napiš poznámku", lgSkip:"nejde otestovat / přeskočeno", lgPri:"otestuj nejdřív", pri:"DŮLEŽITÉ",
+  exp:"Má se stát:", need:"Potřebuješ:", note:"Poznámka: co se stalo, naměřená hodnota, přesné znění hlášky…",
+  logH:"Výpis z programu", logHelp:"Ve spodní části okna programu klikni pravým tlačítkem do výpisu → Kopírovat celý výpis, a vlož ho sem (Ctrl+V). Hodně to pomůže.",
+  savedNote:"Otevřený soubor obsahuje vyplněné výsledky ({0}, uloženo {1}).", errors:"chyb",
+  copied:"Zkopírováno — vlož do zprávy (Ctrl+V)", savedOk:"Soubor uložen — najdeš ho ve Stažených souborech", resetQ:"Opravdu vymazat všechny výsledky a poznámky?",
+  hwNames:{usb:"USB", fd:"fdrawcmd", gw:"Greaseweazle"}, untested:"netestováno", L:{ok:"OK",bad:"CHYBA",skip:"přeskočeno"}},
+ en:{h1:"Diskette Toolkit "+VERSION+" — tests",
+  intro:"Each item says what to do and what the program should do. Click ✓ works, ✗ problem (write what happened), – can't test. Your answers are remembered in the browser. When done, click <b>Save filled-in file</b> and send it to the author (e-mail, Messenger…).",
+  infoH:"Who is testing and on what", name:"Name / nickname", contact:"Contact (optional)", windows:"Windows (e.g. 11 24H2)",
+  drive:"Drive (model)", controller:"Controller from the log (fdrawcmd)", gw:"Greaseweazle (model, firmware)",
+  hwQ:"I am testing with:", usb:"USB floppy drive", fd:"internal + fdrawcmd.sys", gwhw:"Greaseweazle",
+  saveHtml:"Save filled-in file", saveTxt:"Save as text", copy:"Copy text", reset:"Clear all",
+  tabNew:"New in version "+VERSION, tabAll:"Whole program",
+  lgOk:"works", lgBad:"problem — add a note", lgSkip:"can't test / skipped", lgPri:"test first", pri:"IMPORTANT",
+  exp:"Expected:", need:"You need:", note:"Note: what happened, measured value, exact wording of the message…",
+  logH:"Log from the program", logHelp:"In the bottom part of the program window, right-click the log → Copy the whole log, and paste it here (Ctrl+V). It helps a lot.",
+  savedNote:"This file contains filled-in results ({0}, saved {1}).", errors:"problems",
+  copied:"Copied — paste it into a message (Ctrl+V)", savedOk:"File saved — look in your Downloads folder", resetQ:"Really clear all results and notes?",
+  hwNames:{usb:"USB", fd:"fdrawcmd", gw:"Greaseweazle"}, untested:"not tested", L:{ok:"OK",bad:"PROBLEM",skip:"skipped"}}
+};
+
+// [id, important, hardware (one status row each), CZ title, CZ how, CZ expected, EN title, EN how, EN expected]
+const NEW = [
+ {id:"d1", cs:"Otevření diagnostiky", en:"Opening the diagnostics", needCs:"interní mechanika s fdrawcmd.sys a/nebo Greaseweazle", needEn:"internal drive with fdrawcmd.sys and/or Greaseweazle", items:[
+  ["btn",1,["fd","gw","usb"],"Tlačítko „Diagnostika mechaniky…“","Vyber mechaniku v horní liště a podívej se do pravého sloupce pod <kbd>Spouštěcí disketa…</kbd>.","Interní mechanika s fdrawcmd.sys a Greaseweazle: tlačítko je vidět. USB disketovka: tlačítko není vidět.",
+   "“Drive diagnostics…” button","Select the drive in the top bar and look in the right column below <kbd>Boot disk…</kbd>.","Internal drive with fdrawcmd.sys and Greaseweazle: the button is visible. USB drive: no button."],
+  ["dlg",0,["fd","gw"],"Okno diagnostiky","Klikni na <kbd>Diagnostika mechaniky…</kbd>, proklikej volby.","U každé volby se dole změní vysvětlení. U Greaseweazle je „Výpis rozložení všech stop“ šedý. Texty nejsou oříznuté.",
+   "Diagnostics window","Click <kbd>Drive diagnostics…</kbd> and click through the options.","The explanation below changes for each option. With a Greaseweazle “Layout listing of all tracks” is grey. No text is cut off."],
+  ["demo",0,null,"Ukázkový režim","Spusť <kbd>DisketteToolkit.exe --demo</kbd>, vyber mechaniku B: a vyzkoušej diagnostiku.","Simulované otáčky kolem 300,6, čidla OK, stopa 22 občas chybuje, stopa 79 „nestandardní“.",
+   "Demo mode","Run <kbd>DisketteToolkit.exe --demo</kbd>, select drive B: and try the diagnostics.","Simulated speed around 300.6, sensors OK, track 22 sometimes fails, track 79 “non-standard”."]]},
+ {id:"d2", cs:"Otáčky", en:"Speed (rpm)", needCs:"libovolná naformátovaná disketa (ne cenný originál)", needEn:"any formatted disk (not a precious original)", items:[
+  ["rpm",1,["fd","gw"],"Změřit otáčky (10 otáček)","Vlož disketu → Diagnostika → <kbd>Změřit otáčky</kbd> → Spustit.","Ve výpisu: otáčky (kolem 300), rozsah, kolísání a hodnocení. <b>Do poznámky napiš naměřené číslo.</b>",
+   "Measure speed (10 revolutions)","Insert a disk → Diagnostics → <kbd>Measure speed</kbd> → Run.","The log shows the speed (about 300), range, wobble and a verdict. <b>Write the measured number into the note.</b>"],
+  ["live",1,["fd","gw"],"Živé měření otáček","Diagnostika → <kbd>Živé měření otáček</kbd> → Spustit. Nech běžet aspoň 30 s, pak <kbd>Zastavit měření</kbd>.","Okénko s velkým číslem, obnovuje se zhruba každou otáčku; barva zelená / oranžová / červená podle hodnocení. Po zastavení okénko zmizí a ve výpisu je souhrn.",
+   "Live speed measurement","Diagnostics → <kbd>Live speed measurement</kbd> → Run. Let it run for at least 30 s, then <kbd>Stop measuring</kbd>.","A window with a large number that updates about every revolution; colour green / orange / red by verdict. After stopping, the window closes and the log shows a summary."],
+  ["trim",0,["fd","gw"],"Seřízení trimrem (jen kdo si troufne)","Při živém měření opatrně otoč trimrem rychlosti na desce mechaniky (u mechanik, které ho mají).","Číslo reaguje do pár sekund. Napiš, z jaké na jakou hodnotu ses dostal.",
+   "Adjusting with the trimmer (only if you dare)","During live measurement carefully turn the speed trimmer on the drive board (drives that have one).","The number reacts within a few seconds. Write from which value to which you got."],
+  ["cmp",0,["fd","gw"],"Porovnání s jiným nástrojem","Pokud můžeš: změř otáčky i jinak (<kbd>gw rpm</kbd>, SAMdisk <kbd>rpm</kbd>, stroboskop).","Hodnoty se liší nejvýš o pár desetin. Napiš obě čísla.",
+   "Comparison with another tool","If you can, measure the speed another way too (<kbd>gw rpm</kbd>, SAMdisk <kbd>rpm</kbd>, strobe disk).","Values differ by a few tenths at most. Write both numbers."],
+  ["nodisk",0,["fd","gw"],"Měření bez diskety","Vyndej disketu a spusť Změřit otáčky.","Srozumitelná hláška (vlož disketu / index), žádný pád ani zaseknutí.",
+   "Measuring without a disk","Remove the disk and run Measure speed.","A clear message (insert a disk / index), no crash or hang."]]},
+ {id:"d3", cs:"Čidla a hlava", en:"Sensors and head", needCs:"disketa s posuvným okénkem ochrany proti zápisu", needEn:"a disk with a write-protect slider", items:[
+  ["t0",1,["fd","gw"],"Čidlo stopy 0","Diagnostika → <kbd>Kontrola čidel</kbd> → Spustit.","Oba řádky „Čidlo stopy 0“ zeleně (na stopě 0 hlásí, na stopě 10 nehlásí).",
+   "Track 0 sensor","Diagnostics → <kbd>Sensor check</kbd> → Run.","Both “Track 0 sensor” lines green (reports on track 0, does not on track 10)."],
+  ["wp",1,["fd","gw"],"Ochrana proti zápisu","Kontrolu čidel spusť dvakrát: s otevřeným a se zavřeným okénkem ochrany.","Řádek „Ochrana proti zápisu“ se změní (ZAPNUTÁ / vypnutá) a odpovídá okénku.",
+   "Write protection","Run the sensor check twice: with the write-protect window open and closed.","The “Write protection” line changes (ON / off) and matches the window."],
+  ["disk",0,["fd","gw"],"Vložená disketa","Kontrolu čidel spusť s disketou a bez ní.","„Vložená disketa: ano / ne“ odpovídá skutečnosti. (U Greaseweazle je to orientační — napiš, co ukázal.)",
+   "Disk inserted","Run the sensor check with and without a disk.","“Disk inserted: yes / no” matches reality. (With Greaseweazle it is only a guide — write what it showed.)"],
+  ["idx",0,["fd","gw"],"Index čidlo","Kontrola čidel s vloženou disketou.","„Index čidlo: dává pulsy — v pořádku“.",
+   "Index sensor","Sensor check with a disk inserted.","“Index sensor: gives pulses — OK”."],
+  ["head",0,["fd","gw"],"Hlava na stopu 0 / na poslední stopu","Spusť <kbd>Hlava na poslední stopu</kbd>, pak <kbd>Hlava na stopu 0</kbd> (jde slyšet, s odkrytou mechanikou i vidět).","Hlava dojede na konec a zpět, ve výpisu potvrzení, bez chyb.",
+   "Head to track 0 / last track","Run <kbd>Head to the last track</kbd>, then <kbd>Head to track 0</kbd> (you can hear it; see it with the cover off).","The head moves to the end and back, the log confirms it, no errors."],
+  ["sweep",0,["fd","gw"],"Projet dráhu 10×","Spusť <kbd>Projet hlavou celou dráhu 10×</kbd>; jednou zkus v půlce <kbd>Přerušit</kbd>.","Hlava jezdí tam a zpět, průběh dole ukazuje 1–10/10. Přerušit zastaví do pár sekund.",
+   "Sweep the travel 10×","Run <kbd>Sweep the head across the full travel 10×</kbd>; once, press <kbd>Cancel</kbd> halfway.","The head moves back and forth, progress shows 1–10/10. Cancel stops it within seconds."],
+  ["clean",0,["fd","gw"],"Čištění čisticí disketou","Jen s čisticí disketou: <kbd>Vyčistit hlavu čisticí disketou</kbd>, 3 průchody.","Disketa se točí, hlava jezdí cik-cak, průběh 1–3/3. V okně diagnostiky je potom „Naposledy čištěno: dnešní datum“.",
+   "Cleaning with a cleaning disk","Only with a cleaning disk: <kbd>Clean the head with a cleaning disk</kbd>, 3 passes.","The disk spins, the head zig-zags, progress 1–3/3. The diagnostics window then shows “Last cleaned: today's date”."]]},
+ {id:"d4", cs:"Čtení stopy a rozložení stop", en:"Track read and track layout", needCs:"dobrá disketa, disketa s vadným místem, případně originální (chráněná) hra", needEn:"a good disk, a disk with a bad spot, ideally an original (protected) game", items:[
+  ["trgood",1,["fd","gw"],"Opakované čtení — dobrá disketa","<kbd>Opakované čtení jedné stopy</kbd>, stopa 0, strana 0, 20×.","Ve výpisu 20 řádků 9/9 (nebo podle formátu), na konci „Stopa se čte spolehlivě.“",
+   "Repeated read — good disk","<kbd>Repeated read of one track</kbd>, track 0, side 0, 20×.","20 lines with 9/9 (or as the format has) and “The track reads reliably.”"],
+  ["trbad",1,["fd","gw"],"Opakované čtení — vadná stopa","Najdi vadnou stopu testem povrchu, pak ji čti 20×.","Ukáže, kolikrát se přečetla celá, které sektory chyběly a hodnocení (poškozená disketa / špinavá hlava). <b>Napiš, co hodnocení řeklo a jestli sedí.</b>",
+   "Repeated read — bad track","Find a bad track with the surface test, then read it 20×.","Shows how often it read completely, which sectors failed and a verdict (damaged disk / dirty head). <b>Write what the verdict said and whether it fits.</b>"],
+  ["laystd",1,["fd"],"Rozložení stop — běžná disketa","<kbd>Výpis rozložení všech stop</kbd> na běžné disketě (Atari 720 KB nebo PC).","Řádek pro každou stopu a stranu (např. „0.0: 9 × 512 B, pořadí 1 2 3…“), na konci „Všechny stopy mají běžné rozložení.“",
+   "Track layout — normal disk","<kbd>Layout listing of all tracks</kbd> on a normal disk (Atari 720 KB or PC).","A line per track and side (e.g. “0.0: 9 × 512 B, order 1 2 3…”), ending with “All tracks have a normal layout.”"],
+  ["layodd",0,["fd"],"Rozložení stop — zvláštní disketa","Totéž s Atari disketou 10/11 sektorů, s prokládaným formátem, nebo s originální hrou.","Pořadí sektorů odpovídá formátu; u ochrany oranžové řádky s odchylkami a rada zálohovat jako tok. <b>Napiš název hry.</b>",
+   "Track layout — unusual disk","The same with an Atari 10/11-sector disk, an interleaved format, or an original game.","The sector order matches the format; protection shows orange lines with anomalies and advice to back up as flux. <b>Write the game title.</b>"],
+  ["note",0,["fd","gw"],"Záznam o mechanice","Do „Poznámka“ v okně diagnostiky napiš model mechaniky, spusť cokoli, zavři a znovu otevři program.","Poznámka, naposledy změřené otáčky a čištění v okně zůstanou.",
+   "Drive record","Type the drive model into “Note” in the diagnostics window, run anything, close and reopen the program.","The note, last measured speed and cleaning date stay in the window."]]}
+];
+
+const ALL = [
+ {id:"a1", cs:"Spuštění a okno", en:"Start and window", needCs:"Windows 10/11, ZIP s programem", needEn:"Windows 10/11, the program ZIP", items:[
+  ["unzip",1,null,"Rozbalení a spuštění","Pravým na ZIP → Vlastnosti → <kbd>Odblokovat</kbd>, rozbal, poklepej na <kbd>DisketteToolkit.exe</kbd>.","Windows se zeptá na oprávnění správce; okno se otevře bez chyby.",
+   "Unzip and start","Right-click the ZIP → Properties → <kbd>Unblock</kbd>, unzip, double-click <kbd>DisketteToolkit.exe</kbd>.","Windows asks for administrator rights; the window opens without errors."],
+  ["size",0,null,"Velikost okna","Zmenši okno za roh, zavři a znovu spusť.","Okno se vejde na obrazovku, texty se nepřekrývají, velikost si pamatuje.",
+   "Window size","Shrink the window by its corner, close and start again.","The window fits the screen, texts do not overlap, the size is remembered."],
+  ["lang",0,null,"Jazyk CZ / EN","Přepni jazyk vpravo nahoře a zpět.","Celé okno se přepne hned, po restartu zůstane.",
+   "Language CZ / EN","Switch the language in the top right corner and back.","The whole window switches at once and stays after a restart."],
+  ["drag",0,null,"Přetažení obrazu","Přetáhni soubor .st / .msa z Průzkumníku do okna.","Otevře se okno s obsahem obrazu.",
+   "Drag and drop an image","Drag a .st / .msa file from Explorer onto the window.","A window with the image contents opens."],
+  ["log",0,null,"Výpis — pravé tlačítko","Pravým do výpisu → Kopírovat / Uložit do souboru / Vymazat.","Všechno funguje.",
+   "Log — right click","Right-click the log → Copy / Save to file / Clear.","Everything works."]]},
+ {id:"a2", hw:"usb", cs:"USB disketovka", en:"USB floppy drive", needCs:"USB disketovka, testovací diskety DD i HD", needEn:"USB floppy drive, test disks DD and HD", items:[
+  ["det",1,null,"Rozpoznání mechaniky a diskety","Připoj mechaniku, vlož Atari disketu, <kbd>⟳ Obnovit</kbd>.","Vlevo: mechanika, disketa, souborový systém, volné místo; „Standardní 720 KB: ano“.",
+   "Drive and disk detection","Connect the drive, insert an Atari disk, <kbd>⟳ Refresh</kbd>.","Left panel: drive, disk, file system, free space; “Standard 720 KB: yes”."],
+  ["read",1,null,"Záloha do obrazu","<kbd>Záloha do obrazu</kbd> → ulož .st.","Mapa se barví, soubor má 737 280 B a jde otevřít.",
+   "Backup to image","<kbd>Back up to image</kbd> → save .st.","The map is coloured, the file has 737,280 bytes and opens."],
+  ["batch",0,null,"Hromadná záloha","<kbd>Hromadná záloha…</kbd> → hra-001.st → další disketa → Ano; jednou Ano bez výměny; nakonec Ne.","Vzniknou hra-001, hra-002…; nevyměněnou disketu pozná.",
+   "Batch backup","<kbd>Batch backup…</kbd> → game-001.st → next disk → Yes; once Yes without swapping; finally No.","game-001, game-002… are created; an unswapped disk is detected."],
+  ["write",1,null,"Zapsat obraz na disketu","<kbd>Zapsat obraz na disketu</kbd> → .st → potvrď.","Zápis a ověření v mapě; disketa funguje v Atari / PC.",
+   "Write image to disk","<kbd>Write image to disk</kbd> → .st → confirm.","Writing and verifying in the map; the disk works in the Atari / PC."],
+  ["fmt",1,null,"Formátovat","<kbd>Formátovat…</kbd> → Atari ST 720 KB; pak PC 1,44 MB na HD disketu.","Proběhne; disketu přečte cílový počítač / Průzkumník.",
+   "Format","<kbd>Format…</kbd> → Atari ST 720 KB; then PC 1.44 MB on an HD disk.","Completes; the target computer / Explorer reads the disk."],
+  ["test",1,null,"Test povrchu","<kbd>Test povrchu a kontrola</kbd> → jen čtení.","Mapa zelená / žlutá / červená, souhrn, kontrola FAT.",
+   "Surface test","<kbd>Surface test and check</kbd> → read only.","Map green / yellow / red, summary, FAT check."],
+  ["cancel",0,null,"Přerušit","Během zálohy klikni <kbd>Přerušit</kbd>.","Zastaví se do pár sekund, program jde dál používat.",
+   "Cancel","Press <kbd>Cancel</kbd> during a backup.","Stops within seconds, the program keeps working."]]},
+ {id:"a3", hw:"fd", cs:"Interní mechanika + fdrawcmd.sys", en:"Internal drive + fdrawcmd.sys", needCs:"PC s řadičem na desce, interní 3,5\" mechanika", needEn:"PC with an on-board controller, internal 3.5\" drive", items:[
+  ["inst",1,null,"Instalace fdrawcmd.sys","Vyber interní mechaniku → <kbd>Nainstalovat ovladač fdrawcmd.sys</kbd>.","Instalace proběhne; v Nastavení „fdrawcmd.sys je nainstalovaný“. Na Win 11 s Integritou paměti napiš přesnou hlášku.",
+   "Installing fdrawcmd.sys","Select the internal drive → <kbd>Install the fdrawcmd.sys driver</kbd>.","Installs; Settings show “fdrawcmd.sys is installed”. On Win 11 with Memory integrity write the exact message."],
+  ["ext",1,null,"Atari 800–900 KB","Záloha Atari diskety s 10/11 sektory a 82 stopami; formát Atari 10 sektorů.","Ve výpisu „Používám fdrawcmd.sys“, obraz má správnou velikost, Atari disketu přečte.",
+   "Atari 800–900 KB","Back up an Atari disk with 10/11 sectors and 82 tracks; format Atari 10 sectors.","The log says “Using fdrawcmd.sys”, the image has the right size, the Atari reads the disk."],
+  ["write",0,null,"Zápis nestandardního obrazu","Zapiš .st s 10 sektory.","Hra na Atari naběhne.",
+   "Writing a non-standard image","Write a 10-sector .st.","The game starts on the Atari."],
+  ["step",0,null,"Step rate","Nastavení → step rate 3 ms a 6 ms → záloha.","Obojí funguje.",
+   "Step rate","Settings → step rate 3 ms and 6 ms → backup.","Both work."],
+  ["repair",0,null,"Opravný formát (experimentální)","Disketa s vadným místem → Formátovat… → zaškrtni <kbd>Opravný formát</kbd>.","Méně nebo žádné vadné sektory; disketu přečte Atari i Windows.",
+   "Repair format (experimental)","Disk with a bad spot → Format… → tick <kbd>Repair format</kbd>.","Fewer or no bad sectors; Atari and Windows read the disk."]]},
+ {id:"a4", hw:"gw", cs:"Greaseweazle", en:"Greaseweazle", needCs:"Greaseweazle + 3,5\" mechanika, internet", needEn:"Greaseweazle + 3.5\" drive, internet", items:[
+  ["dl",1,null,"Stažení gw.exe","Vyber Greaseweazle → <kbd>Stáhnout Greaseweazle Host Tools</kbd>.","gw.exe se stáhne vedle programu; vlevo cesta ke gw.exe.",
+   "Downloading gw.exe","Select the Greaseweazle → <kbd>Download Greaseweazle Host Tools</kbd>.","gw.exe is downloaded next to the program; the left panel shows its path."],
+  ["fw",0,null,"Aktualizace firmwaru","<kbd>Aktualizace Greaseweazle</kbd> → firmware.","Průběh ve výpisu, na konci verze; GW funguje dál.",
+   "Firmware update","<kbd>Greaseweazle updates</kbd> → firmware.","Progress in the log, version at the end; the GW still works."],
+  ["read",1,null,"Záloha (Atari / PC / Amiga)","Záloha do obrazu z Atari, PC a Amiga diskety.","Formát pozná sám, obraz jde otevřít (Hatari / WinUAE).",
+   "Backup (Atari / PC / Amiga)","Back up an Atari, PC and Amiga disk.","The format is detected, the image opens (Hatari / WinUAE)."],
+  ["flux",1,null,"Záloha toku .scp","Originální hra → Záloha → ulož jako .scp.","Vznikne .scp (několik MB).",
+   "Flux backup .scp","Original game → Backup → save as .scp.","A .scp file (several MB) is created."],
+  ["write",1,null,"Zápis obrazu / .ipf / .scp","Zapiš .st, .adf a případně .ipf.","Diskety fungují ve skutečném stroji.",
+   "Writing an image / .ipf / .scp","Write a .st, .adf and maybe an .ipf.","The disks work in the real machine."],
+  ["erase",0,null,"Magneticky smazat","<kbd>Magneticky smazat</kbd> → potvrď.","Disketa je nenaformátovaná.",
+   "Magnetic erase","<kbd>Magnetic erase</kbd> → confirm.","The disk is unformatted."]]},
+ {id:"a5", cs:"Obrazy a spouštěcí diskety", en:"Images and boot disks", needCs:"pár obrazů .st / .msa / .img / .adf", needEn:"a few .st / .msa / .img / .adf images", items:[
+  ["open",1,null,"Otevřít obraz","<kbd>Otevřít obraz…</kbd> → .st s hrou; vytáhni soubor.","Formát, souborový systém, seznam souborů; vytažený soubor jde otevřít.",
+   "Open image","<kbd>Open image…</kbd> → a .st game; extract a file.","Format, file system, file list; the extracted file opens."],
+  ["conv",0,null,"Převést formát","<kbd>Převést formát…</kbd> → .msa na .st a zpět.","Převedený soubor jde otevřít, obsah stejný.",
+   "Convert format","<kbd>Convert format…</kbd> → .msa to .st and back.","The converted file opens, same content."],
+  ["chk",0,null,"Kontrola a oprava obrazu","<kbd>Kontrola a oprava obrazu</kbd> → obraz s chybou.","Oprava se uloží do kopie, originál beze změny.",
+   "Check and repair image","<kbd>Check and repair image</kbd> → an image with an error.","The repair goes to a copy, the original is unchanged."],
+  ["new",0,null,"Nový prázdný obraz","<kbd>Nový prázdný obraz…</kbd> → Atari, PC, Amiga.","Obraz vznikne a jde otevřít v emulátoru.",
+   "New blank image","<kbd>New blank image…</kbd> → Atari, PC, Amiga.","The image is created and opens in an emulator."],
+  ["boot",0,null,"Spouštěcí disketa","<kbd>Spouštěcí disketa…</kbd> → FreeDOS (nebo Atari AUTO).","PC z diskety naběhne do A:\\&gt; (Atari spustí program z AUTO).",
+   "Boot disk","<kbd>Boot disk…</kbd> → FreeDOS (or Atari AUTO).","The PC boots to A:\\&gt; (the Atari starts the AUTO program)."],
+  ["crash",0,null,"Kdyby něco spadlo","—","Okno s hláškou a soubor DisketteToolkit-chyba.txt v %TEMP% — přilož ho.",
+   "If anything crashes","—","A message window and DisketteToolkit-chyba.txt in %TEMP% — attach it."]]}
+];
+
+const KEY = "dtk-tests-" + VERSION;
+let state = { lang:null, tab:"new", info:{}, hw:{}, items:{}, log:"" };
+const embedded = (() => { try { return JSON.parse(document.getElementById("saved").textContent); } catch(e) { return null; } })();
+if (embedded) state = Object.assign(state, embedded);
+else { try { Object.assign(state, JSON.parse(localStorage.getItem(KEY) || "{}")); } catch(e) {} }
+if (!state.lang) state.lang = (navigator.language || "").toLowerCase().startsWith("cs") || (navigator.language || "").toLowerCase().startsWith("sk") ? "cs" : "en";
+
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e) {} }
+const $ = id => document.getElementById(id);
+const u = () => UI[state.lang];
+const F = (s, ...a) => s.replace(/\{(\d)\}/g, (_, i) => a[i]);
+
+function selectedHw() { const s = ["usb","fd","gw"].filter(h => state.hw[h]); return s.length ? s : ["usb","fd","gw"]; }
+function sectionVisible(sec) { return !sec.hw || selectedHw().includes(sec.hw); }
+function rowsOf(item) { const hw = item[2]; if (!hw) return [null]; const r = hw.filter(h => selectedHw().includes(h)); return r.length ? r : []; }
+function text(item) { return state.lang === "cs" ? item.slice(3, 6) : item.slice(6, 9); }
+function blocks() { return [["new", NEW], ["all", ALL]]; }
+
+function renderStatic() {
+  document.documentElement.lang = state.lang;
+  const t = u();
+  for (const k of ["h1","infoH","saveHtml","saveTxt","copy","reset","logH","logHelp"]) $(k).textContent = t[k];
+  $("intro").innerHTML = t.intro;
+  document.querySelectorAll(".lang button").forEach(b => b.classList.toggle("on", b.dataset.l === state.lang));
+  $("info").innerHTML = "";
+  for (const f of ["name","contact","windows","drive","controller","gw"]) {
+    const l = document.createElement("label"); l.className = "f"; l.textContent = t[f];
+    const i = document.createElement("input"); i.type = "text"; i.value = state.info[f] || "";
+    i.oninput = () => { state.info[f] = i.value; save(); };
+    l.appendChild(i); $("info").appendChild(l);
+  }
+  $("hw").innerHTML = `<span>${t.hwQ}</span>`;
+  for (const [h, name] of [["usb", t.usb], ["fd", t.fd], ["gw", t.gwhw]]) {
+    const l = document.createElement("label");
+    const c = document.createElement("input"); c.type = "checkbox"; c.checked = !!state.hw[h];
+    c.onchange = () => { state.hw[h] = c.checked; save(); render(); };
+    l.appendChild(c); l.appendChild(document.createTextNode(name)); $("hw").appendChild(l);
+  }
+  $("tabs").innerHTML = "";
+  for (const [id, label] of [["new", t.tabNew], ["all", t.tabAll]]) {
+    const b = document.createElement("button"); b.textContent = label; b.classList.toggle("on", state.tab === id);
+    b.onclick = () => { state.tab = id; save(); renderStatic(); render(); };
+    $("tabs").appendChild(b);
+  }
+  $("legend").innerHTML = `<span><b style="background:var(--ok);color:#fff">✓</b>${t.lgOk}</span><span><b style="background:var(--bad);color:#fff">✗</b>${t.lgBad}</span><span><b style="background:var(--dim);color:#fff">–</b>${t.lgSkip}</span><span><span class="pri">${t.pri}</span> ${t.lgPri}</span>`;
+  $("log").value = state.log || "";
+  if (embedded && embedded.savedAt) {
+    $("savedNote").style.display = "block";
+    $("savedNote").textContent = F(t.savedNote, (embedded.info && embedded.info.name) || "?", embedded.savedAt);
+  }
+}
+
+function render() {
+  const t = u(), list = $("list");
+  list.innerHTML = "";
+  const data = state.tab === "new" ? NEW : ALL;
+  for (const sec of data) {
+    if (!sectionVisible(sec)) continue;
+    const el = document.createElement("section");
+    const need = state.lang === "cs" ? sec.needCs : sec.needEn;
+    el.innerHTML = `<header><div><h3>${state.lang === "cs" ? sec.cs : sec.en}</h3>${need ? `<div class="need">${t.need} ${need}</div>` : ""}</div><span class="sc" data-sec="${sec.id}"></span></header>`;
+    for (const item of sec.items) {
+      const rows = rowsOf(item);
+      if (!rows.length) continue;
+      const [title, how, exp] = text(item);
+      const it = document.createElement("div"); it.className = "item";
+      it.innerHTML = `<div class="t">${title}${item[1] ? `<span class="pri">${t.pri}</span>` : ""}</div><p class="how">${how}</p><p class="exp"><b>${t.exp}</b> ${exp}</p><div class="rows"></div>`;
+      for (const hw of rows) {
+        const k = sec.id + "." + item[0] + (hw ? "@" + hw : "");
+        const st = state.items[k] || {};
+        const row = document.createElement("div"); row.className = "row" + (st.v ? " " + st.v : "");
+        row.innerHTML = `<span class="hwname">${hw ? t.hwNames[hw] : ""}</span><div class="st"><button data-v="ok">✓</button><button data-v="bad">✗</button><button data-v="skip">–</button></div><textarea placeholder="${t.note}"></textarea>`;
+        row.querySelectorAll(".st button").forEach(b => {
+          b.classList.toggle("on", st.v === b.dataset.v);
+          b.onclick = () => {
+            const cur = state.items[k] || {};
+            cur.v = cur.v === b.dataset.v ? undefined : b.dataset.v;
+            state.items[k] = cur; save();
+            row.className = "row" + (cur.v ? " " + cur.v : "");
+            row.querySelectorAll(".st button").forEach(x => x.classList.toggle("on", x.dataset.v === cur.v));
+            if (cur.v === "bad") row.querySelector("textarea").focus();
+            stats();
+          };
+        });
+        const ta = row.querySelector("textarea"); ta.value = st.n || "";
+        ta.oninput = () => { const cur = state.items[k] || {}; cur.n = ta.value; state.items[k] = cur; save(); };
+        it.querySelector(".rows").appendChild(row);
+      }
+      el.appendChild(it);
+    }
+    list.appendChild(el);
+  }
+  stats();
+}
+
+function keysOf(data) {
+  const out = [];
+  for (const sec of data) { if (!sectionVisible(sec)) continue;
+    for (const item of sec.items) for (const hw of rowsOf(item)) out.push([sec, item, hw, sec.id + "." + item[0] + (hw ? "@" + hw : "")]); }
+  return out;
+}
+
+function stats() {
+  const t = u();
+  const keys = keysOf(state.tab === "new" ? NEW : ALL);
+  let done = 0;
+  const per = {};
+  for (const [sec, , , k] of keys) {
+    const v = (state.items[k] || {}).v;
+    per[sec.id] = per[sec.id] || [0, 0, 0];
+    per[sec.id][0]++; if (v) { per[sec.id][1]++; done++; } if (v === "bad") per[sec.id][2]++;
+  }
+  document.querySelectorAll(".sc").forEach(s => { const p = per[s.dataset.sec] || [0,0,0]; s.textContent = `${p[1]} / ${p[0]}` + (p[2] ? ` · ${p[2]}× ${t.errors}` : ""); });
+  $("pcount").textContent = `${done} / ${keys.length}`;
+  $("pbar").style.width = (keys.length ? 100 * done / keys.length : 0) + "%";
+}
+
+function report() {
+  const t = u();
+  let out = `Diskette Toolkit ${VERSION} — ${state.lang === "cs" ? "výsledky testů" : "test results"}\n`;
+  for (const f of ["name","contact","windows","drive","controller","gw"]) if (state.info[f]) out += `${t[f]}: ${state.info[f]}\n`;
+  out += `${t.hwQ} ${selectedHw().map(h => t.hwNames[h]).join(", ")}\n`;
+  for (const [id, data] of blocks()) {
+    out += `\n##### ${id === "new" ? t.tabNew : t.tabAll} #####\n`;
+    let sec0 = null;
+    for (const [sec, item, hw, k] of keysOf(data)) {
+      if (sec !== sec0) { out += `\n== ${state.lang === "cs" ? sec.cs : sec.en} ==\n`; sec0 = sec; }
+      const st = state.items[k] || {};
+      out += `[${st.v ? t.L[st.v] : t.untested}] ${text(item)[0]}${hw ? " (" + t.hwNames[hw] + ")" : ""}` + (st.n ? `\n    → ${st.n.replace(/\n/g, "\n      ")}` : "") + "\n";
+    }
+  }
+  if (state.log) out += `\n##### ${t.logH} #####\n${state.log}\n`;
+  return out;
+}
+
+function download(name, content, type) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([content], { type }));
+  a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  toast(u().savedOk);
+}
+function fileBase() {
+  const n = (state.info.name || "tester").replace(/[^\p{L}\p{N}_-]+/gu, "_").slice(0, 30);
+  const d = new Date(), p = x => String(x).padStart(2, "0");
+  return `DTK-${VERSION}-${state.lang === "cs" ? "testy" : "tests"}-${n}-${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}`;
+}
+
+function toast(m) { const t = $("toast"); t.textContent = m; t.classList.add("show"); setTimeout(() => t.classList.remove("show"), 2600); }
+
+$("saveHtml").onclick = () => {
+  const d = new Date();
+  const snap = Object.assign({}, state, { savedAt: d.toLocaleString() });
+  const json = JSON.stringify(snap).replace(/</g, "\\u003c");
+  const html = SRC.replace(/(<script id="saved" type="application\/json">)[\s\S]*?(<\/script>)/, (_, a, b) => a + json + b);
+  download(fileBase() + ".html", html, "text/html");
+};
+$("saveTxt").onclick = () => download(fileBase() + ".txt", report(), "text/plain");
+$("copy").onclick = () => {
+  const out = report();
+  const done = () => toast(u().copied);
+  const fallback = () => { const a = document.createElement("textarea"); a.value = out; document.body.appendChild(a); a.select(); try { document.execCommand("copy"); done(); } catch(e) {} a.remove(); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(out).then(done, fallback); else fallback();
+};
+$("reset").onclick = () => { if (confirm(u().resetQ)) { state = { lang: state.lang, tab: state.tab, info:{}, hw:{}, items:{}, log:"" }; save(); renderStatic(); render(); } };
+$("log").oninput = () => { state.log = $("log").value; save(); };
+document.querySelectorAll(".lang button").forEach(b => b.onclick = () => { state.lang = b.dataset.l; save(); renderStatic(); render(); });
+
+renderStatic();
+render();
+</script>
+</body>
+</html>

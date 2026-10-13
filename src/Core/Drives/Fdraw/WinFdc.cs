@@ -26,6 +26,11 @@ public sealed class WinFdc : IFdc
     private const uint IOCTL_FD_GET_FDC_INFO = 0x0022E414;
     private const uint IOCTL_FD_SET_DISK_CHECK = 0x0022E420;
     private const uint IOCTL_FD_CHECK_DISK = 0x0022E45C;
+    private const uint IOCTL_FDCMD_SENSE_DRIVE_STATUS = 0x0022E010;
+    private const uint IOCTL_FD_MOTOR_ON = 0x0022E448;
+    private const uint IOCTL_FD_MOTOR_OFF = 0x0022E44C;
+    private const uint IOCTL_FD_TIMED_SCAN_TRACK = 0x0022E454;
+    private const uint IOCTL_FD_GET_TRACK_TIME = 0x0022E460;
     private const byte FD_OPTION_MFM = 0x40;
     private const byte RW_GAP = 0x0A;
 
@@ -158,6 +163,35 @@ public sealed class WinFdc : IFdc
         if (!Ioctl(IOCTL_FDCMD_FORMAT_TRACK, p, null))
             throw Error(Marshal.GetLastWin32Error());
     }
+
+    public int? TrackTimeUs()
+    {
+        var o = new byte[4];
+        return Ioctl(IOCTL_FD_GET_TRACK_TIME, null, o) ? BitConverter.ToInt32(o, 0) : null;
+    }
+
+    public TimedScan? TimedScanTrack(int head)
+    {
+        // FD_TIMED_SCAN_RESULT (pack 1): count, firstseen, DWORD tracktime, pak {DWORD reltime; C,H,R,N} × count
+        var r = new byte[6 + 8 * 128];
+        if (!Ioctl(IOCTL_FD_TIMED_SCAN_TRACK, new[] { FD_OPTION_MFM, (byte)head }, r)) return null;
+        int count = Math.Min((int)r[0], 128);
+        var list = new List<(int, SectorId)>();
+        for (int i = 0; i < count; i++)
+        {
+            int o = 6 + i * 8;
+            list.Add((BitConverter.ToInt32(r, o), new SectorId(r[o + 4], r[o + 5], r[o + 6], r[o + 7])));
+        }
+        return new TimedScan(BitConverter.ToInt32(r, 2), list);
+    }
+
+    public byte? DriveStatus(int head)
+    {
+        var o = new byte[1];
+        return Ioctl(IOCTL_FDCMD_SENSE_DRIVE_STATUS, new[] { (byte)head }, o) ? o[0] : null;
+    }
+
+    public void Motor(bool on) => Ioctl(on ? IOCTL_FD_MOTOR_ON : IOCTL_FD_MOTOR_OFF, null, null);
 
     private static Exception Error(int err) => err switch
     {

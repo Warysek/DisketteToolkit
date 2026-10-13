@@ -27,6 +27,8 @@ an internal drive + fdrawcmd.sys, and a Greaseweazle.
 - `dist/` — release ZIPs (gitignored); `tools/package.sh` builds `dist/DisketteToolkit-<version>.zip`
 - `tools/capabilities.py` — renders `docs/drives-en.png` / `drives-cs.png` (drive capability table); update its
   rows when features change
+- `docs/tests.html` — tester checklist (CZ/EN, saves a filled-in copy), goes into the ZIP as `Testy-Tests.html`;
+  update its NEW block (and VERSION) for every release with new features
 - `NAVOD.txt` (Czech guide, has the per-version changelog) and `README.txt` (English) go into the ZIP
 
 ## Build & check (Linux sandbox)
@@ -160,6 +162,9 @@ Copying and images:
 
 Order of work (proposed to Wary 2026-10-13; groups = one release each, by importance x ease):
 1. **Drive diagnostics** — 20 RPM, 22 head service + sensors, 17 head cleaning, 23 drive profiles.
+   DONE in 0.9 (waiting for real-hardware feedback), plus first parts of 21 (repeated track read with a
+   dirty-head / damaged-disk verdict) and 27 (track layout listing, fdrawcmd.sys only). Code: `Core/Drives/Diag`,
+   `Analysis/TrackLayout.cs`, `Gui/Dialogs/DiagDialog.cs`. Not yet: RPM logged after each gw read, layout via gw.
 2. **Backup with a record** (small, no hardware risk) — 3 gw command, 4 quick backup, 16 archive log,
    12 checksums (TOSEC matching after), MD5 directory export from 40.
 3. **Reading bad disks** (after Greaseweazle feedback) — 1 second pass, 15 combine reads, 21 dirty head vs

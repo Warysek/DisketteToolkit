@@ -39,4 +39,23 @@ public interface IFdc : IDisposable
     byte[] Read(int cyl, int head, int firstSector, int sizeCode, int count);
     void Write(int cyl, int head, int firstSector, int sizeCode, int count, byte[] data, int offset);
     void Format(int cyl, int head, int sizeCode, IList<SectorId> ids, int gap3, byte fill);
+
+    // ---- diagnostika mechaniky (fdrawcmd.sys 1.0.0.22+ / 1.0.1.10+; null = ovladač nebo řadič to neumí)
+
+    /// <summary>Doba jedné otáčky v µs (měří ovladač mezi indexovými pulsy).</summary>
+    int? TrackTimeUs();
+    /// <summary>Hlavičky sektorů s polohou na stopě (µs od indexu) a dobou otáčky.</summary>
+    TimedScan? TimedScanTrack(int head);
+    /// <summary>Stavový bajt mechaniky ST3 (ochrana proti zápisu, stopa 0 …).</summary>
+    byte? DriveStatus(int head);
+    void Motor(bool on);
+}
+
+/// <summary>Výsledek časovaného skenu stopy: doba otáčky a sektory s polohou od indexu.</summary>
+public sealed record TimedScan(int TrackTimeUs, IReadOnlyList<(int Us, SectorId Id)> Sectors);
+
+/// <summary>Bity stavového bajtu ST3 řadiče µPD765.</summary>
+public static class St3
+{
+    public const byte Fault = 0x80, WriteProtect = 0x40, Ready = 0x20, Track0 = 0x10, TwoSide = 0x08;
 }

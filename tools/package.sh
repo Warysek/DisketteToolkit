@@ -11,6 +11,7 @@ cp src/Gui/bin/Release/net48/DisketteToolkit.exe src/Gui/bin/Release/net48/Diske
    src/Cli/bin/Release/net48/dtk.exe src/Cli/bin/Release/net48/dtk.exe.config README.txt NAVOD.txt "$D/"
 cp docs/drives-en.png "$D/Drives-EN.png"
 cp docs/drives-cs.png "$D/Mechaniky-CZ.png"
+cp docs/tests.html "$D/Testy-Tests.html"
 cp LICENSE "$D/licence/LICENSE-GPL-3.0.txt"
 cp third_party/freedos/COPYING "$D/licence/FreeDOS-GPL.txt"
 cp third_party/freedos/README.txt "$D/licence/FreeDOS-boot-sector.txt"

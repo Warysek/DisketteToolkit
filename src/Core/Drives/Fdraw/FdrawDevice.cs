@@ -45,6 +45,16 @@ public sealed class FdrawDevice : ISectorDevice
 
     public string Controller => _fdc.Description;
 
+    /// <summary>Řadič pro diagnostiku mechaniky (otáčky, čidla, rozložení stop).</summary>
+    internal IFdc Fdc => _fdc;
+
+    /// <summary>Přesun hlavy (vždy skutečně, ne podle zapamatované polohy) — pro diagnostiku a servis.</summary>
+    public void MoveHead(int cyl)
+    {
+        _fdc.Seek(cyl);
+        _currentCyl = cyl;
+    }
+
     // ------------------------------------------------------------------ rozpoznání diskety
 
     public void RefreshMedia()
