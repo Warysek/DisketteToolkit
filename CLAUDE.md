@@ -158,6 +158,25 @@ Copying and images:
     from one flux read and replaying analysis from .scp (item 5); JSON metadata and directory export with MD5
     per file (items 12, 16); Applesauce-style sector source colouring (item 15).
 
+Order of work (proposed to Wary 2026-10-13; groups = one release each, by importance x ease):
+1. **Drive diagnostics** — 20 RPM, 22 head service + sensors, 17 head cleaning, 23 drive profiles.
+2. **Backup with a record** (small, no hardware risk) — 3 gw command, 4 quick backup, 16 archive log,
+   12 checksums (TOSEC matching after), MD5 directory export from 40.
+3. **Reading bad disks** (after Greaseweazle feedback) — 1 second pass, 15 combine reads, 21 dirty head vs
+   damaged disk, 26 error reasons in the map.
+4. **Greaseweazle flux first** — 5 flux then image, 2 format detection, outputs/replay from 40.
+5. **Gotek stick wizard** — 34.
+6. **Understanding a disk** — 27 track layout (fdrawcmd scan already used), 33 file map + sector viewer,
+   31 compare images/disk.
+7. **Editing images** — 6 add/delete files + image from folder, 11 zip, 13 folder check, 32 undelete,
+   14 Windows changes investigation.
+8. **Copying and writing** — 35 more copies, 36 used sectors only, 25 smart write, 24 extra erase.
+9. **More platforms and formats** (when users ask / hardware available) — 9 D81 listing, 18 EDSK, 37 formats,
+   38 DMS, 7 D64, 8 5.25" drives.
+10. **SuperCard Pro** — 10, in parallel whenever the tester (Winnipeg, evening messages) is ready.
+11. **Experimental / low priority** — 30 flux histogram, 28 statistical rebuild, 29 move weak sector,
+   19 skew, 39 2M.
+
 Principle (shared with UFT): never show something as verified when it was not checked — say "not verified".
 
 ## Licence
