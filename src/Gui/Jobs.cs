@@ -6,6 +6,7 @@ using AtariFloppy.Core;
 using AtariFloppy.Core.Analysis;
 using AtariFloppy.Core.App;
 using AtariFloppy.Core.Drives;
+using AtariFloppy.Core.Drives.Diag;
 using AtariFloppy.Core.Drives.Fdraw;
 using AtariFloppy.Core.Drives.Gw;
 using AtariFloppy.Core.Drives.Windows;
@@ -13,6 +14,7 @@ using AtariFloppy.Core.Formats;
 using AtariFloppy.Core.Fs;
 using AtariFloppy.Core.Fs.Amiga;
 using AtariFloppy.Core.I18n;
+using AtariFloppy.Gui.Dialogs;
 
 namespace AtariFloppy.Gui;
 
@@ -25,6 +27,8 @@ internal interface IJobHost
     /// <summary>Zeptá se, kam uložit soubor (null = uživatel zrušil).</summary>
     string? AskSavePath(string title, string suggestedPath);
     void Progress(int done, int total, string text);
+    /// <summary>Okénko s velkým číslem (živé otáčky); value = null okénko zavře. grade 0 = dobře, 1 = seřídit, 2 = špatně.</summary>
+    void Gauge(string? value, string detail = "", int grade = 0);
     CancellationToken Token { get; }
     DeviceFactory Factory { get; }
     AppSettings Settings { get; }
@@ -263,6 +267,166 @@ internal sealed class Jobs
         Title(Tr.F("Mazání diskety přes {0}", d.Name));
         gw.Erase(tracks, P, Ct);
         Ok(Tr.T("Disketa je smazaná (bez formátu — před použitím ji naformátuj)."));
+    }
+
+    // ================================================================ diagnostika mechaniky
+
+    public void Diagnose(DetectedDrive d, DiagRequest r)
+    {
+        using var diag = _h.Factory.OpenDiag(d, Ct);
+        Title(Tr.F("Diagnostika mechaniky {0}", diag.Name));
+        switch (r.Action)
+        {
+            case DiagAction.Rpm:
+                {
+                    var st = new RpmStats();
+                    P(0, 10, Tr.T("Měřím otáčky"));
+                    diag.MeasureRpm(10, ms => { st.Add(ms); P(st.Count, 10, Tr.F("Měřím otáčky: {0:0.0} ot./min", 60000 / ms)); }, Ct);
+                    ReportRpm(d, st);
+                    break;
+                }
+            case DiagAction.RpmLive:
+                {
+                    var recent = new RpmStats(window: 10);
+                    Info(Tr.T("Živé měření běží — zastavíš ho v okénku s otáčkami nebo tlačítkem Přerušit."));
+                    try
+                    {
+                        diag.MeasureRpm(0, ms =>
+                        {
+                            recent.Add(ms);
+                            if (recent.Count == 0) return;
+                            int grade = Math.Max((int)recent.SpeedGrade, (int)recent.WobbleGrade);
+                            _h.Gauge(recent.Rpm.ToString("0.0"),
+                                     Tr.F("cíl {0}, kolísání ±{1:0.00}", recent.Target, recent.Wobble) + "\n" + recent.SpeedVerdict + "\n" + recent.WobbleVerdict, grade);
+                            P(0, 0, Tr.F("Otáčky: {0:0.0} ot./min", recent.Rpm));
+                        }, Ct);
+                    }
+                    catch (OperationCanceledException) { }
+                    finally { _h.Gauge(null); }
+                    Info(Tr.T("Měření zastaveno. Poslední stav (10 otáček):"));
+                    ReportRpm(d, recent);
+                    break;
+                }
+            case DiagAction.Sensors:
+                ReportSensors(diag.Sensors(Ct));
+                break;
+            case DiagAction.HeadZero:
+                diag.Seek(0, false, Ct);
+                Ok(Tr.T("Hlava je na stopě 0."));
+                break;
+            case DiagAction.HeadLast:
+                diag.Seek(79, false, Ct);
+                Ok(Tr.T("Hlava je na stopě 79."));
+                break;
+            case DiagAction.Sweep:
+                for (int i = 0; i < 10; i++)
+                {
+                    P(i, 10, Tr.F("Projíždím dráhu: {0}/10", i + 1));
+                    diag.Seek(79, false, Ct);
+                    diag.Seek(0, false, Ct);
+                }
+                Ok(Tr.T("Hlava projela celou dráhu 10× a stojí na stopě 0."));
+                break;
+            case DiagAction.Clean:
+                diag.Clean(80, r.Passes, p => P(p, r.Passes, Tr.F("Čistím hlavu: průchod {0}/{1}", p + 1, r.Passes)), Ct);
+                _h.Settings.SetProfile(d.Id, "cleaned", DateTime.Now.ToString("yyyy-MM-dd"));
+                _h.Settings.Save();
+                Ok(Tr.T("Čištění hotové. Vyndej čisticí disketu a nech hlavu pár minut oschnout."));
+                break;
+            case DiagAction.TrackRead:
+                RepeatTrackRead(diag, r);
+                break;
+            case DiagAction.Layout:
+                Layout(diag);
+                break;
+        }
+    }
+
+    private void ReportRpm(DetectedDrive d, RpmStats st)
+    {
+        if (st.Count == 0) { Warn(Tr.T("Otáčky se nepodařilo změřit.")); return; }
+        Info(st.Summary);
+        void Say(RpmStats.Grade g, string text) { if (g == RpmStats.Grade.Good) Ok(text); else Warn(text); }
+        Say(st.SpeedGrade, st.SpeedVerdict);
+        Say(st.WobbleGrade, st.WobbleVerdict);
+        _h.Settings.SetProfile(d.Id, "rpm", Tr.F("{0:0.0} ot./min, kolísání ±{1:0.00} ({2:yyyy-MM-dd})", st.Rpm, st.Wobble, DateTime.Now));
+        _h.Settings.Save();
+    }
+
+    private void ReportSensors(SensorReport s)
+    {
+        void Line(string what, bool? value, string good, string bad, bool expected)
+        {
+            if (value == null) Warn(what + ": " + Tr.T("nezjištěno"));
+            else if (value == expected) Ok(what + ": " + good);
+            else Warn(what + ": " + bad);
+        }
+        Line(Tr.T("Čidlo stopy 0 (hlava na stopě 0)"), s.Track0AtZero, Tr.T("hlásí stopu 0 — v pořádku"), Tr.T("NEHLÁSÍ stopu 0 — vadné čidlo, kabel, nebo hlava nedojela"), true);
+        Line(Tr.T("Čidlo stopy 0 (hlava na stopě 10)"), s.Track0Elsewhere, Tr.T("nehlásí stopu 0 — v pořádku"), Tr.T("hlásí stopu 0, i když hlava stojí jinde — vadné nebo přestavené čidlo"), false);
+        if (s.WriteProtected == null) Warn(Tr.T("Ochrana proti zápisu: nezjištěno"));
+        else Info(Tr.T("Ochrana proti zápisu: ") + (s.WriteProtected.Value ? Tr.T("ZAPNUTÁ (okénko otevřené)") : Tr.T("vypnutá (okénko zavřené)")) +
+                  Tr.T(" — přepni okénko a spusť kontrolu znovu; výsledek se musí změnit."));
+        if (s.DiskPresent == null) Warn(Tr.T("Vložená disketa: nezjištěno"));
+        else Info(Tr.T("Vložená disketa: ") + (s.DiskPresent.Value ? Tr.T("ano") : Tr.T("ne")));
+        Line(Tr.T("Index čidlo"), s.IndexSeen, Tr.T("dává pulsy — v pořádku"), Tr.T("bez pulsů — je vložená disketa? Jinak vadné čidlo indexu nebo motor netočí"), true);
+        foreach (var n in s.Notes) Dim(n);
+    }
+
+    private void RepeatTrackRead(IDriveDiag diag, DiagRequest r)
+    {
+        P(0, r.Reads, Tr.T("Zjišťuji formát diskety"));
+        Info(Tr.T("Disketa: ") + diag.PrepareTrackRead(Ct));
+        Info(Tr.F("Čtu stopu {0}, stranu {1} — {2}×", r.Cyl, r.Head, r.Reads));
+        var failCount = new System.Collections.Generic.Dictionary<int, int>();
+        int complete = 0, total = 0;
+        for (int i = 0; i < r.Reads; i++)
+        {
+            Ct.ThrowIfCancellationRequested();
+            P(i, r.Reads, Tr.F("Čtení {0}/{1}", i + 1, r.Reads));
+            var pass = diag.ReadTrack(r.Cyl, r.Head, Ct);
+            total = pass.Total;
+            if (pass.Found == pass.Total) complete++;
+            foreach (int s in pass.FailedSectors) failCount[s] = failCount.TryGetValue(s, out int n) ? n + 1 : 1;
+            string text = Tr.F("Čtení {0,2}: {1}/{2} sektorů", i + 1, pass.Found, pass.Total) +
+                          (pass.FailedSectors.Count > 0 ? Tr.F(" — chybí {0}", string.Join(", ", pass.FailedSectors)) : "");
+            if (pass.Found == pass.Total) Dim(text); else Warn(text);
+        }
+        Info(Tr.F("Celá stopa se přečetla {0}× z {1}.", complete, r.Reads));
+        if (complete == r.Reads) { Ok(Tr.T("Stopa se čte spolehlivě.")); return; }
+        if (failCount.Count > 0)
+            Info(Tr.T("Chyby podle sektorů: ") + string.Join(", ", failCount.OrderBy(k => k.Key).Select(k => Tr.F("{0} ({1}×)", k.Key, k.Value))));
+        int failedPasses = r.Reads - complete;
+        bool fixedPlace = failCount.Count > 0 && failCount.Values.All(v => v >= failedPasses * 0.8);
+        if (complete == 0 && fixedPlace)
+            Warn(Tr.T("Chyby jsou pořád na stejném místě — nejspíš poškozený povrch diskety. Zkus jinou disketu; když bude čistá, mechanika je v pořádku."));
+        else if (fixedPlace)
+            Warn(Tr.T("Chyby se drží na stejných sektorech, ale někdy se přečtou — slábnoucí místo na disketě. Zálohuj ji co nejdřív."));
+        else
+            Warn(Tr.T("Chyby skáčou po různých sektorech — nejspíš špinavá hlava, nebo problém mechaniky (otáčky, seřízení). Zkus hlavu vyčistit a změřit otáčky."));
+        Dim(Tr.T("Hodnocení je orientační — porovnej s jinou disketou."));
+    }
+
+    private void Layout(IDriveDiag diag)
+    {
+        if (!diag.CanLayout) throw new OperationException(Tr.T("Výpis rozložení stopy zatím umí jen interní mechanika s fdrawcmd.sys."));
+        int expected = 0;
+        try { Info(Tr.T("Disketa: ") + diag.PrepareTrackRead(Ct)); }
+        catch (OperationException e) { Warn(e.Message + Tr.T(" — vypíšu aspoň to, co na stopách najdu.")); }
+        var (tracks, sides) = diag.LayoutSize;
+        Dim(Tr.T("Stopa.strana: počet × velikost, pořadí sektorů na stopě, poloha prvního sektoru za indexem"));
+        int odd = 0;
+        for (int c = 0; c < tracks; c++)
+            for (int h = 0; h < sides; h++)
+            {
+                Ct.ThrowIfCancellationRequested();
+                P(c * sides + h, tracks * sides, Tr.F("Stopa {0}, strana {1}", c, h));
+                var t = diag.Layout(c, h, expected);
+                if (expected == 0 && t.IsStandard) expected = t.Sectors.Count;
+                if (t.IsStandard) Dim(t.Describe());
+                else { Warn(t.Describe()); odd++; }
+            }
+        if (odd == 0) Ok(Tr.T("Všechny stopy mají běžné rozložení."));
+        else Warn(Tr.F("Nestandardních stop: {0}. Může jít o ochranu proti kopírování nebo poškození — takovou disketu zálohuj jako magnetický tok (.scp) přes Greaseweazle.", odd));
     }
 
     // ================================================================ test a kontrola

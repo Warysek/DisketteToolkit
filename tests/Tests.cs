@@ -1107,6 +1107,92 @@ internal static class Tests
 
     // ------------------------------------------------------------------ Greaseweazle (simulovaný přes gw convert)
 
+    private static void T_Diag_RpmStats()
+    {
+        var st = new AtariFloppy.Core.Drives.Diag.RpmStats();
+        foreach (var ms in new[] { 199.8, 200.0, 200.2, 50.0 }) st.Add(ms);   // 50 ms = nesmysl, zahodí se
+        Eq(3, st.Count, "počet otáček");
+        Assert(Math.Abs(st.Rpm - 300.0) < 0.01, "průměr 300");
+        Eq(300, st.Target, "cíl");
+        Assert(st.Wobble > 0.25 && st.Wobble < 0.35, "kolísání ±0,3");
+        Eq(AtariFloppy.Core.Drives.Diag.RpmStats.Grade.Good, st.SpeedGrade, "rychlost OK");
+        var slow = new AtariFloppy.Core.Drives.Diag.RpmStats();
+        slow.Add(60000.0 / 294);
+        Eq(AtariFloppy.Core.Drives.Diag.RpmStats.Grade.OutOfSpec, slow.SpeedGrade, "294 je mimo normu");
+        var hd = new AtariFloppy.Core.Drives.Diag.RpmStats();
+        hd.Add(60000.0 / 359);
+        Eq(360, hd.Target, "5,25\" HD cíl 360");
+        Eq(AtariFloppy.Core.Drives.Diag.RpmStats.Grade.Good, hd.SpeedGrade, "359 OK");
+        var live = new AtariFloppy.Core.Drives.Diag.RpmStats(window: 2);
+        foreach (var ms in new[] { 210.0, 200.0, 200.0 }) live.Add(ms);
+        Assert(Math.Abs(live.Rpm - 300) < 0.01, "živé měření bere jen poslední otáčky");
+    }
+
+    private static void T_Diag_TrackLayout()
+    {
+        AtariFloppy.Core.Drives.Fdraw.SectorId Id(int c, int h, int r, int n = 2) => new((byte)c, (byte)h, (byte)r, (byte)n);
+        var std = new TrackLayout(3, 1, 200_000, Enumerable.Range(1, 9).Select(r => ((int?)(r * 20000), Id(3, 1, r))).ToList(), 9);
+        Assert(std.IsStandard, "běžná stopa: " + string.Join("; ", std.Problems));
+        Assert(std.Describe().Contains("1 2 3 4 5 6 7 8 9"), "pořadí ve výpisu");
+        var odd = new TrackLayout(79, 0, null, new List<(int?, AtariFloppy.Core.Drives.Fdraw.SectorId)>
+            { (null, Id(79, 0, 1)), (null, Id(79, 0, 2)), (null, Id(79, 0, 2)), (null, Id(66, 0, 4, 3)) }, 9);
+        Assert(!odd.IsStandard, "ochrana");
+        Assert(odd.Problems.Any(p => p.Contains("2×")), "duplicitní sektor");
+        Assert(odd.Problems.Any(p => p.Contains("66")), "cizí stopa v hlavičce");
+        Assert(odd.Problems.Any(p => p.Contains("3")), "chybí sektor 3");
+        var empty = new TrackLayout(5, 0, null, new List<(int?, AtariFloppy.Core.Drives.Fdraw.SectorId)>(), 9);
+        Assert(!empty.IsStandard && empty.Describe().Contains("MFM"), "prázdná stopa");
+        var spare = new TrackLayout(4, 0, null, new[] { 1, 2, 0xF0, 3 }.Select(r => ((int?)null, Id(4, 0, r))).ToList(), 3);
+        Assert(spare.IsStandard && spare.Describe().Contains("F0*"), "sektor navíc z opravného formátu není chyba");
+    }
+
+    private static void T_Diag_FdrawSensorsAndTrackRead()
+    {
+        var img = FormatProfiles.Find("atari")!.Build!("DIAG");
+        var fdc = FakeFdc.WithImage(img);
+        fdc.WriteProtected = true;
+        using var diag = new AtariFloppy.Core.Drives.Diag.FdrawDiag(new AtariFloppy.Core.Drives.Fdraw.FdrawDevice(fdc, "B:"));
+        var s = diag.Sensors(default);
+        Eq(true, s.Track0AtZero, "stopa 0 na stopě 0");
+        Eq(false, s.Track0Elsewhere, "stopa 0 mimo");
+        Eq(true, s.WriteProtected, "ochrana");
+        Eq(true, s.IndexSeen, "index");
+        fdc.Track0SensorStuck = true;
+        Eq(true, diag.Sensors(default).Track0Elsewhere, "zaseknuté čidlo stopy 0");
+
+        var st = new AtariFloppy.Core.Drives.Diag.RpmStats();
+        diag.MeasureRpm(5, st.Add, default);
+        Eq(5, st.Count, "5 otáček");
+        Assert(Math.Abs(st.Rpm - 300.75) < 0.1, "otáčky z doby otáčky");
+        Assert(!fdc.MotorOn, "motor po měření vypnutý");
+
+        diag.PrepareTrackRead(default);
+        fdc.Tracks[(22, 0)][5].CrcError = true;
+        var pass = diag.ReadTrack(22, 0, default);
+        Eq(8, pass.Found, "8 z 9");
+        Eq(6, pass.FailedSectors.Single(), "vadný sektor 6");
+        Eq(0, fdc.Cyl - 22, "hlava na stopě 22");
+
+        var layout = diag.Layout(0, 0, 9);
+        Assert(layout.IsStandard && layout.TrackTimeUs == 199_500 && layout.Sectors[0].Us == 3000, "časovaný sken");
+        diag.Clean(80, 1, _ => { }, default);
+        Eq(0, fdc.Cyl, "po čištění hlava na stopě 0");
+    }
+
+    private static void T_Diag_GwParsers()
+    {
+        Eq(200.123, AtariFloppy.Core.Drives.Gw.GwSession.ParsePeriodMs("Rate: 299.815 rpm ; Period: 200.123 ms") ?? 0, "gw rpm");
+        Eq(null, AtariFloppy.Core.Drives.Gw.GwSession.ParsePeriodMs("FASTEST:  Rate"), "bez čísla");
+        Eq(false, AtariFloppy.Core.Drives.Gw.GwSession.ParsePin("Pin 26 is Low (0v)"), "pin nízko");
+        Eq(true, AtariFloppy.Core.Drives.Gw.GwSession.ParsePin("Pin 28 is High (5v)"), "pin vysoko");
+        Eq(null, AtariFloppy.Core.Drives.Gw.GwSession.ParsePin("Command Failed: Bad Pin"), "nečitelný pin");
+        var o = new AtariFloppy.Core.Drives.Gw.GwOutput();
+        foreach (var l in new[] { "T5.0: IBM MFM (7/9 sectors) from Raw Flux (100000 flux in 200.00ms)", "Cyl-> 0", "H. S: 5",
+                                  "0. 0: .", "0. 1: .", "0. 2: X", "0. 3: .", "0. 4: .", "0. 5: X", "0. 6: .", "0. 7: .", "0. 8: .", "Found 7 sectors of 9 (77%)" })
+            o.Feed(l);
+        Eq("2,5", string.Join(",", AtariFloppy.Core.Drives.Gw.GwSession.MissingSectors(o, 5, 0)), "chybějící sektory ze souhrnu");
+    }
+
     private static void T_Gw_OutputParser()
     {
         var o = new AtariFloppy.Core.Drives.Gw.GwOutput();

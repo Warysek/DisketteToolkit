@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using AtariFloppy.Core;
@@ -50,6 +51,14 @@ internal static class DemoDrives
 
     public static ISectorDevice Open(DetectedDrive d, bool write, DiskGeometry? g) =>
         new SimDevice(DiskFor(d.Letter ?? "A"), d.Kind == DriveKind.Internal && d.FdrawcmdInstalled, d.Id + " (" + Tr.T("ukázka") + ")");
+
+    /// <summary>Diagnostika v ukázce: simulovaný řadič s disketou Atari (9 sektorů, 82 stop, chráněná stopa 79, slábnoucí stopa 22).</summary>
+    public static AtariFloppy.Core.Drives.Diag.IDriveDiag OpenDiag(DetectedDrive d)
+    {
+        bool gw = d.Kind == DriveKind.Greaseweazle;
+        var dev = new AtariFloppy.Core.Drives.Fdraw.FdrawDevice(new DemoFdc(), d.Id + " (" + Tr.T("ukázka") + ")");
+        return new AtariFloppy.Core.Drives.Diag.FdrawDiag(dev, canLayout: !gw);
+    }
 
     private static SimDevice.Disk DiskFor(string letter)
     {
@@ -179,4 +188,58 @@ internal sealed class SimDevice : ISectorDevice
         int len = target.Sides * target.SectorsPerTrack * 512;
         for (int i = 0; i < len; i++) _disk.Data[cylinder * len + i] = 0xE5;
     }
+}
+
+/// <summary>Simulovaný řadič pro ukázku diagnostiky: otáčky kolem 300,6, slabá stopa 22, nestandardní stopa 79.</summary>
+internal sealed class DemoFdc : AtariFloppy.Core.Drives.Fdraw.IFdc
+{
+    private readonly Random _rnd = new(3);
+    private int _cyl;
+    public string Description => Tr.T("simulovaný řadič");
+    public void SetDataRate(AtariFloppy.Core.Drives.Fdraw.DataRate rate) { }
+    public void SetStepRate(int milliseconds, AtariFloppy.Core.Drives.Fdraw.DataRate rate) { }
+    public void Seek(int cylinder) { Thread.Sleep(Math.Abs(cylinder - _cyl) * 3 + 5); _cyl = cylinder; }
+    public bool? CheckDisk() => true;
+
+    private List<AtariFloppy.Core.Drives.Fdraw.SectorId> Ids(int head)
+    {
+        var list = new List<AtariFloppy.Core.Drives.Fdraw.SectorId>();
+        if (_cyl > 81) return list;
+        for (int s = 1; s <= 9; s++) list.Add(new((byte)_cyl, (byte)head, (byte)s, 2));
+        if (_cyl == 79 && head == 0) { list.Insert(4, new(79, 0, 5, 2)); list.Add(new(66, 0, 1, 3)); }   // „ochrana“: duplicitní sektor a cizí hlavička
+        return list;
+    }
+
+    public List<AtariFloppy.Core.Drives.Fdraw.SectorId> ScanTrack(int head) => Ids(head);
+
+    public byte[] Read(int cyl, int head, int firstSector, int sizeCode, int count)
+    {
+        Thread.Sleep(22 * count);
+        if (cyl == 22 && head == 0 && firstSector == 6 && _rnd.Next(3) == 0) throw new SectorIOException(Tr.T("CRC chyba"));
+        if (cyl == 22 && head == 0 && firstSector == 2 && _rnd.Next(5) == 0) throw new SectorIOException(Tr.T("CRC chyba"));
+        return new byte[count * (128 << sizeCode)];
+    }
+
+    public void Write(int cyl, int head, int firstSector, int sizeCode, int count, byte[] data, int offset) => Thread.Sleep(30 * count);
+    public void Format(int cyl, int head, int sizeCode, IList<AtariFloppy.Core.Drives.Fdraw.SectorId> ids, int gap3, byte fill) => Thread.Sleep(200);
+
+    public int? TrackTimeUs()
+    {
+        Thread.Sleep(200);
+        return (int)(60_000_000 / (300.6 + (_rnd.NextDouble() - 0.5) * 0.3));
+    }
+
+    public AtariFloppy.Core.Drives.Fdraw.TimedScan? TimedScanTrack(int head)
+    {
+        Thread.Sleep(30);
+        var ids = Ids(head);
+        int start = 3_100 + _cyl * 2_000 % 20_000;
+        return new(199_600, ids.Select((id, i) => (start + i * 21_500, id)).ToList());
+    }
+
+    public byte? DriveStatus(int head) =>
+        (byte)(AtariFloppy.Core.Drives.Fdraw.St3.Ready | AtariFloppy.Core.Drives.Fdraw.St3.TwoSide | (_cyl == 0 ? AtariFloppy.Core.Drives.Fdraw.St3.Track0 : 0));
+
+    public void Motor(bool on) { }
+    public void Dispose() { }
 }

@@ -22,6 +22,16 @@ internal sealed class AppSettings
     public int WindowWidth { get; set; }
     public int WindowHeight { get; set; }
     public bool WindowMaximized { get; set; }
+    /// <summary>Profily mechanik (poznámka, poslední otáčky, poslední čištění): klíč „Id.note“, „Id.rpm“, „Id.cleaned“.</summary>
+    public Dictionary<string, string> DriveProfile { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public string Profile(string driveId, string key) =>
+        DriveProfile.TryGetValue(driveId + "." + key, out var v) ? v : "";
+
+    public void SetProfile(string driveId, string key, string value)
+    {
+        lock (DriveProfile) DriveProfile[driveId + "." + key] = value.Trim();
+    }
 
     public static string DefaultBackupFolder =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "Diskette Toolkit");
@@ -66,6 +76,9 @@ internal sealed class AppSettings
             s.WindowWidth = Int("window_width") ?? 0;
             s.WindowHeight = Int("window_height") ?? 0;
             s.WindowMaximized = Bool("window_maximized", false);
+            foreach (var kv in d)
+                if (kv.Key.StartsWith("drive.", StringComparison.OrdinalIgnoreCase) && kv.Value.Length > 0)
+                    s.DriveProfile[kv.Key.Substring(6)] = kv.Value;
         }
         catch { /* poškozený soubor = výchozí nastavení */ }
         return s;
@@ -95,6 +108,9 @@ internal sealed class AppSettings
             W("window_width", WindowWidth);
             W("window_height", WindowHeight);
             W("window_maximized", WindowMaximized ? 1 : 0);
+            lock (DriveProfile)
+                foreach (var kv in DriveProfile)
+                    if (kv.Value.Length > 0) W("drive." + kv.Key, kv.Value.Replace('\r', ' ').Replace('\n', ' '));
             File.WriteAllText(path, sb.ToString(), new UTF8Encoding(false));
         }
         catch { /* nastavení není kritické */ }

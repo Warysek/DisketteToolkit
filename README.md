@@ -36,6 +36,7 @@ The program downloads gw.exe and fdrawcmd.sys itself when you need them.
 - Format profiles for Atari, PC, MSX, Mac HFS, Amiga CrossDOS, Amstrad PCW, MINIX, ext2
 - Batch backup: a box of disks one after another into numbered images (disk-001.st, disk-002.st…)
 - Drag an image file onto the window to open it
+- Drive diagnostics (internal drive + fdrawcmd.sys, Greaseweazle): speed with wobble and a live gauge for adjusting, sensor check, head moves and cleaning, repeated track read (dirty head vs. damaged disk), track layout listing (fdrawcmd.sys)
 - Surface test (read-only, write test with restore, destructive) with a FastCopy-style map
 - Experimental repair format (internal drive + fdrawcmd.sys): a defect on a track is covered by an extra sector instead of being marked bad in the FAT
 - FAT12 check and safe repair (backup first, only changed sectors written, repairs of images go to a copy)

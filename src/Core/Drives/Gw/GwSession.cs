@@ -430,6 +430,97 @@ public sealed class GwSession
         finally { TrackActivity.End(); }
     }
 
+    // ------------------------------------------------------------------ diagnostika mechaniky
+
+    private static readonly System.Text.RegularExpressions.Regex PeriodRx = new(@"Period:\s*([\d.]+)\s*ms");
+    private static readonly System.Text.RegularExpressions.Regex PinRx = new(@"^Pin\s+\d+\s+is\s+(Low|High)");
+
+    /// <summary>gw rpm --nr N: doba každé otáčky v ms (souhrn za „***“ se přeskočí).</summary>
+    public void Rpm(int count, Action<double> onRevolutionMs, CancellationToken ct = default)
+    {
+        var args = new List<string> { "rpm" };
+        args.AddRange(Common());
+        args.AddRange(new[] { "--nr", count.ToString() });
+        var output = new GwOutput();
+        bool summary = false;
+        int code = _tool.Run(args, line =>
+        {
+            output.Feed(line);
+            if (line.StartsWith("***")) summary = true;
+            if (!summary && ParsePeriodMs(line) is double ms) onRevolutionMs(ms);
+        }, ct);
+        if (code != 0 || output.Fatal != null)
+            throw new OperationException("Greaseweazle: " + Explain(output.Fatal ?? output.Lines.LastOrDefault(l => l.Trim().Length > 0) ?? Tr.F("gw skončil s kódem {0}", code)));
+    }
+
+    public static double? ParsePeriodMs(string line)
+    {
+        var m = PeriodRx.Match(line);
+        return m.Success && double.TryParse(m.Groups[1].Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double v) ? v : null;
+    }
+
+    /// <summary>Přesun hlavy na stopu (gw seek); motor = s točící se disketou (čištění).</summary>
+    public void Seek(int cyl, bool motor, CancellationToken ct = default)
+    {
+        var a = Common();
+        a.Add("--force");
+        if (motor) a.Add("--motor-on");
+        a.Add(cyl.ToString());
+        Run("seek", a, 1, null, "", ct);
+    }
+
+    /// <summary>Úroveň vývodu rozhraní (gw pin get): true = vysoká (5 V), false = nízká, null = nejde přečíst.</summary>
+    public bool? Pin(int pin, CancellationToken ct = default)
+    {
+        var args = new List<string> { "pin", "get" };
+        args.AddRange(Common());
+        args.Add(pin.ToString());
+        bool? level = null;
+        _tool.Run(args, line => level ??= ParsePin(line), ct);
+        return level;
+    }
+
+    public static bool? ParsePin(string line)
+    {
+        var m = PinRx.Match(line.Trim());
+        return m.Success ? m.Groups[1].Value == "High" : null;
+    }
+
+    /// <summary>Čištění hlavy čisticí disketou (gw clean).</summary>
+    public void Clean(int cyls, int passes, CancellationToken ct = default)
+    {
+        var a = Common();
+        a.AddRange(new[] { "--cyls", cyls.ToString(), "--passes", passes.ToString() });
+        Run("clean", a, 1, null, "", ct);
+    }
+
+    /// <summary>Jedno čtení jedné stopy bez opakování: výsledek a čísla sektorů, které chyběly (podle souhrnu gw).</summary>
+    public (GwTrackRead? read, List<int> failed) ReadOneTrack(GwFormat f, int cyl, int head, CancellationToken ct = default)
+    {
+        string dir = TempDir();
+        try
+        {
+            var args = Common();
+            args.AddRange(FormatArgs(f, dir));
+            args.AddRange(new[] { "--tracks", $"c={cyl}:h={head}", "--retries", "0", Path.Combine(dir, "track" + f.ImageExt) });
+            var output = Run("read", args, 1, null, "", ct);
+            output.FinalReads().TryGetValue((cyl, head), out var read);
+            return (read, MissingSectors(output, cyl, head));
+        }
+        finally { TryDelete(dir); }
+    }
+
+    /// <summary>Čísla sektorů označená v souhrnu gw jako chybějící ('X') pro danou stopu.</summary>
+    public static List<int> MissingSectors(GwOutput o, int cyl, int head)
+    {
+        var list = new List<int>();
+        int col = o.SummaryCyls.IndexOf(cyl);
+        if (col < 0) return list;
+        foreach (var kv in o.Summary.Where(k => k.Key.head == head).OrderBy(k => k.Key.sector))
+            if (col < kv.Value.Length && kv.Value[col] == 'X') list.Add(kv.Key.sector);
+        return list;
+    }
+
     private static void TryDelete(string dir)
     {
         try { Directory.Delete(dir, true); } catch { }

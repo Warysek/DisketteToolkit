@@ -51,7 +51,7 @@ internal sealed class MainForm : Form, IJobHost
     private readonly Panel _right = new();
     private readonly FlowLayoutPanel _actions = new();
     private readonly Label _secDisk = new(), _secImages = new(), _secHelp = new();
-    private readonly ActionButton _aRead = new(), _aWrite = new(), _aFormat = new(), _aTest = new(), _aErase = new(), _aSetup = new(), _aBoot = new(), _aBatch = new();
+    private readonly ActionButton _aRead = new(), _aWrite = new(), _aFormat = new(), _aTest = new(), _aErase = new(), _aSetup = new(), _aBoot = new(), _aBatch = new(), _aDiag = new();
     private readonly ActionButton _iOpen = new(), _iCheck = new(), _iConvert = new(), _iNew = new();
     private readonly ActionButton _hFormats = new(), _hAbout = new(), _hDonate = new();
     private readonly ToolTip _tips = new();
@@ -79,7 +79,7 @@ internal sealed class MainForm : Form, IJobHost
             Log = m => Log(m, LogKind.Dim),
             Warn = m => Log(m, LogKind.Warn),
         };
-        if (demo) _factory.Simulator = DemoDrives.Open;
+        if (demo) { _factory.Simulator = DemoDrives.Open; _factory.DiagSimulator = DemoDrives.OpenDiag; }
 
         SuspendLayout();
         AutoScaleDimensions = new SizeF(96F, 96F);
@@ -253,6 +253,7 @@ internal sealed class MainForm : Form, IJobHost
         Add(_aFormat, "▦", (_, _) => DoFormat());
         Add(_aTest, "✚", (_, _) => DoTest());
         Add(_aBoot, "⏻", (_, _) => DoBoot());
+        Add(_aDiag, "⏱", (_, _) => DoDiag());
         Add(_aErase, "✖", (_, _) => DoErase());
         _aErase.Danger = true;
         Add(_aSetup, "⭳", (_, _) => DoSetup());
@@ -397,6 +398,8 @@ internal sealed class MainForm : Form, IJobHost
         _aErase.Text = Tr.T("Magneticky smazat");
         _aBoot.Text = Tr.T("Spouštěcí disketa…");
         _aBoot.Subtitle = Tr.T("FreeDOS, MS-DOS, Amiga, Atari, RawWrite");
+        _aDiag.Text = Tr.T("Diagnostika mechaniky…");
+        _aDiag.Subtitle = Tr.T("otáčky, čidla, hlava, čištění, stopy");
         _iOpen.Text = Tr.T("Otevřít obraz…");
         _iOpen.Subtitle = Tr.T("obsah, formát, mapa sektorů");
         _iCheck.Text = Tr.T("Kontrola a oprava obrazu");
@@ -614,6 +617,7 @@ internal sealed class MainForm : Form, IJobHost
         var surface = Op(OperationAdvisor.Surface);
         Set(_aTest, surface, Tr.T("mapa sektorů, kontrola FAT, oprava"));
         _aErase.Visible = d?.Kind == DriveKind.Greaseweazle;
+        _aDiag.Visible = d != null && DeviceFactory.SupportsDiag(d);
         Set(_aErase, surface, Tr.T("celá disketa, bez formátu"));
 
         // doplňky: ovladač / program, které mechanika potřebuje
@@ -764,6 +768,18 @@ internal sealed class MainForm : Form, IJobHost
     {
         if (_demo) Log(Tr.T("Instalace doplňků funguje i v ukázkovém režimu — stahuje a instaluje doopravdy."), LogKind.Dim);
         RunJob(work, redetect: true);
+    }
+
+    private void DoDiag()
+    {
+        var d = Selected;
+        if (d == null) return;
+        using var dlg = new DiagDialog(d, _settings.Profile(d.Id, "note"), _settings.Profile(d.Id, "rpm"), _settings.Profile(d.Id, "cleaned"));
+        if (dlg.ShowDialog(this) != DialogResult.OK) return;
+        _settings.SetProfile(d.Id, "note", dlg.DriveNote);
+        _settings.Save();
+        var r = dlg.Request;
+        RunJob(j => j.Diagnose(d, r));
     }
 
     private void DoErase()
@@ -1084,6 +1100,26 @@ internal sealed class MainForm : Form, IJobHost
         _pText = text;
     }
 
+    private RpmGaugeForm? _gauge;
+
+    public void Gauge(string? value, string detail = "", int grade = 0)
+    {
+        if (IsDisposed) return;
+        if (InvokeRequired) { BeginInvoke(new Action(() => Gauge(value, detail, grade))); return; }
+        if (value == null)
+        {
+            _gauge?.Close();
+            _gauge = null;
+            return;
+        }
+        if (_gauge == null || _gauge.IsDisposed)
+        {
+            _gauge = new RpmGaugeForm(CancelJob);
+            _gauge.Show(this);
+        }
+        _gauge.Show(value, detail, grade == 0 ? Theme.Ok : grade == 1 ? Theme.Warn : Theme.Danger);
+    }
+
     private static readonly Font TitleFont = Theme.UiFont(9.5f, FontStyle.Bold);
 
     public void Log(string text, LogKind kind = LogKind.Info)
@@ -1223,6 +1259,22 @@ internal sealed class MainForm : Form, IJobHost
                 break;
             case "gw":
                 _driveBox.SelectedIndex = _driveBox.Items.Count - 1;
+                break;
+            case "diagdialog" when _drives.Count > 1:
+                _driveBox.SelectedIndex = 1;
+                BeginInvoke(new Action(() => { using var f = new DiagDialog(Selected!, "TEAC FD-235HF, nový řemínek", "300,4 ot./min, kolísání ±0,15 (2026-10-13)", ""); f.ShowDialog(this); }));
+                break;
+            case "rpm" when _drives.Count > 1:
+                _driveBox.SelectedIndex = 1;
+                RunJob(j => j.Diagnose(Selected!, new DiagRequest { Action = DiagAction.RpmLive }));
+                break;
+            case "sensors" when _drives.Count > 1:
+                _driveBox.SelectedIndex = 1;
+                RunJob(j => { j.Diagnose(Selected!, new DiagRequest { Action = DiagAction.Rpm }); j.Diagnose(Selected!, new DiagRequest { Action = DiagAction.Sensors }); j.Diagnose(Selected!, new DiagRequest { Action = DiagAction.TrackRead, Cyl = 22, Reads = 8 }); });
+                break;
+            case "layout" when _drives.Count > 1:
+                _driveBox.SelectedIndex = 1;
+                RunJob(j => j.Diagnose(Selected!, new DiagRequest { Action = DiagAction.Layout }));
                 break;
             case "image":
                 {
