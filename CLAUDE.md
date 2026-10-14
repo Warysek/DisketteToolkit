@@ -160,19 +160,32 @@ Copying and images:
     from one flux read and replaying analysis from .scp (item 5); JSON metadata and directory export with MD5
     per file (items 12, 16); Applesauce-style sector source colouring (item 15).
 
+From FluxForge (github.com/freemchr/fluxforge, MIT, Greaseweazle-only GUI, released 2026-10-14):
+41. **Verify a disk against an image** — extends 31: read the disk, compare sector by sector, tell "differs" from
+    "unreadable" and from "image has no data there"; one click after a write ("Verify against this image").
+42. **Disk library** — every backup goes into a catalogue automatically: SHA-256, date, drive, result, plus the
+    user's title, system, condition (good / worn / damaged), tags and notes; search; "check files" re-hashes images.
+    Combine with 16 (archive log) and 12 (checksums).
+43. **USB bandwidth test** (`gw bandwidth`) in drive diagnostics — tiny.
+44. **Wrong-format warning** — when a disk holds sectors the chosen / detected format does not define (e.g. an
+    Atari 10-sector disk read as 720 KB), say so and suggest the right format instead of silently dropping data.
+45. **Never present an incomplete backup as finished** — a cancelled or failed read is saved with "(INCOMPLETE)"
+    in the file name (or not kept), never under the normal name.
+
 Order of work (proposed to Wary 2026-10-13; groups = one release each, by importance x ease):
 1. **Drive diagnostics** — 20 RPM, 22 head service + sensors, 17 head cleaning, 23 drive profiles.
    DONE in 0.9 (waiting for real-hardware feedback), plus first parts of 21 (repeated track read with a
    dirty-head / damaged-disk verdict) and 27 (track layout listing, fdrawcmd.sys only). Code: `Core/Drives/Diag`,
    `Analysis/TrackLayout.cs`, `Gui/Dialogs/DiagDialog.cs`. Not yet: RPM logged after each gw read, layout via gw.
 2. **Backup with a record** (small, no hardware risk) — 3 gw command, 4 quick backup, 16 archive log,
-   12 checksums (TOSEC matching after), MD5 directory export from 40.
+   12 checksums (TOSEC matching after), MD5 directory export from 40, 45 incomplete backups, 43 bandwidth test;
+   42 disk library builds on it (maybe its own release).
 3. **Reading bad disks** (after Greaseweazle feedback) — 1 second pass, 15 combine reads, 21 dirty head vs
    damaged disk, 26 error reasons in the map.
 4. **Greaseweazle flux first** — 5 flux then image, 2 format detection, outputs/replay from 40.
 5. **Gotek stick wizard** — 34.
 6. **Understanding a disk** — 27 track layout (fdrawcmd scan already used), 33 file map + sector viewer,
-   31 compare images/disk.
+   31 + 41 compare images / verify a disk against an image (move earlier if testers ask), 44 wrong-format warning.
 7. **Editing images** — 6 add/delete files + image from folder, 11 zip, 13 folder check, 32 undelete,
    14 Windows changes investigation.
 8. **Copying and writing** — 35 more copies, 36 used sectors only, 25 smart write, 24 extra erase.
