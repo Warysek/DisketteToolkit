@@ -57,8 +57,8 @@ drive type and the log (right-click the log → *Save log to file…*).
 
 ## Support
 
-Diskette Toolkit is free. If it saved your disks, you can buy me a coffee on [Ko-fi](https://ko-fi.com/wary) —
-it helps with test disks and drives. Thank you!
+Diskette Toolkit is free. If it saved your disks, you can support it on [GitHub Sponsors](https://github.com/sponsors/Warysek)
+or buy me a coffee on [Ko-fi](https://ko-fi.com/wary) — it helps with test disks and drives. Thank you!
 
 ## Building
 
