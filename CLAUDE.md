@@ -204,6 +204,10 @@ Order of work (proposed to Wary 2026-10-13; groups = one release each, by import
    from sector IDs, result = image + RescueState sidecar); GUI: image window of a .scp → "Záchrana sektorů…"
    (`Dialogs/FluxRescueDialog.cs`, `Jobs.RescueFromFlux`). On Wary's files: healthy 2880/2880; damaged NEC 2806,
    Samsung 2808, together 2808/2880; the two drives' overlapping sectors were byte-identical.
+   Rescue advice ("can another drive help?"): flux rescue classifies each missing sector — Weak (data with bad
+   CRC seen), HeaderOnly, Unreadable (track has signal), NoSignal (≥5 % of track time in gaps > 6 cells) —
+   `FluxRescueResult.Advice`; drive rescue counts sectors whose last error was CRC (23). gw probe trims tracks
+   beyond the FAT size from the boot sector (`GwSession.TracksOfFileSystem`; a 1.44 MB disk read as 81 tracks).
    Known limit: read history identifies a drive by its Id (COM port for Greaseweazle), so different drives on one
    Greaseweazle — and one drive on two PCs — are not told apart (items 49/50); needs a user-chosen drive name.
 2. **Backup with a record** (small, no hardware risk) — 3 gw command, 4 quick backup, 16 archive log,

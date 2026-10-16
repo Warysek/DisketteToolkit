@@ -67,6 +67,8 @@ Rescue sectors from flux (Greaseweazle): open a saved .scp with "Open image..." 
 "Rescue sectors...". The program decodes the flux itself (no disk needed), takes every sector
 with a valid checksum from any revolution, retries damaged tracks with other decoder settings
 and combines flux files of the same disk from several drives (PC, Atari ST, MSX: MFM, 512 bytes).
+At the end it says whether another drive can still help: weak sectors (data present, bad checksum),
+unreadable sectors with signal, and places where the magnetic recording is gone (unrecoverable).
 Hover a red or yellow cell in the sector map to see why the sector failed. A read history
 tells a faulty drive from a faulty disk, and a write test gives the disk a grade (A/B/C).
 
