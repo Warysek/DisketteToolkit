@@ -99,7 +99,15 @@ internal sealed class DiagDialog : DialogBase
 
         foreach (var (radio, action, _) in _items)
         {
-            radio.CheckedChanged += (_, _) => UpdateHelp();
+            // Volby s čísly jsou v samostatných řádcích (jiný rodič) — WinForms by je bral jako jinou skupinu,
+            // takže ostatní volby odznačujeme ručně.
+            var self = radio;
+            radio.CheckedChanged += (_, _) =>
+            {
+                if (self.Checked)
+                    foreach (var other in _items.Select(i => i.radio).Where(r => r != self)) other.Checked = false;
+                UpdateHelp();
+            };
             if (action == DiagAction.WarmUp)
                 flow.Controls.Add(Row(radio, new Label { Text = Tr.T("minut:"), AutoSize = true, Margin = new Padding(12, 6, 3, 0) }, _minutes));
             else if (action == DiagAction.Histogram)
