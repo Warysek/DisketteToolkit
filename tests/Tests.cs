@@ -1283,6 +1283,32 @@ internal static class Tests
         Assert(!ok && detail.Contains("41"), "zevnitř ztratí krok: " + detail);
     }
 
+    private static void T_Gw_ImdCylinderIds()
+    {
+        // stopa 79 normálně, „stopa 80“ s hlavičkami stopy 79 (hlava dál nedojela) → mapa válců
+        var ms = new MemoryStream();
+        var hdr = System.Text.Encoding.ASCII.GetBytes("IMD 1.18: test\r\n"); ms.Write(hdr, 0, hdr.Length); ms.WriteByte(0x1A);
+        void Track(int cyl, int[]? cmap)
+        {
+            ms.WriteByte(5); ms.WriteByte((byte)cyl); ms.WriteByte((byte)(cmap != null ? 0x80 : 0)); ms.WriteByte(2); ms.WriteByte(2);
+            ms.WriteByte(1); ms.WriteByte(2);
+            if (cmap != null) foreach (int c in cmap) ms.WriteByte((byte)c);
+            ms.WriteByte(1); ms.Write(new byte[512], 0, 512);      // celý sektor
+            ms.WriteByte(2); ms.WriteByte(0xE5);                   // komprimovaný sektor
+        }
+        Track(79, null);
+        Track(80, new[] { 79, 79 });
+        string f = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllBytes(f, ms.ToArray());
+            var ids = AtariFloppy.Core.Drives.Gw.GwSession.ImdCylinderIds(f)!;
+            Assert(ids[(79, 0)].SequenceEqual(new[] { 79, 79 }), "stopa 79");
+            Assert(ids[(80, 0)].SequenceEqual(new[] { 79, 79 }), "stopa 80 má hlavičky stopy 79");
+        }
+        finally { File.Delete(f); }
+    }
+
     private static void T_Flux_MfmDecodeAndRescue()
     {
         // malá „disketa“ 3 stopy × 2 strany × 9 sektorů DD, zakódovaná do toku MFM s chvěním

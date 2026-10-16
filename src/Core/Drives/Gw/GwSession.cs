@@ -254,7 +254,12 @@ public sealed class GwSession
                 {
                     int spt = Math.Max(t0.Total, t0.Found);
                     int heads = final.TryGetValue((0, 1), out var t01) && t01.Found > 0 ? 2 : 1;
-                    int maxCyl = final.Where(kv => kv.Value.Found > 0).Max(kv => kv.Key.cyl);
+                    // stopa za 79 se počítá, jen když její sektory mají v hlavičce opravdu tohle číslo stopy —
+                    // jinak hlava dál nedojela nebo čte přeslech ze stopy 79 (disketa pak vyšla jako 81 stop)
+                    var ids = ImdCylinderIds(Path.Combine(dir, "probe.imd"));
+                    int maxCyl = final.Where(kv => kv.Value.Found > 0)
+                                      .Where(kv => kv.Key.cyl < 80 || ids == null || ids.TryGetValue(kv.Key, out var c) && c.Count > 0 && c.All(x => x == kv.Key.cyl))
+                                      .Max(kv => kv.Key.cyl);
                     int tracks = maxCyl >= 79 ? maxCyl + 1 : maxCyl >= 39 ? 40 : 80;
                     int bps = ImdSectorSize(Path.Combine(dir, "probe.imd")) ?? 512;
                     var g = new DiskGeometry(tracks, heads, spt, bps);
@@ -299,6 +304,43 @@ public sealed class GwSession
             return new GwProbe { Summary = Tr.T("Formát se nepodařilo rozpoznat (nenaformátovaná disketa, chráněná hra, nebo formát, který neznám). Zkus zálohu jako tok (.scp).") };
         }
         finally { TryDelete(dir); }
+    }
+
+    /// <summary>
+    /// Čísla stop z hlaviček sektorů pro každou stopu IMD souboru (ImageDisk), jak ho zapisuje gw:
+    /// záznam stopy = režim, válec, hlava (bit 7 = mapa válců, bit 6 = mapa hlav), počet sektorů, velikost,
+    /// mapa sektorů, [mapa válců], [mapa hlav], data sektorů (0 = žádná, sudé = 1 bajt, liché = celý sektor).
+    /// </summary>
+    public static Dictionary<(int cyl, int head), List<int>>? ImdCylinderIds(string path)
+    {
+        if (!File.Exists(path)) return null;
+        var b = File.ReadAllBytes(path);
+        int i = Array.IndexOf(b, (byte)0x1A);
+        if (i < 0) return null;
+        i++;
+        var result = new Dictionary<(int, int), List<int>>();
+        try
+        {
+            while (i + 5 <= b.Length)
+            {
+                int cyl = b[i + 1], head = b[i + 2], n = b[i + 3], size = 128 << Math.Min((int)b[i + 4], 6);
+                i += 5 + n;                                          // hlavička + mapa sektorů
+                var cyls = new List<int>();
+                if ((head & 0x80) != 0) { for (int k = 0; k < n; k++) cyls.Add(b[i + k]); i += n; }
+                else for (int k = 0; k < n; k++) cyls.Add(cyl);
+                if ((head & 0x40) != 0) i += n;
+                for (int k = 0; k < n; k++)
+                {
+                    int rec = b[i++];
+                    if (rec == 0) continue;
+                    i += rec % 2 == 0 ? 1 : size;
+                }
+                if (i > b.Length) return null;
+                result[(cyl, head & 1)] = cyls;
+            }
+        }
+        catch (IndexOutOfRangeException) { return null; }
+        return result;
     }
 
     /// <summary>Velikost sektoru z prvního záznamu stopy v IMD souboru (ImageDisk).</summary>

@@ -1146,12 +1146,13 @@ internal sealed class MainForm : Form, IJobHost
         if (InvokeRequired) { BeginInvoke(new Action(() => Gauge(value, detail, grade))); return; }
         if (value == null)
         {
-            _gauge?.Close();
+            _gauge?.CloseFromJob();
             _gauge = null;
             return;
         }
         if (_gauge == null || _gauge.IsDisposed)
         {
+            if (_cts?.IsCancellationRequested == true) return;   // zavřeno křížkem — poslední hodnota už okno neotevře
             _gauge = new RpmGaugeForm(CancelJob);
             _gauge.Show(this);
         }
