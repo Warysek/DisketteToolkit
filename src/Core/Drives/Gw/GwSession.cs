@@ -343,6 +343,7 @@ public sealed class GwSession
                     var (c, h, n) = result.Map.Chs(l);
                     var st = TrackActivity.FromSurface(result.Map[l]);
                     if (st != CellState.Untouched) TrackActivity.Sector(c, h, n - 1, st);
+                    if (result.Map.Reasons.TryGetValue(l, out var why)) TrackActivity.Reason(c, h, n - 1, why);
                 }
             if (bytes.Length != f.Geometry.SizeBytes)
                 result.Warnings.Add(Tr.F("gw vrátil {0} B, formát má {1} B.", bytes.Length, f.Geometry.SizeBytes));
@@ -484,6 +485,27 @@ public sealed class GwSession
     {
         var m = PinRx.Match(line.Trim());
         return m.Success ? m.Groups[1].Value == "High" : null;
+    }
+
+    /// <summary>Propustnost USB (gw bandwidth) — řádky výpisu.</summary>
+    public List<string> Bandwidth(CancellationToken ct = default)
+    {
+        var args = new List<string> { "bandwidth" };
+        if (Device != null) { args.Add("--device"); args.Add(Device); }
+        var lines = new List<string>();
+        var output = new GwOutput();
+        int code = _tool.Run(args, l => { output.Feed(l); if (l.Trim().Length > 0) lines.Add(l.Trim()); }, ct);
+        if (code != 0 || output.Fatal != null)
+            throw new OperationException("Greaseweazle: " + Explain(output.Fatal ?? lines.LastOrDefault() ?? Tr.F("gw skončil s kódem {0}", code)));
+        return lines;
+    }
+
+    /// <summary>Magnetický tok jedné stopy do souboru .scp (pro histogram).</summary>
+    public void ReadTrackFlux(string outputPath, int cyl, int head, int revs, CancellationToken ct = default)
+    {
+        var args = Common();
+        args.AddRange(new[] { "--revs", revs.ToString(), "--tracks", $"c={cyl}:h={head}", outputPath });
+        Run("read", args, 1, null, "", ct);
     }
 
     /// <summary>Čištění hlavy čisticí disketou (gw clean).</summary>

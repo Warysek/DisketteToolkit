@@ -1102,6 +1102,14 @@ internal sealed class MainForm : Form, IJobHost
 
     private RpmGaugeForm? _gauge;
 
+    public void ShowHistogram(string scpPath, int cyl, int head)
+    {
+        if (IsDisposed) return;
+        if (InvokeRequired) { BeginInvoke(new Action(() => ShowHistogram(scpPath, cyl, head))); return; }
+        try { new FluxHistogramForm(scpPath, cyl, head).Show(this); }
+        catch (Exception e) { Error(e.Message); }
+    }
+
     public void Gauge(string? value, string detail = "", int grade = 0)
     {
         if (IsDisposed) return;
@@ -1271,6 +1279,13 @@ internal sealed class MainForm : Form, IJobHost
             case "sensors" when _drives.Count > 1:
                 _driveBox.SelectedIndex = 1;
                 RunJob(j => { j.Diagnose(Selected!, new DiagRequest { Action = DiagAction.Rpm }); j.Diagnose(Selected!, new DiagRequest { Action = DiagAction.Sensors }); j.Diagnose(Selected!, new DiagRequest { Action = DiagAction.TrackRead, Cyl = 22, Reads = 8 }); });
+                break;
+            case "histogram":
+                BeginInvoke(new Action(() => new FluxHistogramForm(DemoDrives.DemoScp(22, 0), 22, 0).Show(this)));
+                break;
+            case "steptest" when _drives.Count > 1:
+                _driveBox.SelectedIndex = 1;
+                RunJob(j => j.Diagnose(Selected!, new DiagRequest { Action = DiagAction.StepTest }));
                 break;
             case "layout" when _drives.Count > 1:
                 _driveBox.SelectedIndex = 1;

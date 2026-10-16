@@ -57,8 +57,11 @@ Drive diagnostics ("Drive diagnostics..." button; internal drive with fdrawcmd.s
 Greaseweazle, not USB drives): speed (rpm) with wobble and a live gauge for adjusting
 the speed trimmer, sensor check (track 0, write protect, disk, index), head to track 0 /
 last track / sweep, head cleaning with a cleaning disk, repeated read of one track
-(dirty head vs. damaged disk), track layout listing (fdrawcmd.sys only) and a note,
-last speed and last cleaning date remembered per drive.
+(dirty head vs. damaged disk, stops when a disk is falling apart), track layout listing
+(fdrawcmd.sys only), warm-up test, step accuracy test, flux histogram and USB bandwidth
+test (Greaseweazle only), and a note, last speed and last cleaning date per drive.
+Hover a red or yellow cell in the sector map to see why the sector failed. A read history
+tells a faulty drive from a faulty disk, and a write test gives the disk a grade (A/B/C).
 
 The program detects the drive and the inserted disk (DD/HD, formatted or not) and
 shows for every operation and every format whether it is possible and why not.

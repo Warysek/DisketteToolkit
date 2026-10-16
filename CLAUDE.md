@@ -172,11 +172,24 @@ From FluxForge (github.com/freemchr/fluxforge, MIT, Greaseweazle-only GUI, relea
 45. **Never present an incomplete backup as finished** — a cancelled or failed read is saved with "(INCOMPLETE)"
     in the file name (or not kept), never under the normal name.
 
+Own ideas (not seen in any researched tool), agreed with Wary 2026-10-16:
+46. **"Disk is falling apart" alarm** — errors growing with every repeated read → stop at once (flaking / mouldy
+    coating destroys disk and head). `MediaChecks.IsDeteriorating`.
+47. **Warm-up test** — RPM for N minutes, half-minute averages, drift start→end (belt slipping only when warm).
+48. **Step accuracy test** — tracks 10/40/70 approached from outside and from inside; ID cylinder must match.
+49. **Side comparison** — repeatedly worse side across disks = dirty/worn head of that side (from read history).
+50. **Drive × disk cross-check** — same disk bad in two drives = disk; almost every disk bad in one drive = drive
+    (read history, `App/ReadHistory.cs`, history.csv next to settings; disk identity = boot sector hash).
+51. **Disk grade A/B/C** after a write test (`MediaChecks.Grade`); later also from flux histogram spread.
+
 Order of work (proposed to Wary 2026-10-13; groups = one release each, by importance x ease):
 1. **Drive diagnostics** — 20 RPM, 22 head service + sensors, 17 head cleaning, 23 drive profiles.
    DONE in 0.9 (waiting for real-hardware feedback), plus first parts of 21 (repeated track read with a
    dirty-head / damaged-disk verdict) and 27 (track layout listing, fdrawcmd.sys only). Code: `Core/Drives/Diag`,
-   `Analysis/TrackLayout.cs`, `Gui/Dialogs/DiagDialog.cs`. Not yet: RPM logged after each gw read, layout via gw.
+   `Analysis/TrackLayout.cs`, `Gui/Dialogs/DiagDialog.cs`. Not yet: layout via gw.
+   Test build 2 of 0.9 added: 26 error reasons in the map (`Drives/SectorErrors.cs`), 30 flux histogram
+   (`Formats/ScpFile.cs`, `Analysis/FluxHistogram.cs`, GW + .scp files), 43 USB bandwidth, RPM after each gw read,
+   and own ideas 46–51. Still open from this area: 28 statistical rebuild, revolution comparison.
 2. **Backup with a record** (small, no hardware risk) — 3 gw command, 4 quick backup, 16 archive log,
    12 checksums (TOSEC matching after), MD5 directory export from 40, 45 incomplete backups, 43 bandwidth test;
    42 disk library builds on it (maybe its own release).

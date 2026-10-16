@@ -42,6 +42,8 @@ public interface ITrackObserver
     void Sector(int track, int side, int sector, CellState state);
     /// <summary>Stav všech sektorů stopy, které nemají horší stav (side = -1 = obě strany).</summary>
     void Track(int track, int side, CellState state);
+    /// <summary>Proč se sektor nepřečetl / nezapsal (zobrazí se při najetí myší na mapu).</summary>
+    void Reason(int track, int side, int sector, string text);
     void End();
 }
 
@@ -81,6 +83,7 @@ public static class TrackActivity
     internal static void Head(int t, int s, TrackPhase p) => _current?.Head(t, s, p);
     internal static void Sector(int t, int s, int n, CellState st) => _current?.Sector(t, s, n, st);
     internal static void Track(int t, int s, CellState st) => _current?.Track(t, s, st);
+    internal static void Reason(int t, int s, int n, string text) => _current?.Reason(t, s, n, text);
     internal static void End() => _current?.End();
 
     public static CellState FromSurface(SectorStatus s) => s switch

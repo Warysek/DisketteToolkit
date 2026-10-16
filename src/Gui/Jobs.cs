@@ -29,6 +29,8 @@ internal interface IJobHost
     void Progress(int done, int total, string text);
     /// <summary>Okénko s velkým číslem (živé otáčky); value = null okénko zavře. grade 0 = dobře, 1 = seřídit, 2 = špatně.</summary>
     void Gauge(string? value, string detail = "", int grade = 0);
+    /// <summary>Otevře okno s histogramem toku (soubor .scp).</summary>
+    void ShowHistogram(string scpPath, int cyl, int head);
     CancellationToken Token { get; }
     DeviceFactory Factory { get; }
     AppSettings Settings { get; }
@@ -65,6 +67,8 @@ internal sealed class Jobs
         var img = DiskOperations.ReadDisk(dev, sides, result, P, Ct);
         ImageFile.Save(img, output);
         Report(result);
+        RecordRead(d, img, result.BadSectors.Count, result.BadSectors.Count(b => b.Side == 0), result.BadSectors.Count(b => b.Side == 1),
+                   !result.BadSectors.Any(b => b.Track == 0 && b.Side == 0 && b.Sector == 1));
         Ok(Tr.F("Uloženo: {0} ({1})", output, img.Geometry));
     }
 
@@ -123,11 +127,14 @@ internal sealed class Jobs
             Info(Tr.F("Záloha jako magnetický tok, {0} stop, {1} otáčky na stopu — uchová i kopírovací ochrany.", tracks, _h.Settings.Drive.Revs));
             gw.ReadFlux(Path.GetFullPath(output), _h.Settings.Drive.Revs, tracks, P, Ct);
             Ok(Tr.F("Uloženo: {0} ({1} KB)", output, new FileInfo(output).Length / 1024));
+            LogGwRpm(gw);
             return;
         }
         var fmt = GwProbe(gw, null);
         var r = gw.Read(fmt, P, Ct);
         ShowSurface(r.Map, r.Warnings);
+        LogGwRpm(gw);
+        RecordRead(d, r.Image, r.Map);
         ImageFile.Save(r.Image, output);
         Ok(Tr.F("Uloženo: {0} ({1})", output, fmt));
     }
@@ -307,9 +314,38 @@ internal sealed class Jobs
                     ReportRpm(d, recent);
                     break;
                 }
+            case DiagAction.WarmUp:
+                WarmUp(d, diag, r.Minutes);
+                break;
             case DiagAction.Sensors:
                 ReportSensors(diag.Sensors(Ct));
                 break;
+            case DiagAction.StepTest:
+                StepTest(diag);
+                break;
+            case DiagAction.Histogram:
+                {
+                    P(0, 0, Tr.F("Čtu tok stopy {0}, strany {1}", r.Cyl, r.Head));
+                    string scp = diag.ReadTrackFlux(r.Cyl, r.Head, Ct);
+                    var file = AtariFloppy.Core.Formats.ScpFile.Load(scp);
+                    var h = FluxHistogram.Build(file.FluxUs(r.Cyl, r.Head));
+                    Info(Tr.F("Stopa {0}, strana {1}: {2}", r.Cyl, r.Head, h.Encoding));
+                    string verdict = h.Verdict + (h.Peaks.Count > 0 ? Tr.F(" (rozptyl {0:0} ns)", h.SpreadNs) : "");
+                    if (h.Grade == FluxHistogram.Quality.Sharp) Ok(verdict); else Warn(verdict);
+                    if (h.Peaks.Count > 0) Dim(Tr.T("Špičky: ") + string.Join(", ", h.Peaks.Select(p => p.ToString("0.0") + " µs")));
+                    _h.ShowHistogram(scp, r.Cyl, r.Head);
+                    break;
+                }
+            case DiagAction.Bandwidth:
+                {
+                    P(0, 0, Tr.T("Měřím propustnost USB"));
+                    var lines = diag.Bandwidth(Ct);
+                    foreach (var l in lines) Dim(l);
+                    if (lines.Any(l => l.Contains("WARNING") || l.Contains("ERROR")))
+                        Warn(Tr.T("USB nestíhá nebo přenáší data s chybami — zkus jiný port (přímo v počítači, ne přes rozbočovač) a kratší nebo kvalitnější kabel."));
+                    else Ok(Tr.T("Propustnost USB stačí pro čtení i zápis toku."));
+                    break;
+                }
             case DiagAction.HeadZero:
                 diag.Seek(0, false, Ct);
                 Ok(Tr.T("Hlava je na stopě 0."));
@@ -340,6 +376,69 @@ internal sealed class Jobs
                 Layout(diag);
                 break;
         }
+    }
+
+    /// <summary>Test zahřátí: otáčky po několik minut, průměr každou půlminutu, na konci posun mezi začátkem a koncem.</summary>
+    private void WarmUp(DetectedDrive d, IDriveDiag diag, int minutes)
+    {
+        Info(Tr.F("Test zahřátí: {0} minut. Zastavit jde kdykoli tlačítkem Přerušit nebo v okénku s otáčkami.", minutes));
+        var buckets = new System.Collections.Generic.List<double>();
+        var bucket = new RpmStats();
+        var recent = new RpmStats(window: 10);
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var limit = TimeSpan.FromMinutes(minutes);
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(Ct);
+        try
+        {
+            diag.MeasureRpm(0, ms =>
+            {
+                bucket.Add(ms);
+                recent.Add(ms);
+                if (watch.Elapsed.TotalSeconds >= (buckets.Count + 1) * 30 && bucket.Count > 0)
+                {
+                    buckets.Add(bucket.Rpm);
+                    Dim(Tr.F("{0,2}:{1:00}  {2:0.00} ot./min", buckets.Count / 2, buckets.Count % 2 * 30, bucket.Rpm));
+                    bucket = new RpmStats();
+                }
+                if (recent.Count > 0)
+                    _h.Gauge(recent.Rpm.ToString("0.0"), Tr.F("test zahřátí: {0:mm\\:ss} z {1}:00", watch.Elapsed, minutes), Math.Max((int)recent.SpeedGrade, (int)recent.WobbleGrade));
+                P((int)watch.Elapsed.TotalSeconds, minutes * 60, Tr.F("Test zahřátí: {0:0.0} ot./min", recent.Rpm));
+                if (watch.Elapsed >= limit) stop.Cancel();
+            }, stop.Token);
+        }
+        catch (OperationCanceledException) when (!Ct.IsCancellationRequested || buckets.Count >= 2) { }
+        finally { _h.Gauge(null); }
+        if (buckets.Count < 2) { Warn(Tr.T("Měření bylo moc krátké — na vyhodnocení je potřeba aspoň minuta.")); return; }
+        double drift = buckets[buckets.Count - 1] - buckets[0];
+        Info(Tr.F("Začátek {0:0.00}, konec {1:0.00} ot./min, změna {2:+0.00;-0.00;0.00}.", buckets[0], buckets[buckets.Count - 1], drift));
+        if (Math.Abs(drift) <= 0.5) Ok(Tr.T("Otáčky se se zahřátím nemění — řemínek i motor v pořádku."));
+        else if (Math.Abs(drift) <= 1.5) Warn(Tr.T("Otáčky se se zahřátím mírně mění — sleduj to; řemínek může začínat prokluzovat."));
+        else Warn(Tr.T("Otáčky se se zahřátím výrazně mění — uvolněný řemínek, slábnoucí motor nebo ložisko. Seřizuj až zahřátou mechaniku."));
+        _h.Settings.SetProfile(d.Id, "rpm", Tr.F("{0:0.0} ot./min po zahřátí ({1:yyyy-MM-dd})", buckets[buckets.Count - 1], DateTime.Now));
+        _h.Settings.Save();
+    }
+
+    /// <summary>Test přesnosti krokování: stopy 10, 40, 70 zvenku i zevnitř.</summary>
+    private void StepTest(IDriveDiag diag)
+    {
+        P(0, 6, Tr.T("Zjišťuji formát diskety"));
+        Info(Tr.T("Disketa: ") + diag.PrepareTrackRead(Ct));
+        var (tracks, _) = diag.LayoutSize;
+        int failOut = 0, failIn = 0, n = 0;
+        foreach (int cyl in new[] { 10, 40, 70 }.Where(c => c < tracks))
+            foreach (bool inside in new[] { false, true })
+            {
+                Ct.ThrowIfCancellationRequested();
+                P(n++, 6, Tr.F("Stopa {0} {1}", cyl, inside ? Tr.T("zevnitř") : Tr.T("zvenku")));
+                var (ok, detail) = diag.StepCheck(cyl, 0, inside, Ct);
+                string line = Tr.F("Stopa {0}, příjezd {1}: {2}", cyl, inside ? Tr.T("zevnitř (od stopy 79)") : Tr.T("zvenku (od stopy 0)"), detail);
+                if (ok) Dim(line); else { Warn(line); if (inside) failIn++; else failOut++; }
+            }
+        if (failOut + failIn == 0) Ok(Tr.T("Krokování je přesné z obou směrů."));
+        else if (failOut > 0 && failIn > 0) Warn(Tr.T("Stopy nesedí z obou směrů — spíš špatně seřízená hlava, poškozená disketa nebo jiný formát než na začátku diskety."));
+        else Warn(Tr.F("Stopy nesedí jen při příjezdu {0} — krokový motor ztrácí kroky nebo má hlava vůli. Vyčisti a promaž vodítka hlavy a zkus to znovu.",
+                       failIn > 0 ? Tr.T("zevnitř") : Tr.T("zvenku")));
+        if (diag is GwDiag) Dim(Tr.T("U Greaseweazle zatím neověřeno, jestli gw jede na stopu z předchozí polohy hlavy — výsledek ber orientačně."));
     }
 
     private void ReportRpm(DetectedDrive d, RpmStats st)
@@ -378,8 +477,9 @@ internal sealed class Jobs
         Info(Tr.T("Disketa: ") + diag.PrepareTrackRead(Ct));
         Info(Tr.F("Čtu stopu {0}, stranu {1} — {2}×", r.Cyl, r.Head, r.Reads));
         var failCount = new System.Collections.Generic.Dictionary<int, int>();
-        int complete = 0, total = 0;
-        for (int i = 0; i < r.Reads; i++)
+        var failsPerPass = new System.Collections.Generic.List<int>();
+        int complete = 0, total = 0, reads = r.Reads;
+        for (int i = 0; i < reads; i++)
         {
             Ct.ThrowIfCancellationRequested();
             P(i, r.Reads, Tr.F("Čtení {0}/{1}", i + 1, r.Reads));
@@ -390,12 +490,20 @@ internal sealed class Jobs
             string text = Tr.F("Čtení {0,2}: {1}/{2} sektorů", i + 1, pass.Found, pass.Total) +
                           (pass.FailedSectors.Count > 0 ? Tr.F(" — chybí {0}", string.Join(", ", pass.FailedSectors)) : "");
             if (pass.Found == pass.Total) Dim(text); else Warn(text);
+            failsPerPass.Add(pass.Total - pass.Found);
+            if (MediaChecks.IsDeteriorating(failsPerPass))
+            {
+                Err(Tr.T("POZOR: chyb s každým čtením přibývá — magnetická vrstva se nejspíš odlupuje (stará nebo plesnivá disketa). Čtení jsem zastavil, aby se nezničila disketa ani hlava."));
+                Warn(Tr.T("Vyndej disketu, prohlédni ji proti světlu (skvrny, kroužky, prach) a vyčisti hlavu. Data z takové diskety zachraňuj jen jedním čtením, ideálně jako tok přes Greaseweazle."));
+                reads = i + 1;
+                break;
+            }
         }
-        Info(Tr.F("Celá stopa se přečetla {0}× z {1}.", complete, r.Reads));
-        if (complete == r.Reads) { Ok(Tr.T("Stopa se čte spolehlivě.")); return; }
+        Info(Tr.F("Celá stopa se přečetla {0}× z {1}.", complete, reads));
+        if (complete == reads) { Ok(Tr.T("Stopa se čte spolehlivě.")); return; }
         if (failCount.Count > 0)
             Info(Tr.T("Chyby podle sektorů: ") + string.Join(", ", failCount.OrderBy(k => k.Key).Select(k => Tr.F("{0} ({1}×)", k.Key, k.Value))));
-        int failedPasses = r.Reads - complete;
+        int failedPasses = reads - complete;
         bool fixedPlace = failCount.Count > 0 && failCount.Values.All(v => v >= failedPasses * 0.8);
         if (complete == 0 && fixedPlace)
             Warn(Tr.T("Chyby jsou pořád na stejném místě — nejspíš poškozený povrch diskety. Zkus jinou disketu; když bude čistá, mechanika je v pořádku."));
@@ -464,6 +572,9 @@ internal sealed class Jobs
         });
         if (mode == WriteTestMode.None && backup.Path != null) EnsureBackup(r.Contents, d, backup, "");
         ShowSurface(r.Map, r.Warnings);
+        RecordRead(d, r.Contents, r.Map);
+        if (mode != WriteTestMode.None)
+            ShowGrade(MediaChecks.Grade(r.Map.Geometry.TotalSectors, r.Map.Count(SectorStatus.Weak), r.Map.Count(SectorStatus.Bad) + r.Map.Count(SectorStatus.WriteFailed)));
         if (r.RestoreFailures.Count > 0) Err(Tr.F("Na {0} sektorů se nepodařilo vrátit původní data — jsou v záloze {1}.", r.RestoreFailures.Count, backup.Path));
 
         if (mode == WriteTestMode.Destructive)
@@ -503,6 +614,8 @@ internal sealed class Jobs
         var backup = new BackupState { Path = backupPath };
         if (backup.Path != null) EnsureBackup(r.Image, d, backup, "");
         ShowSurface(r.Map, r.Warnings);
+        LogGwRpm(gw);
+        RecordRead(d, r.Image, r.Map);
 
         if (mode != WriteTestMode.None)
         {
@@ -513,10 +626,12 @@ internal sealed class Jobs
                 var w = gw.Write(content, fmt, true, P, Ct);
                 if (w.VerifyRetries.Count > 0) Warn(Tr.F("U {0} stop se zápis musel opakovat — slabá místa.", w.VerifyRetries.Count));
                 else Ok(Tr.T("Všechny stopy zapsané a ověřené napoprvé."));
+                ShowGrade(MediaChecks.Grade(fmt.Geometry.TrackCount, w.VerifyRetries.Count, 0));
             }
             catch (OperationException e)
             {
                 Err(e.Message);
+                ShowGrade(MediaChecks.Grade(fmt.Geometry.TrackCount, 0, 1));
                 Err(Tr.F("Disketa má místa, kam nejde spolehlivě zapisovat. Původní obsah je v {0}.", backup.Path));
                 return;
             }
@@ -697,6 +812,50 @@ internal sealed class Jobs
         }
     }
 
+    // ================================================================ historie čtení a známka diskety
+
+    private string HistoryPath => Path.Combine(Path.GetDirectoryName(AppSettings.FilePath)!, _h.Factory.Simulator != null ? "history-demo.csv" : "history.csv");
+
+    private void RecordRead(DetectedDrive d, DiskImage img, SurfaceMap m)
+    {
+        int s0 = 0, s1 = 0;
+        foreach (long l in m.Problems) { if (m.Chs(l).side == 0) s0++; else s1++; }
+        RecordRead(d, img, s0 + s1, s0, s1, m[0] is SectorStatus.Ok or SectorStatus.Weak);
+    }
+
+    /// <summary>Zapíše čtení do historie a vypíše, co z ní plyne (strana, mechanika, nebo disketa).</summary>
+    private void RecordRead(DetectedDrive d, DiskImage img, int problems, int side0, int side1, bool bootOk)
+    {
+        try
+        {
+            var hist = new ReadHistory(HistoryPath);
+            var boot = bootOk ? img.Data.Take(img.Geometry.BytesPerSector).ToArray() : null;
+            var rec = new ReadRecord(DateTime.Now, d.Id, ReadHistory.DiskKey(boot), img.Geometry.TotalSectors, problems, side0, side1);
+            hist.Add(rec);
+            foreach (var (warn, text) in hist.Analyze(rec))
+                if (warn) Warn(text); else Dim(text);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+    }
+
+    private void ShowGrade((char grade, string text) g)
+    {
+        string line = Tr.T("Známka diskety: ") + g.text;
+        if (g.grade == 'A') Ok(line); else if (g.grade == 'B') Warn(line); else Err(line);
+    }
+
+    /// <summary>Po čtení přes Greaseweazle změří otáčky (3 otáčky) a zapíše je do výpisu.</summary>
+    private void LogGwRpm(GwSession gw)
+    {
+        try
+        {
+            var st = new RpmStats();
+            gw.Rpm(3, st.Add, Ct);
+            if (st.Count > 0) Dim(Tr.F("Otáčky mechaniky (změřeno po čtení): {0:0.0} ot./min", st.Rpm));
+        }
+        catch (OperationException) { }
+    }
+
     // ================================================================ výpisy
 
     private void Report(OperationResult r)
@@ -724,7 +883,8 @@ internal sealed class Jobs
         foreach (long l in m.Problems.Take(20))
         {
             var (t, s, n) = m.Chs(l);
-            Dim("   " + Tr.F("Stopa {0}, strana {1}, sektor {2}: {3}", t, s, n, Theme.CellName(TrackActivity.FromSurface(m[l]))));
+            Dim("   " + Tr.F("Stopa {0}, strana {1}, sektor {2}: {3}", t, s, n, Theme.CellName(TrackActivity.FromSurface(m[l]))) +
+                (m.Reasons.TryGetValue(l, out var why) ? " — " + why : ""));
         }
         foreach (var w in warnings) Warn(w);
         if (bad + wf > 0) Err(Tr.T("Disketa má vadná místa — na důležitá data ji už nepoužívej."));

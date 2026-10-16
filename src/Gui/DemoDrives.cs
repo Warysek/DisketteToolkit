@@ -57,8 +57,40 @@ internal static class DemoDrives
     {
         bool gw = d.Kind == DriveKind.Greaseweazle;
         var dev = new AtariFloppy.Core.Drives.Fdraw.FdrawDevice(new DemoFdc(), d.Id + " (" + Tr.T("ukázka") + ")");
-        return new AtariFloppy.Core.Drives.Diag.FdrawDiag(dev, canLayout: !gw);
+        var diag = new AtariFloppy.Core.Drives.Diag.FdrawDiag(dev, canLayout: !gw);
+        return gw ? new DemoGwDiag(diag) : diag;
     }
+
+    /// <summary>Ukázkový .scp: zdravá stopa 0 a slábnoucí stopa 22 (DD MFM, špičky 4/6/8 µs).</summary>
+    public static string DemoScp(int cyl, int head)
+    {
+        var rnd = new Random(cyl * 2 + head);
+        var tracks = new Dictionary<(int, int), List<double[]>>();
+        foreach (int c in new[] { 0, 22, cyl }.Distinct())
+        {
+            var revs = new List<double[]>();
+            for (int r = 0; r < 3; r++)
+            {
+                var flux = new List<double>();
+                double sum = 0;
+                while (sum < 199_500)
+                {
+                    double basis = new[] { 4.0, 6.0, 8.0 }[rnd.Next(3)];
+                    double j = (c == 22 ? 0.32 : 0.09) * Gauss(rnd);
+                    double v = Math.Max(1.0, basis + j);
+                    flux.Add(v);
+                    sum += v;
+                }
+                revs.Add(flux.ToArray());
+            }
+            tracks[(c, head)] = revs;
+        }
+        string path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"dtk-demo-{cyl}-{head}.scp");
+        System.IO.File.WriteAllBytes(path, AtariFloppy.Core.Formats.ScpFile.Build(tracks, 3));
+        return path;
+    }
+
+    private static double Gauss(Random r) => Math.Sqrt(-2 * Math.Log(1 - r.NextDouble())) * Math.Cos(2 * Math.PI * r.NextDouble());
 
     private static SimDevice.Disk DiskFor(string letter)
     {
@@ -190,6 +222,32 @@ internal sealed class SimDevice : ISectorDevice
     }
 }
 
+/// <summary>Ukázka Greaseweazle: diagnostika jako u fdrawcmd, navíc simulovaný test USB a tok stopy.</summary>
+internal sealed class DemoGwDiag : AtariFloppy.Core.Drives.Diag.IDriveDiag
+{
+    private readonly AtariFloppy.Core.Drives.Diag.IDriveDiag _d;
+    public DemoGwDiag(AtariFloppy.Core.Drives.Diag.IDriveDiag inner) => _d = inner;
+    public string Name => "Greaseweazle (" + Tr.T("ukázka") + ")";
+    public bool CanLayout => false;
+    public void MeasureRpm(int count, Action<double> on, CancellationToken ct) => _d.MeasureRpm(count, on, ct);
+    public AtariFloppy.Core.Drives.Diag.SensorReport Sensors(CancellationToken ct) => _d.Sensors(ct);
+    public void Seek(int cyl, bool motor, CancellationToken ct) => _d.Seek(cyl, motor, ct);
+    public void Clean(int cyls, int passes, Action<int> onPass, CancellationToken ct) => _d.Clean(cyls, passes, onPass, ct);
+    public string PrepareTrackRead(CancellationToken ct) => _d.PrepareTrackRead(ct);
+    public AtariFloppy.Core.Drives.Diag.TrackReadPass ReadTrack(int cyl, int head, CancellationToken ct) => _d.ReadTrack(cyl, head, ct);
+    public (int tracks, int sides) LayoutSize => _d.LayoutSize;
+    public AtariFloppy.Core.Analysis.TrackLayout Layout(int cyl, int head, int expected) => throw new OperationException(Tr.T("Výpis rozložení stopy zatím umí jen interní mechanika s fdrawcmd.sys."));
+    public (bool ok, string detail) StepCheck(int cyl, int head, bool fromInside, CancellationToken ct) => _d.StepCheck(cyl, head, fromInside, ct);
+    public List<string> Bandwidth(CancellationToken ct)
+    {
+        Thread.Sleep(800);
+        return new List<string> { "Min./   Mean   /   Max.", "Write Bandwidth:   10.012 /   11.234 /   11.480 Mbps", "Read Bandwidth:    10.880 /   11.502 /   11.890 Mbps",
+                                  "Estimated Consistent Min. Bandwidth: 9.011 Mbps", "-> Max. Flux Rate: 1.013 Msamples/sec", "-> Min. Ave. Flux: 0.987 us" };
+    }
+    public string ReadTrackFlux(int cyl, int head, CancellationToken ct) { Thread.Sleep(600); return DemoDrives.DemoScp(cyl, head); }
+    public void Dispose() => _d.Dispose();
+}
+
 /// <summary>Simulovaný řadič pro ukázku diagnostiky: otáčky kolem 300,6, slabá stopa 22, nestandardní stopa 79.</summary>
 internal sealed class DemoFdc : AtariFloppy.Core.Drives.Fdraw.IFdc
 {
@@ -198,7 +256,14 @@ internal sealed class DemoFdc : AtariFloppy.Core.Drives.Fdraw.IFdc
     public string Description => Tr.T("simulovaný řadič");
     public void SetDataRate(AtariFloppy.Core.Drives.Fdraw.DataRate rate) { }
     public void SetStepRate(int milliseconds, AtariFloppy.Core.Drives.Fdraw.DataRate rate) { }
-    public void Seek(int cylinder) { Thread.Sleep(Math.Abs(cylinder - _cyl) * 3 + 5); _cyl = cylinder; }
+    private readonly System.Diagnostics.Stopwatch _since = System.Diagnostics.Stopwatch.StartNew();
+
+    // ukázka opotřebené mechaniky: při dlouhém přejezdu ven (od středu k okraji) ztratí jeden krok
+    public void Seek(int cylinder)
+    {
+        Thread.Sleep(Math.Abs(cylinder - _cyl) * 3 + 5);
+        _cyl = cylinder > 0 && _cyl - cylinder > 20 ? cylinder + 1 : cylinder;
+    }
     public bool? CheckDisk() => true;
 
     private List<AtariFloppy.Core.Drives.Fdraw.SectorId> Ids(int head)
@@ -226,7 +291,8 @@ internal sealed class DemoFdc : AtariFloppy.Core.Drives.Fdraw.IFdc
     public int? TrackTimeUs()
     {
         Thread.Sleep(200);
-        return (int)(60_000_000 / (300.6 + (_rnd.NextDouble() - 0.5) * 0.3));
+        double warm = Math.Min(1.0, _since.Elapsed.TotalSeconds / 120);   // po zahřátí řemínek trochu prokluzuje
+        return (int)(60_000_000 / (300.6 - 0.9 * warm + (_rnd.NextDouble() - 0.5) * 0.3));
     }
 
     public AtariFloppy.Core.Drives.Fdraw.TimedScan? TimedScanTrack(int head)

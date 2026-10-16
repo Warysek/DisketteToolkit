@@ -57,10 +57,13 @@ internal sealed class FakeFdc : IFdc
     public void SetDataRate(DataRate rate) => CurrentRate = rate;
     public void SetStepRate(int milliseconds, DataRate rate) => StepRateMs = milliseconds;
 
+    /// <summary>Opotřebená mechanika: při přejezdu ven o víc než 20 stop ztratí krok.</summary>
+    public bool LosesStepsOutward;
+
     public void Seek(int cylinder)
     {
         if (cylinder >= PhysicalTracks) throw new SectorIOException("hlava nedojela", 0);
-        Cyl = cylinder;
+        Cyl = LosesStepsOutward && cylinder > 0 && Cyl - cylinder > 20 ? cylinder + 1 : cylinder;
         Seeks++;
     }
 

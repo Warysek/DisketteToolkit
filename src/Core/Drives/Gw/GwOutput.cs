@@ -156,6 +156,8 @@ public sealed class GwOutput
                     else st = SectorStatus.NotTested;
                     if (st == SectorStatus.Ok && RetriedTracks.Contains((cyl, h))) st = SectorStatus.Weak;
                     map[lba] = st;
+                    if (st == SectorStatus.Bad) map.Reasons[lba] = I18n.Tr.T("Greaseweazle sektor nenašel ani nedekódoval (chybí, nebo je poškozený)");
+                    else if (st == SectorStatus.Weak) map.Reasons[lba] = I18n.Tr.T("stopa se přečetla celá až na opakovaný pokus");
                 }
         return map;
     }

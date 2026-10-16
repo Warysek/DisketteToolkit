@@ -5,6 +5,8 @@ using System.IO;
 using System.Linq;
 using AtariFloppy.Core;
 using AtariFloppy.Core.Analysis;
+using AtariFloppy.Core.App;
+using AtariFloppy.Core.Drives.Diag;
 using AtariFloppy.Core.Drives;
 using AtariFloppy.Core.Formats;
 using AtariFloppy.Core.Fs;
@@ -291,7 +293,7 @@ internal static class Tests
         var r = new OperationResult();
         var img = DiskOperations.ReadDisk(dev, SideMode.Double, r);
         Eq(1, r.BadSectors.Count, "počet vadných");
-        Eq(new BadSector(10, 1, 5, "CRC chyba"), r.BadSectors[0], "vadný sektor");
+        Eq(new BadSector(10, 1, 5, SectorErrors.Explain(new SectorIOException("CRC chyba", 23))), r.BadSectors[0], "vadný sektor");
         Assert(img.Data.Skip((int)bad * 512).Take(512).All(b => b == 0), "vadný sektor vynulovaný");
         // všechno ostatní sedí
         var expect = (byte[])src.Data.Clone();
@@ -1179,6 +1181,104 @@ internal static class Tests
         Eq(0, fdc.Cyl, "po čištění hlava na stopě 0");
     }
 
+    private static void T_Diag_ErrorReasons()
+    {
+        Assert(SectorErrors.Explain(new SectorIOException("x", 23)).Contains("CRC"), "CRC");
+        Assert(SectorErrors.Explain(new SectorIOException("x", 27)).Contains("hlavičk"), "sektor nenalezen");
+        Eq("jiná chyba", SectorErrors.Explain(new SectorIOException("jiná chyba", 0)), "neznámý kód = původní text");
+        var img = FormatProfiles.Find("atari")!.Build!("REASON");
+        var fdc = FakeFdc.WithImage(img);
+        fdc.Tracks[(5, 1)][3].CrcError = true;
+        var dev = new AtariFloppy.Core.Drives.Fdraw.FdrawDevice(fdc, "B:");
+        var model = new SectorMapModel();
+        SurfaceTestResult r;
+        using (TrackActivity.Attach(model)) r = SurfaceTest.Run(dev, WriteTestMode.None);
+        long lba = img.Geometry.Lba(5, 1, 3);
+        Eq(SectorStatus.Bad, r.Map[lba], "vadný sektor");
+        Assert(r.Map.Reasons[lba].Contains("CRC"), "důvod v mapě testu: " + r.Map.Reasons[lba]);
+        Assert((model.ReasonFor(5, 1, 3) ?? "").Contains("CRC"), "důvod v živé mapě");
+        Eq(null, model.ReasonFor(5, 1, 2), "dobrý sektor bez důvodu");
+    }
+
+    private static void T_Diag_ScpHistogram()
+    {
+        var rnd = new Random(1);
+        double G() => Math.Sqrt(-2 * Math.Log(1 - rnd.NextDouble())) * Math.Cos(2 * Math.PI * rnd.NextDouble());
+        double[] Rev(double jitter, double[] cells) { var l = new List<double>(); double sum = 0; while (sum < 200_000) { double v = cells[rnd.Next(cells.Length)] + jitter * G(); l.Add(v); sum += v; } return l.ToArray(); }
+        var dd = new[] { 4.0, 6.0, 8.0 };
+        var tracks = new Dictionary<(int, int), List<double[]>>
+        {
+            [(0, 0)] = new() { Rev(0.06, dd), Rev(0.06, dd) },
+            [(22, 1)] = new() { Rev(0.4, dd), Rev(0.4, dd) },
+            [(3, 0)] = new() { Rev(0.05, new[] { 2.0, 3.0, 4.0 }), Rev(0.05, new[] { 2.0, 3.0, 4.0 }) },
+        };
+        var scp = AtariFloppy.Core.Formats.ScpFile.Parse(AtariFloppy.Core.Formats.ScpFile.Build(tracks, 2));
+        Assert(scp.HasTrack(22, 1) && !scp.HasTrack(22, 0), "stopy v souboru");
+        Eq(2, scp.RevolutionMs(0, 0).Count, "2 otáčky");
+        Assert(Math.Abs(scp.RevolutionMs(0, 0)[0] - 200) < 1, "doba otáčky 200 ms");
+        var good = FluxHistogram.Build(scp.FluxUs(0, 0));
+        Eq(3, good.Peaks.Count, "3 špičky DD: " + string.Join(",", good.Peaks));
+        Assert(Math.Abs(good.Peaks[0] - 4) < 0.15 && Math.Abs(good.Peaks[2] - 8) < 0.15, "špičky 4 a 8 µs");
+        Eq(FluxHistogram.Quality.Sharp, good.Grade, "zdravá stopa");
+        Assert(good.Encoding.Contains("DD"), "DD zápis");
+        var bad = FluxHistogram.Build(scp.FluxUs(22, 1));
+        Assert(bad.Grade is FluxHistogram.Quality.Blurred or FluxHistogram.Quality.Fair, "rozmazaná stopa: " + bad.SpreadNs);
+        Assert(bad.SpreadNs > good.SpreadNs * 2, "rozptyl větší");
+        Assert(FluxHistogram.Build(scp.FluxUs(3, 0)).Encoding.Contains("HD"), "HD zápis");
+        Eq(FluxHistogram.Quality.Empty, FluxHistogram.Build(new List<double>()).Grade, "prázdná stopa");
+    }
+
+    private static void T_Diag_MediaChecks()
+    {
+        Assert(!MediaChecks.IsDeteriorating(new[] { 0, 1, 0, 1, 0, 1 }), "kolísání není rozpad");
+        Assert(MediaChecks.IsDeteriorating(new[] { 0, 0, 1, 2, 3, 4 }), "chyb přibývá = rozpad");
+        Assert(!MediaChecks.IsDeteriorating(new[] { 0, 1, 3 }), "málo čtení");
+        Assert(!MediaChecks.IsDeteriorating(new[] { 5, 5, 5, 5, 5 }), "stále stejně vadná není rozpad");
+        Eq('A', MediaChecks.Grade(1440, 0, 0).grade, "A");
+        Eq('B', MediaChecks.Grade(1440, 3, 0).grade, "B");
+        Eq('C', MediaChecks.Grade(1440, 40, 0).grade, "C slabé");
+        Eq('C', MediaChecks.Grade(1440, 0, 1).grade, "C vadné");
+    }
+
+    private static void T_Diag_ReadHistory()
+    {
+        string file = Path.Combine(_tmp, "history.csv");
+        if (File.Exists(file)) File.Delete(file);
+        var h = new ReadHistory(file);
+        var t = DateTime.Now;
+        // stejná disketa: v A: chyby, v B: bez chyb → problém v A:
+        h.Add(new ReadRecord(t, "B:", "DISK1", 1440, 0, 0, 0));
+        var cur = new ReadRecord(t.AddMinutes(1), "A:", "DISK1", 1440, 6, 0, 6);
+        h.Add(cur);
+        var m = h.Analyze(cur);
+        Assert(m.Any(x => x.warn && x.text.Contains("B:")), "problém je v této mechanice");
+        Assert(m.Any(x => x.text.Contains("strany 1") || x.text.Contains("straně 1")), "chyby jen na straně 1");
+        // opakovaně horší strana 1 a skoro každá disketa vadná
+        for (int i = 2; i <= 5; i++) h.Add(new ReadRecord(t.AddMinutes(i), "A:", "DISK" + i, 1440, 9, 1, 8));
+        var last = new ReadRecord(t.AddMinutes(9), "A:", "DISK9", 1440, 7, 0, 7);
+        h.Add(last);
+        m = h.Analyze(last);
+        Assert(m.Any(x => x.warn && x.text.Contains("horní hlava")), "horší strana 1 = horní hlava");
+        Assert(m.Any(x => x.warn && x.text.Contains("Skoro každá")), "vadná mechanika");
+        var reload = new ReadHistory(file);
+        Eq(h.Records.Count, reload.Records.Count, "historie se uloží a načte");
+        Eq("", ReadHistory.DiskKey(new byte[512]), "prázdný boot sektor nemá otisk");
+        Eq(16, ReadHistory.DiskKey(new byte[] { 1, 2, 3 }).Length, "otisk 8 bajtů");
+    }
+
+    private static void T_Diag_StepCheck()
+    {
+        var img = FormatProfiles.Find("atari")!.Build!("STEP");
+        var fdc = FakeFdc.WithImage(img);
+        using var diag = new AtariFloppy.Core.Drives.Diag.FdrawDiag(new AtariFloppy.Core.Drives.Fdraw.FdrawDevice(fdc, "B:"));
+        diag.PrepareTrackRead(default);
+        Assert(diag.StepCheck(40, 0, false, default).ok && diag.StepCheck(40, 0, true, default).ok, "zdravá mechanika");
+        fdc.LosesStepsOutward = true;
+        Assert(diag.StepCheck(40, 0, false, default).ok, "zvenku v pořádku");
+        var (ok, detail) = diag.StepCheck(40, 0, true, default);
+        Assert(!ok && detail.Contains("41"), "zevnitř ztratí krok: " + detail);
+    }
+
     private static void T_Diag_GwParsers()
     {
         Eq(200.123, AtariFloppy.Core.Drives.Gw.GwSession.ParsePeriodMs("Rate: 299.815 rpm ; Period: 200.123 ms") ?? 0, "gw rpm");
@@ -1429,6 +1529,7 @@ internal static class Tests
         public void Head(int t, int s, TrackPhase p) { if (!_phases.Contains(p)) _phases.Add(p); _inner.Head(t, s, p); }
         public void Sector(int t, int s, int n, CellState st) => _inner.Sector(t, s, n, st);
         public void Track(int t, int s, CellState st) => _inner.Track(t, s, st);
+        public void Reason(int t, int s, int n, string text) => _inner.Reason(t, s, n, text);
         public void End() => _inner.End();
     }
 

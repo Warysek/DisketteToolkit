@@ -113,6 +113,15 @@ internal sealed class ImageDialog : DialogBase
         write.Enabled = loaded.Image != null;
         var check2 = AddButton(Tr.T("Kontrola a oprava"), DialogResult.Retry);
         check2.Enabled = loaded.Image != null && FileSystemDetector.Detect(loaded.Image.Data).CanCheck;
+        if (Path.GetExtension(path).Equals(".scp", StringComparison.OrdinalIgnoreCase))
+        {
+            var hist = AddButton(Tr.T("Histogram toku…"), DialogResult.None);
+            hist.Click += (_, _) =>
+            {
+                try { using var h = new FluxHistogramForm(path, 0, 0); h.ShowDialog(this); }
+                catch (Exception e) { MessageBox.Show(this, e.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Error); }
+            };
+        }
         var extract = AddButton(Tr.T("Rozbalit soubory…"), DialogResult.None);
         extract.Enabled = hasFiles;
         extract.Click += (_, _) =>

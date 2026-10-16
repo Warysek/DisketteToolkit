@@ -100,8 +100,25 @@ NOVÉ VE VERZI 0.9
    – Výpis rozložení všech stop (jen fdrawcmd.sys): pořadí sektorů, poloha od indexu,
      odchylky typické pro ochrany proti kopírování.
    – Záznam o mechanice: poznámka, naposledy změřené otáčky a datum čištění se pamatují.
+   – Test zahřátí: otáčky po několik minut (každou půlminutu průměr) — pozná řemínek,
+     který prokluzuje až zahřátý.
+   – Test přesnosti krokování: stopy 10, 40, 70 zvenku i zevnitř — pozná ztracené kroky.
+   – Histogram toku stopy (jen Greaseweazle): ostré špičky = zdravá stopa, rozmazané =
+     slábnoucí; pozná i hustotu zápisu. Histogram uloženého .scp: Otevřít obraz… →
+     Histogram toku…
+   – Test propustnosti USB (jen Greaseweazle).
+   – Opakované čtení stopy hlídá rozpad diskety: když chyb s každým čtením přibývá, čtení
+     zastaví (odlupující se vrstva by zničila disketu i hlavu).
    Výsledky jsou ve výpisu dole — pravé tlačítko myši → Kopírovat celý výpis.
-   Ukázka bez hardwaru: DisketteToolkit.exe --demo, mechanika B:.
+   Ukázka bez hardwaru: DisketteToolkit.exe --demo, mechanika B: (a Greaseweazle).
+ • Důvod chyby v mapě sektorů: najetím myší na červené / žluté políčko uvidíš, proč se sektor
+   nepřečetl (chyba CRC, chybí hlavička, zápis selhal…). Důvod je i ve výpisu.
+ • Historie čtení: program si pamatuje, která disketa se v které mechanice jak četla, a radí:
+   chyby jen na jedné straně, opakovaně horší strana mechaniky (špinavá hlava), stejná
+   disketa v jiné mechanice bez chyb (problém v mechanice), nebo skoro každá disketa
+   s chybami (zkontroluj mechaniku).
+ • Známka diskety (A / B / C) po zápisovém testu — jestli se disketa hodí na data.
+ • Greaseweazle: po čtení se do výpisu zapíšou otáčky mechaniky.
 
 
 NOVÉ VE VERZI 0.8.4
