@@ -1529,6 +1529,19 @@ internal static class Tests
         Eq(g.TrackCount, w.Written.Count, "zapsané stopy");
         var r2 = gw.Read(fmt);
         Assert(r2.Image.Data.SequenceEqual(img2.Data), "data po zápisu");
+
+        // pomalé USB: zápis se vůbec nezačne a disketa zůstane beze změny
+        var before = File.ReadAllBytes(disk);
+        Environment.SetEnvironmentVariable("AFLOPPY_FAKE_SLOW_USB", "1");
+        try
+        {
+            bool refused = false;
+            try { FakeGw(disk).Write(img, fmt, verify: true); }
+            catch (OperationException e) { refused = e.Message.Contains("USB"); }
+            Assert(refused, "pomalé USB: zápis odmítnut");
+            Assert(File.ReadAllBytes(disk).SequenceEqual(before), "disketa beze změny");
+        }
+        finally { Environment.SetEnvironmentVariable("AFLOPPY_FAKE_SLOW_USB", null); }
     }
 
     private static void T_Gw_MissingSectorsAndAmiga()

@@ -444,8 +444,26 @@ public sealed class GwSession
 
     // ------------------------------------------------------------------ zápis
 
+    private bool _writeBandwidthOk;
+
+    /// <summary>
+    /// Před zápisem změří propustnost USB (gw bandwidth). Když gw hlásí, že nestačí, nezapisuje se vůbec:
+    /// zápis by se uprostřed stopy přerušil („Flux Underflow“) a stopu poškodil — stalo se na skutečné disketě.
+    /// Měří se jednou za relaci.
+    /// </summary>
+    private void EnsureWriteBandwidth(CancellationToken ct)
+    {
+        if (_writeBandwidthOk) return;
+        var lines = Bandwidth(ct);
+        if (lines.Any(l => l.IndexOf("BELOW REQUIRED", StringComparison.OrdinalIgnoreCase) >= 0))
+            throw new OperationException(Tr.T("Zápis jsem nezačal: USB mezi počítačem a Greaseweazle nestíhá (test propustnosti je pod minimem, které gw pro zápis potřebuje). Zápis by se uprostřed stopy přerušil a poškodil disketu. Zapoj Greaseweazle přímo do portu v počítači (zkus i USB 2.0), bez rozbočovače, krátkým kvalitním kabelem a zkus to znovu.")
+                                         + "\n" + string.Join("\n", lines.Where(l => l.IndexOf("Bandwidth", StringComparison.OrdinalIgnoreCase) >= 0 || l.Contains("REQUIRED"))));
+        _writeBandwidthOk = true;
+    }
+
     public GwOutput Write(DiskImage img, GwFormat f, bool verify, ProgressHandler? progress = null, CancellationToken ct = default)
     {
+        EnsureWriteBandwidth(ct);
         string dir = TempDir();
         try
         {
@@ -467,6 +485,7 @@ public sealed class GwSession
     /// <summary>Zápis hotového souboru, kterému gw rozumí sám (.scp, .hfe, .ipf, .raw, .adf, .d81 …).</summary>
     public GwOutput WriteFile(string path, GwFormat? f, bool verify, int totalTracks, ProgressHandler? progress = null, CancellationToken ct = default)
     {
+        EnsureWriteBandwidth(ct);
         string dir = TempDir();
         try
         {

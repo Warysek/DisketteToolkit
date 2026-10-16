@@ -134,6 +134,9 @@ NOVÉ VE VERZI 0.9
    Najetím myší na červené políčko v mapě uvidíš, do které skupiny sektor patří.
  • Záchrana vadné diskety (USB, fdrawcmd.sys) na konci podobně rozliší sektory s chybou součtu
    (data tam jsou) od sektorů, které mechanika vůbec nenašla.
+ • Greaseweazle: před každým zápisem (zápis obrazu, formát, oprava, zápisový test) program změří
+   propustnost USB. Když nestačí, zápis vůbec nezačne — jinak by se přerušil uprostřed stopy
+   („Flux Underflow“) a stopu poškodil. Pomůže krátký kvalitní kabel a port přímo v počítači.
  • Kontrola souborového systému nechá být diskety, které mají jen DOS boot sektor a za ním vlastní
    data (zavaděče jako Smart Boot Manager, hry) — dřív je „opravovala“ jako poškozenou FAT.
  • Greaseweazle: disketa 1,44 MB se zbytkem staršího formátu na stopě 80 už nevychází jako 81 stop —
