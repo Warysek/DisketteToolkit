@@ -1226,6 +1226,10 @@ internal static class Tests
         Assert(bad.SpreadNs > good.SpreadNs * 2, "rozptyl větší");
         Assert(FluxHistogram.Build(scp.FluxUs(3, 0)).Encoding.Contains("HD"), "HD zápis");
         Eq(FluxHistogram.Quality.Empty, FluxHistogram.Build(new List<double>()).Grade, "prázdná stopa");
+        // skutečná poškozená HD stopa (Greaseweazle, stopa 7/1): špičky 1,9 / 2,9 / 3,8 a falešná 4,6 — pořád MFM HD
+        var damaged = FluxHistogram.Build(Rev(0.08, new[] { 1.9, 1.9, 1.9, 2.9, 3.8, 4.6 }));
+        Assert(damaged.Encoding.Contains("HD") && damaged.Encoding.StartsWith("MFM"), "poškozená HD stopa: " + damaged.Encoding);
+        Assert(FluxHistogram.Build(Rev(0.05, new[] { 2.0, 4.0, 6.0 })).Encoding.Contains("GCR"), "GCR 1:2:3");
     }
 
     private static void T_Diag_MediaChecks()

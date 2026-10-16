@@ -193,6 +193,12 @@ Order of work (proposed to Wary 2026-10-13; groups = one release each, by import
    state in `<image>.rescue.txt`, continuing in another drive reads only missing sectors (= first version of 15),
    and experimental bit voting from bad reads (first version of 28, fdrawcmd only — `IFdc.ReadRaw`; whether
    fdrawcmd.sys returns data on a CRC error is NOT verified). Still open: revolution comparison, 28 via flux.
+   Real .scp samples (Wary, GW V4.1, 2026-10-16; healthy HD disk + damaged HD disk, 5 revs): a Python prototype
+   MFM decoder (simple PLL, sync 0x4489, CRC) decoded all 2880 sectors of the healthy disk in every revolution.
+   Damaged disk: 86 sectors missing (tracks 7–9 both sides: coating/signal gone, up to 30 % of the track without
+   flux; tracks 78–79 side 1); trying several PLL settings rescued 10 of them. Naive bit voting rescued NONE —
+   after the first bit slip every later byte differs, so voting needs resync (MFM clock bits) per copy first.
+   The fdrawcmd vote likely has the same problem. Histogram thresholds were recalibrated from these files.
 2. **Backup with a record** (small, no hardware risk) — 3 gw command, 4 quick backup, 16 archive log,
    12 checksums (TOSEC matching after), MD5 directory export from 40, 45 incomplete backups, 43 bandwidth test;
    42 disk library builds on it (maybe its own release).

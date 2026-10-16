@@ -74,19 +74,26 @@ public sealed class FluxHistogram
     public enum Quality { Sharp, Fair, Blurred, Empty }
 
     public Quality Grade => Samples < 1000 || Peaks.Count == 0 ? Quality.Empty
-        : SpreadNs <= 130 && OutlierShare < 0.01 ? Quality.Sharp
-        : SpreadNs <= 230 && OutlierShare < 0.05 ? Quality.Fair
+        // Hranice podle skutečných disket (Greaseweazle, 2026-10): zdravá HD disketa 43–71 ns, stopy s chybějícími
+        // sektory na poškozené disketě 140–350 ns; čitelné, ale slábnoucí stopy 90–140 ns.
+        : SpreadNs <= 90 && OutlierShare < 0.01 ? Quality.Sharp
+        : SpreadNs <= 140 && OutlierShare < 0.03 ? Quality.Fair
         : Quality.Blurred;
 
-    /// <summary>Odhad zápisu podle polohy první (nejkratší) špičky.</summary>
+    /// <summary>
+    /// Odhad zápisu podle polohy první (nejkratší) špičky a poměru druhé k první: MFM má mezery 2:3:4 buněk
+    /// (poměr 1,5), GCR 1:2:3 (poměr 2). Na poškozené stopě bývají navíc falešné špičky, proto rozhoduje jen poměr.
+    /// </summary>
     public string Encoding
     {
         get
         {
             if (Peaks.Count == 0) return Tr.T("nic — stopa je prázdná nebo smazaná");
             double first = Peaks[0];
-            if (first > 3.4 && first < 4.6 && Peaks.Count >= 2) return Tr.T("MFM, dvojitá hustota (DD) — PC, Atari ST, Amiga, MSX…");
-            if (first > 1.6 && first < 2.4 && Peaks.Count >= 2 && Peaks.Count <= 3 && Peaks[1] < 3.4) return Tr.T("MFM, vysoká hustota (HD)");
+            double ratio = Peaks.Count >= 2 ? Peaks[1] / first : 0;
+            bool mfm = ratio >= 1.3 && ratio <= 1.7;
+            if (first > 3.4 && first < 4.6 && mfm) return Tr.T("MFM, dvojitá hustota (DD) — PC, Atari ST, Amiga, MSX…");
+            if (first > 1.6 && first < 2.4 && mfm) return Tr.T("MFM, vysoká hustota (HD)");
             if (first > 1.6 && first < 2.4) return Tr.T("jiný zápis (např. GCR Mac / Commodore) nebo HD");
             if (first > 7 && Peaks.Count <= 2) return Tr.T("FM, jednoduchá hustota (SD)");
             return Tr.T("neobvyklý zápis — možná ochrana proti kopírování nebo jiný počítač");
