@@ -1283,7 +1283,7 @@ internal static class Tests
         Assert(!ok && detail.Contains("41"), "zevnitř ztratí krok: " + detail);
     }
 
-    private static void T_Gw_ImdCylinderIds()
+    private static void T_Gw_ImdTracks()
     {
         // stopa 79 normálně, „stopa 80“ s hlavičkami stopy 79 (hlava dál nedojela) → mapa válců
         var ms = new MemoryStream();
@@ -1302,9 +1302,17 @@ internal static class Tests
         try
         {
             File.WriteAllBytes(f, ms.ToArray());
-            var ids = AtariFloppy.Core.Drives.Gw.GwSession.ImdCylinderIds(f)!;
-            Assert(ids[(79, 0)].SequenceEqual(new[] { 79, 79 }), "stopa 79");
-            Assert(ids[(80, 0)].SequenceEqual(new[] { 79, 79 }), "stopa 80 má hlavičky stopy 79");
+            var imd = AtariFloppy.Core.Drives.Gw.GwSession.ImdTracks(f)!;
+            Assert(imd[(79, 0)].CylinderIds.SequenceEqual(new[] { 79, 79 }), "stopa 79");
+            Assert(imd[(80, 0)].CylinderIds.SequenceEqual(new[] { 79, 79 }), "stopa 80 má hlavičky stopy 79");
+            Eq(512, imd[(79, 0)].Sectors[1].Length, "celý sektor");
+            Assert(imd[(79, 0)].Sectors[2].All(x => x == 0xE5), "komprimovaný sektor");
+            // PC 1,44 MB s pozůstatkem 81. stopy: BPB říká 2880 sektorů → 80 stop; Atari 82 stop zůstane
+            var pc = DiskFormatter.CreateBlank(DiskGeometry.Hd1440, FormatStyle.Pc).Data.Take(512).ToArray();
+            Eq(80, AtariFloppy.Core.Drives.Gw.GwSession.TracksOfFileSystem(81, 2, 18, 512, pc), "81 → 80 podle FAT");
+            var at = DiskFormatter.CreateBlank(new DiskGeometry(82, 2, 10), FormatStyle.Atari).Data.Take(512).ToArray();
+            Eq(82, AtariFloppy.Core.Drives.Gw.GwSession.TracksOfFileSystem(82, 2, 10, 512, at), "Atari 82 stop zůstane");
+            Eq(81, AtariFloppy.Core.Drives.Gw.GwSession.TracksOfFileSystem(81, 2, 18, 512, new byte[512]), "bez BPB beze změny");
         }
         finally { File.Delete(f); }
     }
@@ -1343,6 +1351,14 @@ internal static class Tests
             var one = FluxRescue.Run(new[] { pa });
             Eq(g, one.Geometry, "formát z toku");
             Eq(9, one.MissingLbas().Count(), "z jednoho souboru chybí stopa 1/1");
+            Assert(one.Missing.Count == 9 && one.Missing.Values.All(k => k == MissingKind.Weak), "vadná data = slabé sektory");
+            Assert(!one.Advice(1).hopeless, "slabé sektory: další čtení má smysl");
+            var lost = new FluxRescueResult();
+            lost.Missing[(9, 0, 1)] = MissingKind.NoSignal;
+            Assert(lost.Advice(1).hopeless, "bez záznamu = beznadějné");
+            lost.Missing[(8, 1, 1)] = MissingKind.Unreadable;
+            Assert(!lost.Advice(1).hopeless && lost.Advice(2).hopeless, "nečitelný: s jednou mechanikou zkusit další, po dvou už ne");
+            Assert(FluxRescue.DropoutShare(new[] { 2.0, 3.0, 40.0, 4.0 }, 1.0) > 0.5 && FluxRescue.DropoutShare(new[] { 2.0, 3.0, 4.0 }, 1.0) == 0, "místa bez záznamu");
             var both = FluxRescue.Run(new[] { pa, pb });
             Eq(0, both.MissingLbas().Count(), "dva soubory se doplní");
             Eq(9, both.FromFile[1], "druhý soubor dodal jen chybějící");

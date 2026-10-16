@@ -64,6 +64,8 @@ public sealed class RescueResult
     public int NewlyVoted { get; set; }
     public int UncertainBits { get; set; }
     public bool VoteUnavailable { get; set; }
+    /// <summary>Z chybějících sektorů ty, které se čtou s chybou součtu (CRC) — data na disketě jsou, jen slabá.</summary>
+    public int StillCrc { get; set; }
 }
 
 public static class Rescue
@@ -89,7 +91,7 @@ public static class Rescue
             progress?.Invoke(done++, todo.Count, Tr.F("Zachraňuji stopu {0}, stranu {1}, sektor {2}", t, s, n + 1));
             TrackActivity.Head(t, s, TrackPhase.Reading);
             var copies = new List<byte[]>();
-            bool ok = false;
+            bool ok = false, crc = false;
             for (int i = 0; i < tries && !ok; i++)
             {
                 ct.ThrowIfCancellationRequested();
@@ -99,14 +101,15 @@ public static class Rescue
                     if (fd != null && vote)
                     {
                         ok = fd.ReadSectorRaw(lba, out data);
-                        if (!ok) { if (data != null) copies.Add(data); continue; }
+                        if (!ok) { if (data != null) { copies.Add(data); crc = true; } continue; }
                     }
                     else data = dev.ReadSectors(lba, 1);
                     Buffer.BlockCopy(data!, 0, img.Data, (int)(lba * g.BytesPerSector), g.BytesPerSector);
                     ok = true;
                 }
-                catch (SectorIOException) { }
+                catch (SectorIOException e) { crc |= e.Win32Error == 23; }
             }
+            if (!ok && crc) result.StillCrc++;
             if (ok)
             {
                 st.Missing.Remove(lba);
