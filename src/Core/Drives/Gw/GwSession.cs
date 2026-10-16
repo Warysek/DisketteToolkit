@@ -502,12 +502,11 @@ public sealed class GwSession
         return m.Success && double.TryParse(m.Groups[1].Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double v) ? v : null;
     }
 
-    /// <summary>Přesun hlavy na stopu (gw seek); motor = s točící se disketou (čištění).</summary>
-    public void Seek(int cyl, bool motor, CancellationToken ct = default)
+    /// <summary>Přesun hlavy na stopu (gw seek).</summary>
+    public void Seek(int cyl, CancellationToken ct = default)
     {
         var a = Common();
         a.Add("--force");
-        if (motor) a.Add("--motor-on");
         a.Add(cyl.ToString());
         Run("seek", a, 1, null, "", ct);
     }

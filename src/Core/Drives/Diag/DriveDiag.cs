@@ -39,7 +39,7 @@ public interface IDriveDiag : IDisposable
     /// <summary>Měří otáčky; count = 0 → dokud se nezruší. Volá onRevolutionMs pro každou otáčku.</summary>
     void MeasureRpm(int count, Action<double> onRevolutionMs, CancellationToken ct);
     SensorReport Sensors(CancellationToken ct);
-    void Seek(int cyl, bool motor, CancellationToken ct);
+    void Seek(int cyl, CancellationToken ct);
     /// <summary>Čištění hlavy čisticí disketou: hlava jezdí cik-cak po celé dráze (jako gw clean).</summary>
     void Clean(int cyls, int passes, Action<int> onPass, CancellationToken ct);
     /// <summary>Zjistí formát vložené diskety pro opakované čtení; vrací popis.</summary>
@@ -129,11 +129,7 @@ public sealed class FdrawDiag : IDriveDiag
         return r;
     }
 
-    public void Seek(int cyl, bool motor, CancellationToken ct)
-    {
-        if (motor) Fdc.Motor(true);
-        _dev.MoveHead(cyl);
-    }
+    public void Seek(int cyl, CancellationToken ct) => _dev.MoveHead(cyl);
 
     public void Clean(int cyls, int passes, Action<int> onPass, CancellationToken ct)
     {
@@ -235,11 +231,11 @@ public sealed class GwDiag : IDriveDiag
     public SensorReport Sensors(CancellationToken ct)
     {
         var r = new SensorReport();
-        _s.Seek(10, false, ct);
+        _s.Seek(10, ct);
         bool? away = _s.Pin(26, ct);
         try
         {
-            _s.Seek(0, false, ct);
+            _s.Seek(0, ct);
             bool? zero = _s.Pin(26, ct);
             r.Track0AtZero = zero == null ? null : !zero.Value;   // vývod 26 /TRK0: nízká úroveň = stopa 0
         }
@@ -271,7 +267,7 @@ public sealed class GwDiag : IDriveDiag
         return r;
     }
 
-    public void Seek(int cyl, bool motor, CancellationToken ct) => _s.Seek(cyl, motor, ct);
+    public void Seek(int cyl, CancellationToken ct) => _s.Seek(cyl, ct);
 
     public void Clean(int cyls, int passes, Action<int> onPass, CancellationToken ct)
     {
@@ -303,7 +299,7 @@ public sealed class GwDiag : IDriveDiag
     public (bool ok, string detail) StepCheck(int cyl, int head, bool fromInside, CancellationToken ct)
     {
         var f = _format ?? throw new OperationException(Tr.T("Formát diskety není zjištěný."));
-        _s.Seek(fromInside ? 79 : 0, false, ct);
+        _s.Seek(fromInside ? 79 : 0, ct);
         var (read, _) = _s.ReadOneTrack(f, cyl, head, ct);
         int found = read?.Found ?? 0, total = read?.Total > 0 ? read.Total : f.Geometry.SectorsPerTrack;
         return (found == total, Tr.F("přečteno {0} z {1} sektorů", found, total));

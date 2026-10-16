@@ -1275,3 +1275,6 @@ Formát podle sektorů v toku: {0} = Format from the sectors in the flux: {0}
 Z toho {0} sektorů přibylo až s jiným nastavením převodu toku. = Of these, {0} sectors came only with other flux decoder settings.
 {0:yyyy-MM-dd HH:mm} z toku ({1}): doplněno {2}, chybí {3} = {0:yyyy-MM-dd HH:mm} from flux ({1}): filled {2}, missing {3}
 Ulož tok téže diskety z jiné mechaniky a spusť záchranu znovu se stejným obrazem — doplní se jen chybějící sektory. Pokračovat jde i Záchranou vadné diskety s disketou v mechanice. = Save a flux of the same disk from another drive and run the rescue again with the same image — only missing sectors are filled in. You can also continue with Rescue a bad disk with the disk in a drive.
+Histogram toku — čtení z mechaniky = Flux histogram — read from the drive
+Magnetický tok — seznam souborů z něj neukážu. Sektory PC / Atari / MSX diskety z něj vytáhne Záchrana sektorů…, na disketu ho zapíše Greaseweazle. = Magnetic flux — no file list for it. Rescue sectors… extracts the sectors of a PC / Atari / MSX disk from it; a Greaseweazle writes it back to a disk.
+{0}: navíc {1} sektorů, které v předchozích souborech nebyly = {0}: {1} more sectors that the previous files did not have

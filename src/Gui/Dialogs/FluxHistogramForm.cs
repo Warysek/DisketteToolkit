@@ -23,7 +23,8 @@ internal sealed class FluxHistogramForm : Form
         _scp = ScpFile.Load(scpPath);
         AutoScaleDimensions = new SizeF(96F, 96F);
         AutoScaleMode = AutoScaleMode.Dpi;
-        Text = Tr.F("Histogram toku — {0}", System.IO.Path.GetFileName(scpPath));
+        string name = System.IO.Path.GetFileName(scpPath);
+        Text = name.StartsWith("dtk-track-") ? Tr.T("Histogram toku — čtení z mechaniky") : Tr.F("Histogram toku — {0}", name);
         ClientSize = new Size(820, 520);
         MinimumSize = new Size(560, 400);
         StartPosition = FormStartPosition.CenterParent;

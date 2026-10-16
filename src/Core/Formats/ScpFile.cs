@@ -18,8 +18,6 @@ public sealed class ScpFile
     private readonly uint[] _offsets = new uint[168];
 
     public int Revolutions { get; }
-    public int StartTrack { get; }
-    public int EndTrack { get; }
     /// <summary>Délka jednoho tiku v ns (25 ns × (rozlišení + 1)).</summary>
     public double TickNs { get; }
     /// <summary>0 = obě strany, 1 = jen strana 0, 2 = jen strana 1.</summary>
@@ -31,8 +29,6 @@ public sealed class ScpFile
         if (b.Length < 0x10 + 168 * 4 || b[0] != 'S' || b[1] != 'C' || b[2] != 'P')
             throw new FormatException(Tr.T("Soubor není magnetický tok SuperCard Pro (.scp)."));
         Revolutions = Math.Max(1, (int)b[5]);
-        StartTrack = b[6];
-        EndTrack = b[7];
         if (b[9] != 0 && b[9] != 16) throw new FormatException(Tr.T("Tento .scp soubor používá nepodporovanou šířku vzorků."));
         Heads = b[10];
         TickNs = 25.0 * (b[11] + 1);

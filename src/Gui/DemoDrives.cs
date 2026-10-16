@@ -231,7 +231,7 @@ internal sealed class DemoGwDiag : AtariFloppy.Core.Drives.Diag.IDriveDiag
     public bool CanLayout => false;
     public void MeasureRpm(int count, Action<double> on, CancellationToken ct) => _d.MeasureRpm(count, on, ct);
     public AtariFloppy.Core.Drives.Diag.SensorReport Sensors(CancellationToken ct) => _d.Sensors(ct);
-    public void Seek(int cyl, bool motor, CancellationToken ct) => _d.Seek(cyl, motor, ct);
+    public void Seek(int cyl, CancellationToken ct) => _d.Seek(cyl, ct);
     public void Clean(int cyls, int passes, Action<int> onPass, CancellationToken ct) => _d.Clean(cyls, passes, onPass, ct);
     public string PrepareTrackRead(CancellationToken ct) => _d.PrepareTrackRead(ct);
     public AtariFloppy.Core.Drives.Diag.TrackReadPass ReadTrack(int cyl, int head, CancellationToken ct) => _d.ReadTrack(cyl, head, ct);

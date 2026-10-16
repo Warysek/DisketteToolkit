@@ -1316,7 +1316,7 @@ internal static class Tests
         var rnd = new Random(7);
         byte[] Data(int c, int h, int r) { var d = new byte[512]; for (int i = 0; i < 512; i++) d[i] = (byte)(c * 31 + h * 7 + r * 13 + i); return d; }
         double[] Track(int c, int h, bool corrupt) =>
-            MfmDecoder.Encode(Enumerable.Range(1, 9).Select(r => (c, h, r, Data(c, h, r))), 2.0, corrupt).Select(x => x + (rnd.NextDouble() - 0.5) * 0.3).ToArray();
+            MfmEncoder.Encode(Enumerable.Range(1, 9).Select(r => (c, h, r, Data(c, h, r))), 2.0, corrupt).Select(x => x + (rnd.NextDouble() - 0.5) * 0.3).ToArray();
         string dir = Path.Combine(Path.GetTempPath(), "dtk-flux-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(dir);
         try

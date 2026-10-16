@@ -1138,6 +1138,9 @@ internal sealed class MainForm : Form, IJobHost
         if (InvokeRequired) { BeginInvoke(new Action(() => ShowHistogram(scpPath, cyl, head))); return; }
         try { new FluxHistogramForm(scpPath, cyl, head).Show(this); }
         catch (Exception e) { Error(e.Message); }
+        // dočasný tok z diagnostiky: okno si ho načetlo do paměti, soubor už není potřeba
+        if (Path.GetFileName(scpPath).StartsWith("dtk-track-"))
+            try { File.Delete(scpPath); } catch (IOException) { }
     }
 
     public void Gauge(string? value, string detail = "", int grade = 0)
@@ -1330,6 +1333,9 @@ internal sealed class MainForm : Form, IJobHost
                     RunJob(j => j.RescueFromFlux(scps, f));
                     break;
                 }
+            case "scpimage":
+                BeginInvoke(new Action(() => DoOpenImage(DemoDrives.DemoScp(22, 0))));
+                break;
             case "fluxrescuedialog":
                 BeginInvoke(new Action(() => { using var dlg = new FluxRescueDialog(DemoDrives.DemoScp(22, 0)); dlg.ShowDialog(this); }));
                 break;

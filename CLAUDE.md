@@ -204,6 +204,8 @@ Order of work (proposed to Wary 2026-10-13; groups = one release each, by import
    from sector IDs, result = image + RescueState sidecar); GUI: image window of a .scp → "Záchrana sektorů…"
    (`Dialogs/FluxRescueDialog.cs`, `Jobs.RescueFromFlux`). On Wary's files: healthy 2880/2880; damaged NEC 2806,
    Samsung 2808, together 2808/2880; the two drives' overlapping sectors were byte-identical.
+   Known limit: read history identifies a drive by its Id (COM port for Greaseweazle), so different drives on one
+   Greaseweazle — and one drive on two PCs — are not told apart (items 49/50); needs a user-chosen drive name.
 2. **Backup with a record** (small, no hardware risk) — 3 gw command, 4 quick backup, 16 archive log,
    12 checksums (TOSEC matching after), MD5 directory export from 40, 45 incomplete backups, 43 bandwidth test;
    42 disk library builds on it (maybe its own release).

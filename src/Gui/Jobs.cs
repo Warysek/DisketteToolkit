@@ -258,7 +258,11 @@ internal sealed class Jobs
                 if (!missing.Contains(l)) { st.Missing.Remove(l); st.Voted.Remove(l); }
         }
         for (int i = 0; i < scpFiles.Count; i++)
-            Info(Tr.F("{0}: {1} sektorů", Path.GetFileName(scpFiles[i]), r.FromFile[i] + r.Sectors.Values.Count(v => v.file == i && v.variant > 0)));
+        {
+            int n = r.FromFile[i] + r.Sectors.Values.Count(v => v.file == i && v.variant > 0);
+            Info(i == 0 ? Tr.F("{0}: {1} sektorů", Path.GetFileName(scpFiles[i]), n)
+                        : Tr.F("{0}: navíc {1} sektorů, které v předchozích souborech nebyly", Path.GetFileName(scpFiles[i]), n));
+        }
         if (r.FromVariants > 0) Info(Tr.F("Z toho {0} sektorů přibylo až s jiným nastavením převodu toku.", r.FromVariants));
 
         ImageFile.Save(img, path);
@@ -508,19 +512,19 @@ internal sealed class Jobs
                     break;
                 }
             case DiagAction.HeadZero:
-                diag.Seek(0, false, Ct);
+                diag.Seek(0, Ct);
                 Ok(Tr.T("Hlava je na stopě 0."));
                 break;
             case DiagAction.HeadLast:
-                diag.Seek(79, false, Ct);
+                diag.Seek(79, Ct);
                 Ok(Tr.T("Hlava je na stopě 79."));
                 break;
             case DiagAction.Sweep:
                 for (int i = 0; i < 10; i++)
                 {
                     P(i, 10, Tr.F("Projíždím dráhu: {0}/10", i + 1));
-                    diag.Seek(79, false, Ct);
-                    diag.Seek(0, false, Ct);
+                    diag.Seek(79, Ct);
+                    diag.Seek(0, Ct);
                 }
                 Ok(Tr.T("Hlava projela celou dráhu 10× a stojí na stopě 0."));
                 break;
@@ -543,7 +547,7 @@ internal sealed class Jobs
     private void WarmUp(DetectedDrive d, IDriveDiag diag, int minutes)
     {
         Info(Tr.F("Test zahřátí: {0} minut. Zastavit jde kdykoli tlačítkem Přerušit nebo v okénku s otáčkami.", minutes));
-        var buckets = new System.Collections.Generic.List<double>();
+        var buckets = new List<double>();
         var bucket = new RpmStats();
         var recent = new RpmStats(window: 10);
         var watch = System.Diagnostics.Stopwatch.StartNew();
@@ -637,8 +641,8 @@ internal sealed class Jobs
         P(0, r.Reads, Tr.T("Zjišťuji formát diskety"));
         Info(Tr.T("Disketa: ") + diag.PrepareTrackRead(Ct));
         Info(Tr.F("Čtu stopu {0}, stranu {1} — {2}×", r.Cyl, r.Head, r.Reads));
-        var failCount = new System.Collections.Generic.Dictionary<int, int>();
-        var failsPerPass = new System.Collections.Generic.List<int>();
+        var failCount = new Dictionary<int, int>();
+        var failsPerPass = new List<int>();
         int complete = 0, total = 0, reads = r.Reads;
         for (int i = 0; i < reads; i++)
         {
