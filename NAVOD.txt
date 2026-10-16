@@ -134,6 +134,8 @@ NOVÉ VE VERZI 0.9
    Najetím myší na červené políčko v mapě uvidíš, do které skupiny sektor patří.
  • Záchrana vadné diskety (USB, fdrawcmd.sys) na konci podobně rozliší sektory s chybou součtu
    (data tam jsou) od sektorů, které mechanika vůbec nenašla.
+ • Kontrola souborového systému nechá být diskety, které mají jen DOS boot sektor a za ním vlastní
+   data (zavaděče jako Smart Boot Manager, hry) — dřív je „opravovala“ jako poškozenou FAT.
  • Greaseweazle: disketa 1,44 MB se zbytkem staršího formátu na stopě 80 už nevychází jako 81 stop —
    stopy za koncem souborového systému (podle boot sektoru) se do obrazu nedávají.
  • Známka diskety (A / B / C) po zápisovém testu — jestli se disketa hodí na data.

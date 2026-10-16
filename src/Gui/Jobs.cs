@@ -1076,7 +1076,7 @@ internal sealed class Jobs
 
     private void ShowReport(FatCheckReport rep)
     {
-        if (!rep.IsFat) { foreach (var i in rep.Issues) Err(i.Message); return; }
+        if (!rep.IsFat) { foreach (var i in rep.Issues) if (i.Severity == IssueSeverity.Error) Err(i.Message); else Warn(i.Message); return; }
         Info(Tr.F("Souborů {0}, adresářů {1}, obsazeno {2} KB, volno {3} KB", rep.Files, rep.Directories, rep.UsedBytes / 1024, rep.FreeBytes / 1024));
         if (rep.Issues.Count == 0) { Ok(Tr.T("Souborový systém je v pořádku.")); return; }
         foreach (var i in rep.Issues.OrderByDescending(i => i.Severity))

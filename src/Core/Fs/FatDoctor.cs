@@ -137,6 +137,13 @@ public sealed class FatDoctor
         _owner = Enumerable.Repeat(-1, _maxCluster + 1).ToArray();
         _claims = new List<int>?[_maxCluster + 1];
         _r.IsFat = true;
+        if (RootLooksForeign())
+        {
+            // zavaděče (Smart Boot Manager…) a hry mívají platný BPB, ale za ním vlastní data — „oprava“ by je zničila
+            _r.IsFat = false;
+            Issue(IssueSeverity.Warning, Tr.T("Kořenový adresář nevypadá jako FAT — většina záznamů jsou nesmysly. Disketa má nejspíš jen boot sektor ve formátu DOS a za ním vlastní data (zavaděč, hra). Kontrolu a opravu přeskakuji, aby se nic nepoškodilo."));
+            return _r;
+        }
 
         CheckSystemArea();
         CheckBoot();
@@ -155,6 +162,25 @@ public sealed class FatDoctor
                 Buffer.BlockCopy(_d, _primaryFat, _d, off, len);
         }
         return _r;
+    }
+
+    /// <summary>
+    /// Kořenový adresář je převážně nesmysl (řídicí znaky ve jménech, clustery mimo disk, rezervované atributy) —
+    /// pak to není poškozená FAT disketa, ale jiný formát s DOS boot sektorem.
+    /// </summary>
+    private bool RootLooksForeign()
+    {
+        int entries = 0, garbage = 0;
+        foreach (int o in RootOffsets())
+        {
+            if (o + 32 > _d.Length || _d[o] == 0x00) break;
+            if (_d[o] == 0xE5 || _d[o + 11] == 0x0F) continue;
+            entries++;
+            int cluster = _d[o + 26] | (_d[o + 27] << 8);
+            bool badName = Enumerable.Range(0, 11).Any(k => _d[o + k] < 0x20 && !(k == 0 && _d[o] == 0x05));
+            if (badName || (_d[o + 11] & 0xC0) != 0 || cluster > _maxCluster) garbage++;
+        }
+        return entries >= 3 && garbage * 2 >= entries;
     }
 
     private IEnumerable<int> RootOffsets()

@@ -509,6 +509,18 @@ internal static class Tests
         }
     }
 
+    private static void T_Fat_ForeignDataBehindDosBootIsLeftAlone()
+    {
+        // jako Smart Boot Manager: DOS boot sektor s platným BPB, ale v kořenovém adresáři vlastní data
+        var img = DiskFormatter.CreateBlank(DiskGeometry.Hd1440, FormatStyle.Pc).Data;
+        var bs = new BootSector(img);
+        int root = (bs.ReservedSectors + bs.FatCount * bs.SectorsPerFat) * 512;
+        var rnd = new Random(3);
+        for (int i = root; i < root + 32 * 24; i++) img[i] = (byte)rnd.Next(1, 256);
+        var rep = FatDoctor.Check(img);
+        Assert(!rep.IsFat && !rep.HasRepairable, "cizí data se neopravují: " + string.Join(" | ", rep.Issues.Select(i => i.Message)));
+    }
+
     private static void T_Fat_RepairsTypicalDamage()
     {
         string st = MakeFatImage("damaged.st", FormatStyle.Pc, out byte[] big, out byte[] small);
