@@ -256,7 +256,8 @@ internal sealed class SectorMapControl : Control
             if (!r.Contains(p)) continue;
             int t = (int)((p.X - r.X) / _cellW), n = (int)((p.Y - r.Y) / _cellH);
             if (t < 0 || t >= g.Tracks || n < 0 || n >= g.SectorsPerTrack) return "";
-            return Tr.F("Stopa {0}, strana {1}, sektor {2}: {3}", t, side, n + 1, Theme.CellName(_model.Get(t, side, n)));
+            string why = _model.ReasonFor(t, side, n) is string reason ? "\n" + reason : "";
+            return Tr.F("Stopa {0}, strana {1}, sektor {2}: {3}", t, side, n + 1, Theme.CellName(_model.Get(t, side, n))) + why;
         }
         return "";
     }

@@ -51,7 +51,7 @@ internal sealed class MainForm : Form, IJobHost
     private readonly Panel _right = new();
     private readonly FlowLayoutPanel _actions = new();
     private readonly Label _secDisk = new(), _secImages = new(), _secHelp = new();
-    private readonly ActionButton _aRead = new(), _aWrite = new(), _aFormat = new(), _aTest = new(), _aErase = new(), _aSetup = new(), _aBoot = new(), _aBatch = new(), _aDiag = new();
+    private readonly ActionButton _aRead = new(), _aWrite = new(), _aFormat = new(), _aTest = new(), _aErase = new(), _aSetup = new(), _aBoot = new(), _aBatch = new(), _aDiag = new(), _aRescue = new();
     private readonly ActionButton _iOpen = new(), _iCheck = new(), _iConvert = new(), _iNew = new();
     private readonly ActionButton _hFormats = new(), _hAbout = new(), _hDonate = new();
     private readonly ToolTip _tips = new();
@@ -249,6 +249,7 @@ internal sealed class MainForm : Form, IJobHost
         Section(_secDisk);
         Add(_aRead, "⭳", (_, _) => DoRead());
         Add(_aBatch, "⭳", (_, _) => DoRead(batch: true));
+        Add(_aRescue, "✚", (_, _) => DoRescue());
         Add(_aWrite, "⭱", (_, _) => DoWrite(null));
         Add(_aFormat, "▦", (_, _) => DoFormat());
         Add(_aTest, "✚", (_, _) => DoTest());
@@ -392,6 +393,7 @@ internal sealed class MainForm : Form, IJobHost
 
         _aRead.Text = Tr.T("Záloha do obrazu");
         _aBatch.Text = Tr.T("Hromadná záloha…");
+        _aRescue.Text = Tr.T("Záchrana vadné diskety…");
         _aWrite.Text = Tr.T("Zapsat obraz na disketu");
         _aFormat.Text = Tr.T("Formátovat…");
         _aTest.Text = Tr.T("Test povrchu a kontrola");
@@ -612,6 +614,7 @@ internal sealed class MainForm : Form, IJobHost
         }
         Set(_aRead, Op(OperationAdvisor.Read), d?.Kind == DriveKind.Greaseweazle ? Tr.T("formát pozná sám; i tok .SCP / .HFE") : Tr.T("disketa → .ST / .MSA / .IMG"));
         Set(_aBatch, Op(OperationAdvisor.Read), Tr.T("víc disket za sebou, soubory se očíslují"));
+        Set(_aRescue, Op(OperationAdvisor.Read), Tr.T("opakované čtení, pokračování v jiné mechanice"));
         Set(_aWrite, Op(OperationAdvisor.Write), Tr.T("obraz → disketa (jako RawWrite), s kontrolou"));
         Set(_aFormat, Op(OperationAdvisor.Format), Tr.T("Atari, PC, MSX, Mac, Amiga…"));
         var surface = Op(OperationAdvisor.Surface);
@@ -678,6 +681,21 @@ internal sealed class MainForm : Form, IJobHost
         Remember(dlg.FileName);
         if (batch) RunJob(j => j.BatchRead(d, dlg.FileName));
         else RunJob(j => j.ReadDisk(d, dlg.FileName, SideMode.Auto));
+    }
+
+    private void DoRescue()
+    {
+        if (!CheckReady(_aRescue)) return;
+        var d = Selected!;
+        string suggested = Path.Combine(InitialFolder(), Tr.T("zachrana") + ".st");
+        using var dlg = new RescueDialog(d, suggested);
+        if (dlg.ShowDialog(this) != DialogResult.OK || dlg.Path_.Length == 0) return;
+        string path = dlg.Path_;
+        if (Path.GetExtension(path).Length == 0) path += ".st";
+        Remember(path);
+        int tries = dlg.Tries;
+        bool vote = dlg.Vote;
+        RunJob(j => j.RescueDisk(d, path, tries, vote));
     }
 
     private void DoWrite(string? path)
@@ -870,6 +888,18 @@ internal sealed class MainForm : Form, IJobHost
         var result = dlg.ShowDialog(this);
         if (result == DialogResult.Yes && Selected != null) DoWrite(path);
         else if (result == DialogResult.Retry) RunJob(j => j.CheckImage(path));
+        else if (result == DialogResult.Ignore) DoFluxRescue(path);
+    }
+
+    private void DoFluxRescue(string scp)
+    {
+        using var dlg = new FluxRescueDialog(scp);
+        if (dlg.ShowDialog(this) != DialogResult.OK || dlg.Output.Length == 0) return;
+        string path = dlg.Output;
+        if (Path.GetExtension(path).Length == 0) path += ".img";
+        var files = dlg.Files;
+        Remember(path);
+        RunJob(j => j.RescueFromFlux(files, path));
     }
 
     private void DoCheckImage()
@@ -1102,18 +1132,30 @@ internal sealed class MainForm : Form, IJobHost
 
     private RpmGaugeForm? _gauge;
 
+    public void ShowHistogram(string scpPath, int cyl, int head)
+    {
+        if (IsDisposed) return;
+        if (InvokeRequired) { BeginInvoke(new Action(() => ShowHistogram(scpPath, cyl, head))); return; }
+        try { new FluxHistogramForm(scpPath, cyl, head).Show(this); }
+        catch (Exception e) { Error(e.Message); }
+        // dočasný tok z diagnostiky: okno si ho načetlo do paměti, soubor už není potřeba
+        if (Path.GetFileName(scpPath).StartsWith("dtk-track-"))
+            try { File.Delete(scpPath); } catch (IOException) { }
+    }
+
     public void Gauge(string? value, string detail = "", int grade = 0)
     {
         if (IsDisposed) return;
         if (InvokeRequired) { BeginInvoke(new Action(() => Gauge(value, detail, grade))); return; }
         if (value == null)
         {
-            _gauge?.Close();
+            _gauge?.CloseFromJob();
             _gauge = null;
             return;
         }
         if (_gauge == null || _gauge.IsDisposed)
         {
+            if (_cts?.IsCancellationRequested == true) return;   // zavřeno křížkem — poslední hodnota už okno neotevře
             _gauge = new RpmGaugeForm(CancelJob);
             _gauge.Show(this);
         }
@@ -1271,6 +1313,38 @@ internal sealed class MainForm : Form, IJobHost
             case "sensors" when _drives.Count > 1:
                 _driveBox.SelectedIndex = 1;
                 RunJob(j => { j.Diagnose(Selected!, new DiagRequest { Action = DiagAction.Rpm }); j.Diagnose(Selected!, new DiagRequest { Action = DiagAction.Sensors }); j.Diagnose(Selected!, new DiagRequest { Action = DiagAction.TrackRead, Cyl = 22, Reads = 8 }); });
+                break;
+            case "rescue" when _drives.Count > 0:
+                {
+                    _driveBox.SelectedIndex = 0;
+                    d = Selected!;
+                    string f = Path.Combine(tmp, "zachrana.st");
+                    if (File.Exists(f)) File.Delete(f);
+                    RunJob(j => { j.RescueDisk(d, f, 5, false); j.RescueDisk(d, f, 5, false); });
+                    break;
+                }
+            case "fluxrescue":
+                {
+                    // soubory .scp z proměnné DTK_SCP (oddělené ;), jinak ukázkový tok
+                    var scps = (Environment.GetEnvironmentVariable("DTK_SCP") ?? DemoDrives.DemoScp(22, 0)).Split(';');
+                    string f = Path.Combine(tmp, "zachrana-tok.img");
+                    if (File.Exists(f)) File.Delete(f);
+                    if (File.Exists(RescueState.SidecarPath(f))) File.Delete(RescueState.SidecarPath(f));
+                    RunJob(j => j.RescueFromFlux(scps, f));
+                    break;
+                }
+            case "scpimage":
+                BeginInvoke(new Action(() => DoOpenImage(DemoDrives.DemoScp(22, 0))));
+                break;
+            case "fluxrescuedialog":
+                BeginInvoke(new Action(() => { using var dlg = new FluxRescueDialog(DemoDrives.DemoScp(22, 0)); dlg.ShowDialog(this); }));
+                break;
+            case "histogram":
+                BeginInvoke(new Action(() => new FluxHistogramForm(DemoDrives.DemoScp(22, 0), 22, 0).Show(this)));
+                break;
+            case "steptest" when _drives.Count > 1:
+                _driveBox.SelectedIndex = 1;
+                RunJob(j => j.Diagnose(Selected!, new DiagRequest { Action = DiagAction.StepTest }));
                 break;
             case "layout" when _drives.Count > 1:
                 _driveBox.SelectedIndex = 1;

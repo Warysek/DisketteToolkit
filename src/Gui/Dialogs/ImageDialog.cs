@@ -14,7 +14,7 @@ namespace AtariFloppy.Gui.Dialogs;
 
 /// <summary>
 /// Obsah obrazu diskety: formát, systém, jestli ho zapíše běžná mechanika, seznam souborů.
-/// Výsledek: Yes = zapsat na disketu, Retry = kontrola a oprava, Cancel = zavřít.
+/// Výsledek: Yes = zapsat na disketu, Retry = kontrola a oprava, Ignore = záchrana sektorů z toku (.scp), Cancel = zavřít.
 /// </summary>
 internal sealed class ImageDialog : DialogBase
 {
@@ -105,12 +105,26 @@ internal sealed class ImageDialog : DialogBase
             else if (!hasFiles)
                 list.Items.Add(new ListViewItem(Tr.T("(výpis souborů u tohoto systému zatím neumím)")) { ForeColor = Theme.TextDim });
         }
+        list.Visible = loaded.Image != null;   // nenačtený obraz (tok, cizí formát) nemá co vypsat
         layout.Controls.Add(list, 0, 1);
         Body.Controls.Add(layout);
 
         AddButton(Tr.T("Zavřít"), DialogResult.Cancel);
         var write = AddButton(Tr.T("Zapsat na disketu…"), DialogResult.Yes, primary: true);
-        write.Enabled = loaded.Image != null;
+        write.Enabled = loaded.Image != null || DeviceFactory.IsFlux(path);   // tok zapíše Greaseweazle
+        if (Path.GetExtension(path).Equals(".scp", StringComparison.OrdinalIgnoreCase))
+        {
+            // tok: kontrola a rozbalení nedávají smysl, místo nich histogram a záchrana sektorů
+            var hist = AddButton(Tr.T("Histogram toku…"), DialogResult.None);
+            hist.Click += (_, _) =>
+            {
+                try { using var h = new FluxHistogramForm(path, 0, 0); h.ShowDialog(this); }
+                catch (Exception e) { MessageBox.Show(this, e.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Error); }
+            };
+            AddButton(Tr.T("Záchrana sektorů…"), DialogResult.Ignore);
+            Finish();
+            return;
+        }
         var check2 = AddButton(Tr.T("Kontrola a oprava"), DialogResult.Retry);
         check2.Enabled = loaded.Image != null && FileSystemDetector.Detect(loaded.Image.Data).CanCheck;
         var extract = AddButton(Tr.T("Rozbalit soubory…"), DialogResult.None);

@@ -11,6 +11,7 @@ public sealed class SectorMapModel : ITrackObserver
 {
     private readonly object _sync = new();
     private CellState[] _cells = Array.Empty<CellState>();
+    private readonly System.Collections.Generic.Dictionary<int, string> _reasons = new();
     private int _version;
 
     public DiskGeometry? Geometry { get; private set; }
@@ -38,6 +39,16 @@ public sealed class SectorMapModel : ITrackObserver
         }
     }
 
+    /// <summary>Důvod chyby sektoru (null = žádný není znám).</summary>
+    public string? ReasonFor(int track, int side, int sector)
+    {
+        lock (_sync)
+        {
+            int i = Index(track, side, sector);
+            return i >= 0 && _reasons.TryGetValue(i, out var r) ? r : null;
+        }
+    }
+
     public int Count(CellState s)
     {
         lock (_sync)
@@ -55,6 +66,7 @@ public sealed class SectorMapModel : ITrackObserver
         {
             Geometry = g;
             _cells = g == null ? Array.Empty<CellState>() : new CellState[g.TotalSectors];
+            _reasons.Clear();
             Title = title;
             HeadTrack = HeadSide = -1;
             Running = false;
@@ -70,6 +82,8 @@ public sealed class SectorMapModel : ITrackObserver
             Geometry = map.Geometry;
             _cells = new CellState[map.Geometry.TotalSectors];
             for (long l = 0; l < _cells.Length; l++) _cells[l] = TrackActivity.FromSurface(map[l]);
+            _reasons.Clear();
+            foreach (var kv in map.Reasons) _reasons[(int)kv.Key] = kv.Value;
             Title = title;
             HeadTrack = HeadSide = -1;
             Running = false;
@@ -85,6 +99,7 @@ public sealed class SectorMapModel : ITrackObserver
         {
             Geometry = geometry;
             _cells = new CellState[geometry.TotalSectors];
+            _reasons.Clear();
             Title = title;
             HeadTrack = HeadSide = -1;
             Running = true;
@@ -123,6 +138,15 @@ public sealed class SectorMapModel : ITrackObserver
                 }
         }
         Bump();
+    }
+
+    public void Reason(int track, int side, int sector, string text)
+    {
+        lock (_sync)
+        {
+            int i = Index(track, side, sector);
+            if (i >= 0) _reasons[i] = text;
+        }
     }
 
     public void End()

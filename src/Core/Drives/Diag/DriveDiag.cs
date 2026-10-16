@@ -39,7 +39,7 @@ public interface IDriveDiag : IDisposable
     /// <summary>Měří otáčky; count = 0 → dokud se nezruší. Volá onRevolutionMs pro každou otáčku.</summary>
     void MeasureRpm(int count, Action<double> onRevolutionMs, CancellationToken ct);
     SensorReport Sensors(CancellationToken ct);
-    void Seek(int cyl, bool motor, CancellationToken ct);
+    void Seek(int cyl, CancellationToken ct);
     /// <summary>Čištění hlavy čisticí disketou: hlava jezdí cik-cak po celé dráze (jako gw clean).</summary>
     void Clean(int cyls, int passes, Action<int> onPass, CancellationToken ct);
     /// <summary>Zjistí formát vložené diskety pro opakované čtení; vrací popis.</summary>
@@ -48,6 +48,15 @@ public interface IDriveDiag : IDisposable
     /// <summary>Kolik stop a stran má smysl vypisovat (po PrepareTrackRead).</summary>
     (int tracks, int sides) LayoutSize { get; }
     TrackLayout Layout(int cyl, int head, int expectedCount);
+    /// <summary>
+    /// Test přesnosti krokování: hlava dojede na stopu zvenku (od stopy 0) nebo zevnitř (od stopy 79)
+    /// a ověří se, že je opravdu na ní. Vyžaduje PrepareTrackRead.
+    /// </summary>
+    (bool ok, string detail) StepCheck(int cyl, int head, bool fromInside, CancellationToken ct);
+    /// <summary>Propustnost USB mezi PC a Greaseweazle (výpis gw bandwidth).</summary>
+    List<string> Bandwidth(CancellationToken ct);
+    /// <summary>Přečte magnetický tok jedné stopy do dočasného .scp; vrací cestu.</summary>
+    string ReadTrackFlux(int cyl, int head, CancellationToken ct);
 }
 
 /// <summary>Diagnostika přes fdrawcmd.sys (přímé příkazy řadiči základní desky).</summary>
@@ -120,11 +129,7 @@ public sealed class FdrawDiag : IDriveDiag
         return r;
     }
 
-    public void Seek(int cyl, bool motor, CancellationToken ct)
-    {
-        if (motor) Fdc.Motor(true);
-        _dev.MoveHead(cyl);
-    }
+    public void Seek(int cyl, CancellationToken ct) => _dev.MoveHead(cyl);
 
     public void Clean(int cyls, int passes, Action<int> onPass, CancellationToken ct)
     {
@@ -184,6 +189,24 @@ public sealed class FdrawDiag : IDriveDiag
         return new TrackLayout(cyl, head, timed?.TrackTimeUs, list, expectedCount);
     }
 
+    public (bool ok, string detail) StepCheck(int cyl, int head, bool fromInside, CancellationToken ct)
+    {
+        _dev.MoveHead(0);
+        if (fromInside) _dev.MoveHead(79);
+        _dev.MoveHead(cyl);
+        var ids = Fdc.ScanTrack(head);
+        if (ids.Count == 0) return (false, Tr.T("na stopě nejsou čitelné hlavičky sektorů"));
+        var cyls = ids.Select(i => (int)i.Cyl).Distinct().OrderBy(x => x).ToList();
+        bool ok = cyls.Count == 1 && cyls[0] == cyl;
+        return (ok, Tr.F("hlavičky sektorů uvádějí stopu {0}", string.Join(", ", cyls)));
+    }
+
+    public List<string> Bandwidth(CancellationToken ct) =>
+        throw new OperationException(Tr.T("Test propustnosti USB je jen pro Greaseweazle."));
+
+    public string ReadTrackFlux(int cyl, int head, CancellationToken ct) =>
+        throw new OperationException(Tr.T("Magnetický tok umí číst jen Greaseweazle — řadič na základní desce vrací jen hotové sektory."));
+
     public void Dispose() => _dev.Dispose();
 }
 
@@ -208,11 +231,11 @@ public sealed class GwDiag : IDriveDiag
     public SensorReport Sensors(CancellationToken ct)
     {
         var r = new SensorReport();
-        _s.Seek(10, false, ct);
+        _s.Seek(10, ct);
         bool? away = _s.Pin(26, ct);
         try
         {
-            _s.Seek(0, false, ct);
+            _s.Seek(0, ct);
             bool? zero = _s.Pin(26, ct);
             r.Track0AtZero = zero == null ? null : !zero.Value;   // vývod 26 /TRK0: nízká úroveň = stopa 0
         }
@@ -244,7 +267,7 @@ public sealed class GwDiag : IDriveDiag
         return r;
     }
 
-    public void Seek(int cyl, bool motor, CancellationToken ct) => _s.Seek(cyl, motor, ct);
+    public void Seek(int cyl, CancellationToken ct) => _s.Seek(cyl, ct);
 
     public void Clean(int cyls, int passes, Action<int> onPass, CancellationToken ct)
     {
@@ -272,6 +295,24 @@ public sealed class GwDiag : IDriveDiag
 
     public TrackLayout Layout(int cyl, int head, int expectedCount) =>
         throw new OperationException(Tr.T("Výpis rozložení stopy zatím umí jen interní mechanika s fdrawcmd.sys."));
+
+    public (bool ok, string detail) StepCheck(int cyl, int head, bool fromInside, CancellationToken ct)
+    {
+        var f = _format ?? throw new OperationException(Tr.T("Formát diskety není zjištěný."));
+        _s.Seek(fromInside ? 79 : 0, ct);
+        var (read, _) = _s.ReadOneTrack(f, cyl, head, ct);
+        int found = read?.Found ?? 0, total = read?.Total > 0 ? read.Total : f.Geometry.SectorsPerTrack;
+        return (found == total, Tr.F("přečteno {0} z {1} sektorů", found, total));
+    }
+
+    public List<string> Bandwidth(CancellationToken ct) => _s.Bandwidth(ct);
+
+    public string ReadTrackFlux(int cyl, int head, CancellationToken ct)
+    {
+        string path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"dtk-track-{cyl}-{head}-{Guid.NewGuid():N}.scp");
+        _s.ReadTrackFlux(path, cyl, head, 3, ct);
+        return path;
+    }
 
     public void Dispose() { }
 }

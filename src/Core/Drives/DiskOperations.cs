@@ -114,8 +114,9 @@ public static class DiskOperations
             }
             catch (SectorIOException e)
             {
-                result.BadSectors.Add(new BadSector(t, s, n + 1, e.Message));
+                result.BadSectors.Add(new BadSector(t, s, n + 1, SectorErrors.Explain(e)));
                 TrackActivity.Sector(t, s, n, CellState.Bad);
+                TrackActivity.Reason(t, s, n, SectorErrors.Explain(e));
             }
         }
         return track;
@@ -214,8 +215,9 @@ public static class DiskOperations
             }
             if (last != null)
             {
-                result.BadSectors.Add(new BadSector(t, s, n + 1, last.Message));
+                result.BadSectors.Add(new BadSector(t, s, n + 1, Tr.T("zápis selhal: ") + SectorErrors.Explain(last)));
                 TrackActivity.Sector(t, s, n, CellState.WriteFailed);
+                TrackActivity.Reason(t, s, n, Tr.T("zápis selhal: ") + SectorErrors.Explain(last));
             }
         }
     }
@@ -234,6 +236,7 @@ public static class DiskOperations
                 {
                     result.VerifyErrors.Add(new BadSector(t, s, n + 1, Tr.T("zapsaná data nesouhlasí")));
                     TrackActivity.Sector(t, s, n, CellState.WriteFailed);
+                    TrackActivity.Reason(t, s, n, Tr.T("přečtená data nesouhlasí se zapsanými"));
                     break;
                 }
         }

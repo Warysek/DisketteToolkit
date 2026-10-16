@@ -40,6 +40,9 @@ public sealed class SurfaceMap
     }
 
     public int Attempts(long lba) => _attempts[lba];
+
+    /// <summary>Důvody chyb jednotlivých sektorů (pro výpis a mapu).</summary>
+    public System.Collections.Generic.Dictionary<long, string> Reasons { get; } = new();
     internal void SetAttempts(long lba, int n) => _attempts[lba] = (byte)Math.Min(255, n);
 
     public SectorStatus Get(int track, int side, int sector) => _status[Geometry.Lba(track, side, sector)];
@@ -232,6 +235,7 @@ public static class SurfaceTest
             long lba = first + n;
             int attempt = 0;
             bool ok = false;
+            SectorIOException? last = null;
             while (attempt < ScanRetries && !ok)
             {
                 attempt++;
@@ -241,10 +245,16 @@ public static class SurfaceTest
                     Buffer.BlockCopy(sec, 0, track, n * bps, bps);
                     ok = true;
                 }
-                catch (SectorIOException) { }
+                catch (SectorIOException e) { last = e; }
             }
             map.SetAttempts(lba, attempt);
             map[lba] = !ok ? SectorStatus.Bad : attempt == 1 ? SectorStatus.Ok : SectorStatus.Weak;
+            if (last != null)
+            {
+                string why = ok ? Tr.F("přečten až na {0}. pokus, předtím: {1}", attempt, SectorErrors.Explain(last)) : SectorErrors.Explain(last);
+                map.Reasons[lba] = why;
+                TrackActivity.Reason(t, s, n, why);
+            }
         }
         // Stopa jako celek selhala, ale každý sektor se nakonec přečetl hned → i tak je stopa podezřelá.
         if (Enumerable.Range(0, media.SectorsPerTrack).All(n => map[first + n] == SectorStatus.Ok))
@@ -257,40 +267,47 @@ public static class SurfaceTest
         long first = media.Lba(t, s);
         int spt = media.SectorsPerTrack, bps = media.BytesPerSector;
         var failed = new bool[spt];
+        var whyWrite = new string?[spt];
         int patterns = original != null ? 2 : Patterns.Length; // s obnovou stačí 2 vzorky (55AA / AA55)
 
         for (int p = 0; p < patterns; p++)
         {
             var pat = Fill(Patterns[p], media.TrackSize);
-            WritePerSectorOnFailure(dev, first, pat, spt, bps, failed);
-            CompareBack(dev, first, pat, spt, bps, failed);
+            WritePerSectorOnFailure(dev, first, pat, spt, bps, failed, whyWrite);
+            CompareBack(dev, first, pat, spt, bps, failed, whyWrite);
         }
 
         if (original != null)
         {
             var restoreFailed = new bool[spt];
-            WritePerSectorOnFailure(dev, first, original, spt, bps, restoreFailed);
-            CompareBack(dev, first, original, spt, bps, restoreFailed);
+            WritePerSectorOnFailure(dev, first, original, spt, bps, restoreFailed, whyWrite);
+            CompareBack(dev, first, original, spt, bps, restoreFailed, whyWrite);
             for (int n = 0; n < spt; n++)
                 if (restoreFailed[n]) { failed[n] = true; result.RestoreFailures.Add(first + n); }
         }
 
         for (int n = 0; n < spt; n++)
-            if (failed[n]) map[first + n] = SectorStatus.WriteFailed;
+            if (failed[n])
+            {
+                map[first + n] = SectorStatus.WriteFailed;
+                string why = whyWrite[n] ?? Tr.T("zápis selhal");
+                map.Reasons[first + n] = why;
+                TrackActivity.Reason(t, s, n, why);
+            }
     }
 
-    private static void WritePerSectorOnFailure(ISectorDevice dev, long first, byte[] data, int spt, int bps, bool[] failed)
+    private static void WritePerSectorOnFailure(ISectorDevice dev, long first, byte[] data, int spt, int bps, bool[] failed, string?[] why)
     {
         try { dev.WriteSectors(first, data, 0, spt); return; }
         catch (SectorIOException) { }
         for (int n = 0; n < spt; n++)
         {
             try { dev.WriteSectors(first + n, data, n * bps, 1); }
-            catch (SectorIOException) { failed[n] = true; }
+            catch (SectorIOException e) { failed[n] = true; why[n] ??= Tr.T("zápis selhal: ") + SectorErrors.Explain(e); }
         }
     }
 
-    private static void CompareBack(ISectorDevice dev, long first, byte[] expected, int spt, int bps, bool[] failed)
+    private static void CompareBack(ISectorDevice dev, long first, byte[] expected, int spt, int bps, bool[] failed, string?[] why)
     {
         byte[]? back = null;
         try { back = dev.ReadSectors(first, spt); } catch (SectorIOException) { }
@@ -300,11 +317,12 @@ public static class SurfaceTest
             if (back != null) { sec = new byte[bps]; Buffer.BlockCopy(back, n * bps, sec, 0, bps); }
             else
             {
-                try { sec = dev.ReadSectors(first + n, 1); } catch (SectorIOException) { }
+                try { sec = dev.ReadSectors(first + n, 1); }
+                catch (SectorIOException e) { why[n] ??= Tr.T("po zápisu nejde přečíst: ") + SectorErrors.Explain(e); }
             }
-            if (sec == null) { failed[n] = true; continue; }
+            if (sec == null) { failed[n] = true; why[n] ??= Tr.T("po zápisu nejde přečíst"); continue; }
             for (int k = 0; k < bps; k++)
-                if (sec[k] != expected[n * bps + k]) { failed[n] = true; break; }
+                if (sec[k] != expected[n * bps + k]) { failed[n] = true; why[n] ??= Tr.T("přečtená data nesouhlasí se zapsanými"); break; }
         }
     }
 

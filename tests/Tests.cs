@@ -5,6 +5,8 @@ using System.IO;
 using System.Linq;
 using AtariFloppy.Core;
 using AtariFloppy.Core.Analysis;
+using AtariFloppy.Core.App;
+using AtariFloppy.Core.Drives.Diag;
 using AtariFloppy.Core.Drives;
 using AtariFloppy.Core.Formats;
 using AtariFloppy.Core.Fs;
@@ -291,7 +293,7 @@ internal static class Tests
         var r = new OperationResult();
         var img = DiskOperations.ReadDisk(dev, SideMode.Double, r);
         Eq(1, r.BadSectors.Count, "počet vadných");
-        Eq(new BadSector(10, 1, 5, "CRC chyba"), r.BadSectors[0], "vadný sektor");
+        Eq(new BadSector(10, 1, 5, SectorErrors.Explain(new SectorIOException("CRC chyba", 23))), r.BadSectors[0], "vadný sektor");
         Assert(img.Data.Skip((int)bad * 512).Take(512).All(b => b == 0), "vadný sektor vynulovaný");
         // všechno ostatní sedí
         var expect = (byte[])src.Data.Clone();
@@ -1179,6 +1181,226 @@ internal static class Tests
         Eq(0, fdc.Cyl, "po čištění hlava na stopě 0");
     }
 
+    private static void T_Diag_ErrorReasons()
+    {
+        Assert(SectorErrors.Explain(new SectorIOException("x", 23)).Contains("CRC"), "CRC");
+        Assert(SectorErrors.Explain(new SectorIOException("x", 27)).Contains("hlavičk"), "sektor nenalezen");
+        Eq("jiná chyba", SectorErrors.Explain(new SectorIOException("jiná chyba", 0)), "neznámý kód = původní text");
+        var img = FormatProfiles.Find("atari")!.Build!("REASON");
+        var fdc = FakeFdc.WithImage(img);
+        fdc.Tracks[(5, 1)][3].CrcError = true;
+        var dev = new AtariFloppy.Core.Drives.Fdraw.FdrawDevice(fdc, "B:");
+        var model = new SectorMapModel();
+        SurfaceTestResult r;
+        using (TrackActivity.Attach(model)) r = SurfaceTest.Run(dev, WriteTestMode.None);
+        long lba = img.Geometry.Lba(5, 1, 3);
+        Eq(SectorStatus.Bad, r.Map[lba], "vadný sektor");
+        Assert(r.Map.Reasons[lba].Contains("CRC"), "důvod v mapě testu: " + r.Map.Reasons[lba]);
+        Assert((model.ReasonFor(5, 1, 3) ?? "").Contains("CRC"), "důvod v živé mapě");
+        Eq(null, model.ReasonFor(5, 1, 2), "dobrý sektor bez důvodu");
+    }
+
+    private static void T_Diag_ScpHistogram()
+    {
+        var rnd = new Random(1);
+        double G() => Math.Sqrt(-2 * Math.Log(1 - rnd.NextDouble())) * Math.Cos(2 * Math.PI * rnd.NextDouble());
+        double[] Rev(double jitter, double[] cells) { var l = new List<double>(); double sum = 0; while (sum < 200_000) { double v = cells[rnd.Next(cells.Length)] + jitter * G(); l.Add(v); sum += v; } return l.ToArray(); }
+        var dd = new[] { 4.0, 6.0, 8.0 };
+        var tracks = new Dictionary<(int, int), List<double[]>>
+        {
+            [(0, 0)] = new() { Rev(0.06, dd), Rev(0.06, dd) },
+            [(22, 1)] = new() { Rev(0.4, dd), Rev(0.4, dd) },
+            [(3, 0)] = new() { Rev(0.05, new[] { 2.0, 3.0, 4.0 }), Rev(0.05, new[] { 2.0, 3.0, 4.0 }) },
+        };
+        var scp = AtariFloppy.Core.Formats.ScpFile.Parse(AtariFloppy.Core.Formats.ScpFile.Build(tracks, 2));
+        Assert(scp.HasTrack(22, 1) && !scp.HasTrack(22, 0), "stopy v souboru");
+        Eq(2, scp.RevolutionMs(0, 0).Count, "2 otáčky");
+        Assert(Math.Abs(scp.RevolutionMs(0, 0)[0] - 200) < 1, "doba otáčky 200 ms");
+        var good = FluxHistogram.Build(scp.FluxUs(0, 0));
+        Eq(3, good.Peaks.Count, "3 špičky DD: " + string.Join(",", good.Peaks));
+        Assert(Math.Abs(good.Peaks[0] - 4) < 0.15 && Math.Abs(good.Peaks[2] - 8) < 0.15, "špičky 4 a 8 µs");
+        Eq(FluxHistogram.Quality.Sharp, good.Grade, "zdravá stopa");
+        Assert(good.Encoding.Contains("DD"), "DD zápis");
+        var bad = FluxHistogram.Build(scp.FluxUs(22, 1));
+        Assert(bad.Grade is FluxHistogram.Quality.Blurred or FluxHistogram.Quality.Fair, "rozmazaná stopa: " + bad.SpreadNs);
+        Assert(bad.SpreadNs > good.SpreadNs * 2, "rozptyl větší");
+        Assert(FluxHistogram.Build(scp.FluxUs(3, 0)).Encoding.Contains("HD"), "HD zápis");
+        Eq(FluxHistogram.Quality.Empty, FluxHistogram.Build(new List<double>()).Grade, "prázdná stopa");
+        // skutečná poškozená HD stopa (Greaseweazle, stopa 7/1): špičky 1,9 / 2,9 / 3,8 a falešná 4,6 — pořád MFM HD
+        var damaged = FluxHistogram.Build(Rev(0.08, new[] { 1.9, 1.9, 1.9, 2.9, 3.8, 4.6 }));
+        Assert(damaged.Encoding.Contains("HD") && damaged.Encoding.StartsWith("MFM"), "poškozená HD stopa: " + damaged.Encoding);
+        Assert(FluxHistogram.Build(Rev(0.05, new[] { 2.0, 4.0, 6.0 })).Encoding.Contains("GCR"), "GCR 1:2:3");
+    }
+
+    private static void T_Diag_MediaChecks()
+    {
+        Assert(!MediaChecks.IsDeteriorating(new[] { 0, 1, 0, 1, 0, 1 }), "kolísání není rozpad");
+        Assert(MediaChecks.IsDeteriorating(new[] { 0, 0, 1, 2, 3, 4 }), "chyb přibývá = rozpad");
+        Assert(!MediaChecks.IsDeteriorating(new[] { 0, 1, 3 }), "málo čtení");
+        Assert(!MediaChecks.IsDeteriorating(new[] { 5, 5, 5, 5, 5 }), "stále stejně vadná není rozpad");
+        Eq('A', MediaChecks.Grade(1440, 0, 0).grade, "A");
+        Eq('B', MediaChecks.Grade(1440, 3, 0).grade, "B");
+        Eq('C', MediaChecks.Grade(1440, 40, 0).grade, "C slabé");
+        Eq('C', MediaChecks.Grade(1440, 0, 1).grade, "C vadné");
+    }
+
+    private static void T_Diag_ReadHistory()
+    {
+        string file = Path.Combine(_tmp, "history.csv");
+        if (File.Exists(file)) File.Delete(file);
+        var h = new ReadHistory(file);
+        var t = DateTime.Now;
+        // stejná disketa: v A: chyby, v B: bez chyb → problém v A:
+        h.Add(new ReadRecord(t, "B:", "DISK1", 1440, 0, 0, 0));
+        var cur = new ReadRecord(t.AddMinutes(1), "A:", "DISK1", 1440, 6, 0, 6);
+        h.Add(cur);
+        var m = h.Analyze(cur);
+        Assert(m.Any(x => x.warn && x.text.Contains("B:")), "problém je v této mechanice");
+        Assert(m.Any(x => x.text.Contains("strany 1") || x.text.Contains("straně 1")), "chyby jen na straně 1");
+        // opakovaně horší strana 1 a skoro každá disketa vadná
+        for (int i = 2; i <= 5; i++) h.Add(new ReadRecord(t.AddMinutes(i), "A:", "DISK" + i, 1440, 9, 1, 8));
+        var last = new ReadRecord(t.AddMinutes(9), "A:", "DISK9", 1440, 7, 0, 7);
+        h.Add(last);
+        m = h.Analyze(last);
+        Assert(m.Any(x => x.warn && x.text.Contains("horní hlava")), "horší strana 1 = horní hlava");
+        Assert(m.Any(x => x.warn && x.text.Contains("Skoro každá")), "vadná mechanika");
+        var reload = new ReadHistory(file);
+        Eq(h.Records.Count, reload.Records.Count, "historie se uloží a načte");
+        Eq("", ReadHistory.DiskKey(new byte[512]), "prázdný boot sektor nemá otisk");
+        Eq(16, ReadHistory.DiskKey(new byte[] { 1, 2, 3 }).Length, "otisk 8 bajtů");
+    }
+
+    private static void T_Diag_StepCheck()
+    {
+        var img = FormatProfiles.Find("atari")!.Build!("STEP");
+        var fdc = FakeFdc.WithImage(img);
+        using var diag = new AtariFloppy.Core.Drives.Diag.FdrawDiag(new AtariFloppy.Core.Drives.Fdraw.FdrawDevice(fdc, "B:"));
+        diag.PrepareTrackRead(default);
+        Assert(diag.StepCheck(40, 0, false, default).ok && diag.StepCheck(40, 0, true, default).ok, "zdravá mechanika");
+        fdc.LosesStepsOutward = true;
+        Assert(diag.StepCheck(40, 0, false, default).ok, "zvenku v pořádku");
+        var (ok, detail) = diag.StepCheck(40, 0, true, default);
+        Assert(!ok && detail.Contains("41"), "zevnitř ztratí krok: " + detail);
+    }
+
+    private static void T_Gw_ImdCylinderIds()
+    {
+        // stopa 79 normálně, „stopa 80“ s hlavičkami stopy 79 (hlava dál nedojela) → mapa válců
+        var ms = new MemoryStream();
+        var hdr = System.Text.Encoding.ASCII.GetBytes("IMD 1.18: test\r\n"); ms.Write(hdr, 0, hdr.Length); ms.WriteByte(0x1A);
+        void Track(int cyl, int[]? cmap)
+        {
+            ms.WriteByte(5); ms.WriteByte((byte)cyl); ms.WriteByte((byte)(cmap != null ? 0x80 : 0)); ms.WriteByte(2); ms.WriteByte(2);
+            ms.WriteByte(1); ms.WriteByte(2);
+            if (cmap != null) foreach (int c in cmap) ms.WriteByte((byte)c);
+            ms.WriteByte(1); ms.Write(new byte[512], 0, 512);      // celý sektor
+            ms.WriteByte(2); ms.WriteByte(0xE5);                   // komprimovaný sektor
+        }
+        Track(79, null);
+        Track(80, new[] { 79, 79 });
+        string f = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllBytes(f, ms.ToArray());
+            var ids = AtariFloppy.Core.Drives.Gw.GwSession.ImdCylinderIds(f)!;
+            Assert(ids[(79, 0)].SequenceEqual(new[] { 79, 79 }), "stopa 79");
+            Assert(ids[(80, 0)].SequenceEqual(new[] { 79, 79 }), "stopa 80 má hlavičky stopy 79");
+        }
+        finally { File.Delete(f); }
+    }
+
+    private static void T_Flux_MfmDecodeAndRescue()
+    {
+        // malá „disketa“ 3 stopy × 2 strany × 9 sektorů DD, zakódovaná do toku MFM s chvěním
+        var g = new DiskGeometry(3, 2, 9);
+        var rnd = new Random(7);
+        byte[] Data(int c, int h, int r) { var d = new byte[512]; for (int i = 0; i < 512; i++) d[i] = (byte)(c * 31 + h * 7 + r * 13 + i); return d; }
+        double[] Track(int c, int h, bool corrupt) =>
+            MfmEncoder.Encode(Enumerable.Range(1, 9).Select(r => (c, h, r, Data(c, h, r))), 2.0, corrupt).Select(x => x + (rnd.NextDouble() - 0.5) * 0.3).ToArray();
+        string dir = Path.Combine(Path.GetTempPath(), "dtk-flux-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            // soubor A: stopa 1 strana 1 má ve všech otáčkách vadná data; soubor B (jiná mechanika) ji má dobře, ale chybí mu stopa 2
+            var a = new Dictionary<(int, int), List<double[]>>();
+            var b = new Dictionary<(int, int), List<double[]>>();
+            for (int c = 0; c < 3; c++)
+                for (int h = 0; h < 2; h++)
+                {
+                    bool bad = c == 1 && h == 1;
+                    a[(c, h)] = new() { Track(c, h, bad), Track(c, h, bad) };
+                    if (c != 2) b[(c, h)] = new() { Track(c, h, false), Track(c, h, false) };
+                }
+            string pa = Path.Combine(dir, "a.scp"), pb = Path.Combine(dir, "b.scp");
+            File.WriteAllBytes(pa, ScpFile.Build(a, 2));
+            File.WriteAllBytes(pb, ScpFile.Build(b, 2));
+
+            var dec = MfmDecoder.Decode(ScpFile.Load(pa).FluxUs(0, 0), 2.0, 0.05, 0);
+            Eq(18, dec.Count(s => s.Ok), "dvě otáčky × 9 sektorů s platným CRC");
+            Assert(dec.First(s => s.Sector == 5).Data.SequenceEqual(Data(0, 0, 5)), "obsah sektoru");
+            Assert(MfmDecoder.Decode(ScpFile.Load(pa).FluxUs(1, 1), 2.0, 0.05, 0).All(s => !s.Ok), "poškozená data mají špatné CRC");
+
+            var one = FluxRescue.Run(new[] { pa });
+            Eq(g, one.Geometry, "formát z toku");
+            Eq(9, one.MissingLbas().Count(), "z jednoho souboru chybí stopa 1/1");
+            var both = FluxRescue.Run(new[] { pa, pb });
+            Eq(0, both.MissingLbas().Count(), "dva soubory se doplní");
+            Eq(9, both.FromFile[1], "druhý soubor dodal jen chybějící");
+            var img = new DiskImage(g);
+            both.FillImage(img);
+            Assert(img.Data.Skip((int)g.Offset(1, 1, 3)).Take(512).SequenceEqual(Data(1, 1, 4)), "sektor z druhého souboru v obrazu");
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    private static void T_Rescue_VoteAndRetry()
+    {
+        // hlasování: 9 kopií, každá s jinými 6 pokaženými bity → původní obsah
+        var rnd = new Random(3);
+        var orig = new byte[512]; rnd.NextBytes(orig);
+        var copies = Enumerable.Range(0, 9).Select(_ => { var c = (byte[])orig.Clone(); for (int i = 0; i < 6; i++) c[rnd.Next(512)] ^= (byte)(1 << rnd.Next(8)); return c; }).ToList();
+        var (voted, uncertain) = MediaChecks.Vote(copies);
+        Assert(voted.SequenceEqual(orig), "hlasování vrátí původní data");
+        Eq(0, uncertain, "žádné nejisté bity");
+
+        // fdrawcmd: trvale vadný sektor se poskládá hlasováním, ostatní data zůstanou
+        var img = FormatProfiles.Find("atari")!.Build!("RESCUE");
+        new Random(9).NextBytes(img.Data);
+        var fdc = FakeFdc.WithImage(img);
+        fdc.Tracks[(5, 0)][2].CrcError = true;
+        var dev = new AtariFloppy.Core.Drives.Fdraw.FdrawDevice(fdc, "B:");
+        var result = new OperationResult();
+        var read = DiskOperations.ReadDisk(dev, SideMode.Auto, result);
+        long lba = img.Geometry.Lba(5, 0, 2);
+        var st = new RescueState(read.Geometry);
+        foreach (var bsec in result.BadSectors) st.Missing.Add(read.Geometry.Lba(bsec.Track, bsec.Side, bsec.Sector - 1));
+        Eq(1, st.Missing.Count, "jeden chybějící sektor");
+        var rr = Rescue.RetryMissing(dev, read, st, 15, vote: true);
+        Eq(1, rr.NewlyVoted, "poskládán hlasováním");
+        Assert(st.Voted.Contains(lba) && st.Missing.Contains(lba), "poskládaný zůstává mezi chybějícími");
+        Assert(read.Data.Skip((int)lba * 512).Take(512).SequenceEqual(img.Data.Skip((int)lba * 512).Take(512)), "poskládaná data = původní");
+
+        // bez hlasování: sektor, který se napodruhé přečte, se doplní
+        var mem = new MemoryDevice(RandomImage(DiskGeometry.Dd720, 4));
+        long flaky = DiskGeometry.Dd720.Lba(12, 1, 6);
+        mem.FlakySectors[flaky] = 9;
+        var r2 = new OperationResult();
+        var img2 = DiskOperations.ReadDisk(mem, SideMode.Double, r2);
+        var st2 = new RescueState(img2.Geometry);
+        foreach (var bsec in r2.BadSectors) st2.Missing.Add(img2.Geometry.Lba(bsec.Track, bsec.Side, bsec.Sector - 1));
+        Assert(st2.Missing.Contains(flaky), "napoprvé nepřečtený");
+        var rr2 = Rescue.RetryMissing(mem, img2, st2, 10, vote: false);
+        Eq(1, rr2.Recovered, "doplněn opakovaným čtením");
+        Eq(0, st2.Missing.Count, "nic nechybí");
+
+        // stav se uloží a načte
+        string path = Path.Combine(_tmp, "zachrana.st");
+        st.History.Add("test");
+        st.Save(path);
+        var back = RescueState.Load(path, read.Geometry)!;
+        Assert(back.Missing.SetEquals(st.Missing) && back.Voted.SetEquals(st.Voted) && back.History.Contains("test"), "stav záchrany");
+    }
+
     private static void T_Diag_GwParsers()
     {
         Eq(200.123, AtariFloppy.Core.Drives.Gw.GwSession.ParsePeriodMs("Rate: 299.815 rpm ; Period: 200.123 ms") ?? 0, "gw rpm");
@@ -1216,6 +1438,9 @@ internal static class Tests
         Eq(SectorStatus.Weak, map.Get(0, 1, 0), "opakování = slabý");
         Eq(SectorStatus.Ok, map.Get(0, 0, 5), "OK");
         Eq(2, map.Count(SectorStatus.Bad), "2 vadné");
+
+        var raw = new AtariFloppy.Core.Drives.Gw.GwOutput();
+        Eq((12, 1), raw.Feed("T12.1: Raw Flux (100000 flux in 600.00ms)") ?? (-1, -1), "průběh zálohy toku");
 
         var f = new AtariFloppy.Core.Drives.Gw.GwOutput();
         f.Feed("** FATAL ERROR:"); f.Feed("No Index Pulse Detected");
@@ -1429,6 +1654,7 @@ internal static class Tests
         public void Head(int t, int s, TrackPhase p) { if (!_phases.Contains(p)) _phases.Add(p); _inner.Head(t, s, p); }
         public void Sector(int t, int s, int n, CellState st) => _inner.Sector(t, s, n, st);
         public void Track(int t, int s, CellState st) => _inner.Track(t, s, st);
+        public void Reason(int t, int s, int n, string text) => _inner.Reason(t, s, n, text);
         public void End() => _inner.End();
     }
 

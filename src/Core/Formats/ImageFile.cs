@@ -100,9 +100,11 @@ public static class ImageFile
                 break;
             case ImageKind.Msa: img = MsaFormat.Load(bytes); break;
             case ImageKind.Dim: img = DimFormat.Load(bytes); break;
+            case ImageKind.Scp:
+                reason = Tr.T("Magnetický tok — seznam souborů z něj neukážu. Sektory PC / Atari / MSX diskety z něj vytáhne Záchrana sektorů…, na disketu ho zapíše Greaseweazle.");
+                break;
             case ImageKind.Stx:
             case ImageKind.Ipf:
-            case ImageKind.Scp:
             case ImageKind.Hfe:
             case ImageKind.KryoFlux:
                 reason = Tr.T("Tento formát zatím umím jen rozpoznat. Čtení a převod přijdou v dalším kroku vývoje.");

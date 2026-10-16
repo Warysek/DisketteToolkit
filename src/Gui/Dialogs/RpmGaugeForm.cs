@@ -32,10 +32,17 @@ internal sealed class RpmGaugeForm : Form
         _stop.ForeColor = Theme.Danger;
         _stop.FlatAppearance.BorderColor = Theme.Border;
         _stop.Click += (_, _) => stop();
+        // křížek = zastavit měření (jinak by měření běželo dál a okénko se s další hodnotou otevřelo znovu)
+        FormClosing += (_, e) => { if (!_closingFromJob) stop(); };
         Controls.Add(_detail);
         Controls.Add(_value);
         Controls.Add(_stop);
     }
+
+    private bool _closingFromJob;
+
+    /// <summary>Zavření po skončení měření (ne uživatelem) — měření se už nezastavuje.</summary>
+    public void CloseFromJob() { _closingFromJob = true; Close(); }
 
     public void Show(string value, string detail, Color color)
     {

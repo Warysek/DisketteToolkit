@@ -100,8 +100,37 @@ NOVÉ VE VERZI 0.9
    – Výpis rozložení všech stop (jen fdrawcmd.sys): pořadí sektorů, poloha od indexu,
      odchylky typické pro ochrany proti kopírování.
    – Záznam o mechanice: poznámka, naposledy změřené otáčky a datum čištění se pamatují.
+   – Test zahřátí: otáčky po několik minut (každou půlminutu průměr) — pozná řemínek,
+     který prokluzuje až zahřátý.
+   – Test přesnosti krokování: stopy 10, 40, 70 zvenku i zevnitř — pozná ztracené kroky.
+   – Histogram toku stopy (jen Greaseweazle): ostré špičky = zdravá stopa, rozmazané =
+     slábnoucí; pozná i hustotu zápisu. Histogram uloženého .scp: Otevřít obraz… →
+     Histogram toku…
+   – Test propustnosti USB (jen Greaseweazle).
+   – Opakované čtení stopy hlídá rozpad diskety: když chyb s každým čtením přibývá, čtení
+     zastaví (odlupující se vrstva by zničila disketu i hlavu).
    Výsledky jsou ve výpisu dole — pravé tlačítko myši → Kopírovat celý výpis.
-   Ukázka bez hardwaru: DisketteToolkit.exe --demo, mechanika B:.
+   Ukázka bez hardwaru: DisketteToolkit.exe --demo, mechanika B: (a Greaseweazle).
+ • Důvod chyby v mapě sektorů: najetím myší na červené / žluté políčko uvidíš, proč se sektor
+   nepřečetl (chyba CRC, chybí hlavička, zápis selhal…). Důvod je i ve výpisu.
+ • Historie čtení: program si pamatuje, která disketa se v které mechanice jak četla, a radí:
+   chyby jen na jedné straně, opakovaně horší strana mechaniky (špinavá hlava), stejná
+   disketa v jiné mechanice bez chyb (problém v mechanice), nebo skoro každá disketa
+   s chybami (zkontroluj mechaniku).
+ • Záchrana vadné diskety — tlačítko „Záchrana vadné diskety…“ pod Hromadnou zálohou. Přečte
+   disketu do obrazu, každý nečitelný sektor zkusí znovu (počet pokusů volíš) a seznam
+   chybějících sektorů uloží vedle obrazu (soubor .rescue.txt). Když záchranu spustíš znovu se
+   stejným souborem — i v jiné mechanice, po vyčištění hlavy nebo přes Greaseweazle — přečtou
+   se jen chybějící sektory. Experimentálně (jen fdrawcmd.sys): když se sektor nepřečte ani po
+   všech pokusech, složí se hlasováním bit po bitu z vadných čtení (neověřené, v mapě žlutě).
+ • Záchrana sektorů z toku (Greaseweazle): uložený tok .scp otevři přes „Otevřít obraz…“ a klikni
+   na „Záchrana sektorů…“. Program tok převede vlastním převodem (disketa v mechanice není
+   potřeba), z každé otáčky vezme sektory s platným kontrolním součtem a stopy s chybami zkusí
+   převést i s jiným nastavením. Přidáš-li toky téže diskety z více mechanik, sektory se doplní
+   navzájem. Výsledek je obraz .img a seznam chybějících sektorů — pokračovat jde i Záchranou
+   vadné diskety s disketou v mechanice. Umí PC, Atari ST a MSX (MFM, 512 bajtů na sektor).
+ • Známka diskety (A / B / C) po zápisovém testu — jestli se disketa hodí na data.
+ • Greaseweazle: po čtení se do výpisu zapíšou otáčky mechaniky.
 
 
 NOVÉ VE VERZI 0.8.4
