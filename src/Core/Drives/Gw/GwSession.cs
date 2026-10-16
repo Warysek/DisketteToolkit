@@ -188,7 +188,10 @@ public sealed class GwSession
             return msg + Tr.T(" — Greaseweazle není připojený, nebo ho používá jiný program.");
         if (m.Contains("track 0") || m.Contains("no index"))
             return msg + Tr.T(" — mechanika nehlásí stopu 0 / indexový puls: je vložená disketa, připojené napájení a správně nastavená mechanika (A/B)?");
-        if (m.Contains("write protect")) return Tr.T("Disketa je chráněná proti zápisu — posuň jezdec.");
+        if (m.Contains("write protect")) return Tr.T("Disketa je chráněná proti zápisu. Vyndej ji a v rohu diskety najdi malý posuvný jezdec se čtvercovým okénkem: posuň ho tak, aby okénko bylo ZAKRYTÉ (otevřené okénko = ochrana zapnutá). U 5,25\" diskety odlep nálepku z výřezu na boku. Pak disketu vlož znovu.");
+        // firmware hlásí, že mu PC při zápisu nestihlo poslat data (vyprázdněný buffer) — gw to už samo zkoušel znovu
+        if (m.Contains("flux underflow"))
+            return msg + Tr.T(" — počítač nestihl Greaseweazle posílat data pro zápis přes USB. Zapoj ho přímo do portu v počítači (ne přes rozbočovač nebo přední panel), zkus kratší kabel a zavři programy, které zatěžují počítač. Propustnost ověří Diagnostika mechaniky → Test propustnosti USB.");
         return msg;
     }
 
@@ -269,7 +272,9 @@ public sealed class GwSession
                     int fsTracks = TracksOfFileSystem(tracks, heads, spt, bps, boot);
                     if (fsTracks < tracks)
                     {
-                        note = Tr.F(" — stopy {0}–{1} jsou za koncem souborového systému, do obrazu je nedávám", fsTracks, tracks - 1);
+                        note = fsTracks == tracks - 1
+                            ? Tr.F(" — stopa {0} je za koncem souborového systému, do obrazu ji nedávám", fsTracks)
+                            : Tr.F(" — stopy {0}–{1} jsou za koncem souborového systému, do obrazu je nedávám", fsTracks, tracks - 1);
                         tracks = fsTracks;
                     }
                     var g = new DiskGeometry(tracks, heads, spt, bps);

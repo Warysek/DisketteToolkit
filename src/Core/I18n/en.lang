@@ -108,7 +108,6 @@ Intel 82078 (44 vývodů) = Intel 82078 (44-pin)
 Intel 82078 (64 vývodů) = Intel 82078 (64-pin)
 neznámý typ = unknown type
 řadič odmítl rychlost  = the controller refused data rate
-Disketa je chráněná proti zápisu — posuň jezdec. = The disk is write-protected — slide the tab.
 Mechanika není připravená — je vložená disketa? = The drive is not ready — is a disk inserted?
 
 # ---------------------------------------------------------------- format profiles (evaluation)
@@ -190,7 +189,6 @@ přečteno jen {0} z {1} B = only {0} of {1} B read
 zapsáno jen {0} z {1} B = only {0} of {1} B written
 Windows umí formátovat jen 640 KB, 720 KB a 1,44 MB, ne {0}. = Windows can only format 640 KB, 720 KB and 1.44 MB, not {0}.
 nastavení pozice selhalo:  = seek failed:
-Disketa je chráněná proti zápisu — posuň jezdec (okénko musí být zavřené). = The disk is write-protected — slide the tab (the window must be closed).
 Windows zápis odmítly (přístup odepřen). Spusť program jako správce a zavři okna, která mají disketu otevřenou. = Windows refused the write (access denied). Run the program as administrator and close windows showing the disk.
 {0} (kód {1}) = {0} (code {1})
 
@@ -1294,3 +1292,6 @@ Jestli pomůže další mechanika, nejlíp řekne tok: ulož disketu jako .scp, 
 {0} sektorů se čte s chybou kontrolního součtu — data tam jsou, jen slabá; další pokusy nebo jiná mechanika je může přečíst. = {0} sectors read with a checksum error — the data is there, only weak; more attempts or another drive may read them.
 {0} sektorů mechanika vůbec nenašla (chybí nebo je poškozená hlavička) — šance je menší. = The drive did not find {0} sectors at all (header missing or damaged) — the chance is smaller.
 Tenhle pokus nepřidal ani jeden sektor. Pokud nepomohla ani předchozí mechanika, je disketa v těchto místech nejspíš nezachranitelná. = This attempt added no sector. If the previous drive did not help either, the disk most likely cannot be rescued in these places.
+Disketa je chráněná proti zápisu. Vyndej ji a v rohu diskety najdi malý posuvný jezdec se čtvercovým okénkem: posuň ho tak, aby okénko bylo ZAKRYTÉ (otevřené okénko \= ochrana zapnutá). U 5,25" diskety odlep nálepku z výřezu na boku. Pak disketu vlož znovu. = The disk is write-protected. Take it out and find the small sliding tab with a square window in a corner of the disk: slide it so that the window is CLOSED (open window \= protected). On a 5.25" disk remove the sticker from the notch on the side. Then insert the disk again.
+ — počítač nestihl Greaseweazle posílat data pro zápis přes USB. Zapoj ho přímo do portu v počítači (ne přes rozbočovač nebo přední panel), zkus kratší kabel a zavři programy, které zatěžují počítač. Propustnost ověří Diagnostika mechaniky → Test propustnosti USB. =  — the computer could not send the write data to the Greaseweazle over USB fast enough. Plug it directly into a port on the computer (not via a hub or the front panel), try a shorter cable and close programs that load the computer. Diagnostics → USB bandwidth test checks the throughput.
+ — stopa {0} je za koncem souborového systému, do obrazu ji nedávám =  — track {0} lies beyond the end of the file system and is left out of the image
