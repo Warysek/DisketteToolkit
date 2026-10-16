@@ -888,6 +888,18 @@ internal sealed class MainForm : Form, IJobHost
         var result = dlg.ShowDialog(this);
         if (result == DialogResult.Yes && Selected != null) DoWrite(path);
         else if (result == DialogResult.Retry) RunJob(j => j.CheckImage(path));
+        else if (result == DialogResult.Ignore) DoFluxRescue(path);
+    }
+
+    private void DoFluxRescue(string scp)
+    {
+        using var dlg = new FluxRescueDialog(scp);
+        if (dlg.ShowDialog(this) != DialogResult.OK || dlg.Output.Length == 0) return;
+        string path = dlg.Output;
+        if (Path.GetExtension(path).Length == 0) path += ".img";
+        var files = dlg.Files;
+        Remember(path);
+        RunJob(j => j.RescueFromFlux(files, path));
     }
 
     private void DoCheckImage()
@@ -1307,6 +1319,19 @@ internal sealed class MainForm : Form, IJobHost
                     RunJob(j => { j.RescueDisk(d, f, 5, false); j.RescueDisk(d, f, 5, false); });
                     break;
                 }
+            case "fluxrescue":
+                {
+                    // soubory .scp z proměnné DTK_SCP (oddělené ;), jinak ukázkový tok
+                    var scps = (Environment.GetEnvironmentVariable("DTK_SCP") ?? DemoDrives.DemoScp(22, 0)).Split(';');
+                    string f = Path.Combine(tmp, "zachrana-tok.img");
+                    if (File.Exists(f)) File.Delete(f);
+                    if (File.Exists(RescueState.SidecarPath(f))) File.Delete(RescueState.SidecarPath(f));
+                    RunJob(j => j.RescueFromFlux(scps, f));
+                    break;
+                }
+            case "fluxrescuedialog":
+                BeginInvoke(new Action(() => { using var dlg = new FluxRescueDialog(DemoDrives.DemoScp(22, 0)); dlg.ShowDialog(this); }));
+                break;
             case "histogram":
                 BeginInvoke(new Action(() => new FluxHistogramForm(DemoDrives.DemoScp(22, 0), 22, 0).Show(this)));
                 break;

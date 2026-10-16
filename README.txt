@@ -63,6 +63,10 @@ test (Greaseweazle only), and a note, last speed and last cleaning date per driv
 Rescue a bad disk ("Rescue a bad disk..."): retries every unreadable sector, saves the list
 of missing sectors next to the image and, when run again with the same file in another drive,
 reads only the missing ones; experimental bit voting from bad reads (fdrawcmd.sys only).
+Rescue sectors from flux (Greaseweazle): open a saved .scp with "Open image..." and click
+"Rescue sectors...". The program decodes the flux itself (no disk needed), takes every sector
+with a valid checksum from any revolution, retries damaged tracks with other decoder settings
+and combines flux files of the same disk from several drives (PC, Atari ST, MSX: MFM, 512 bytes).
 Hover a red or yellow cell in the sector map to see why the sector failed. A read history
 tells a faulty drive from a faulty disk, and a write test gives the disk a grade (A/B/C).
 

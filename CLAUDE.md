@@ -199,6 +199,11 @@ Order of work (proposed to Wary 2026-10-13; groups = one release each, by import
    flux; tracks 78–79 side 1); trying several PLL settings rescued 10 of them. Naive bit voting rescued NONE —
    after the first bit slip every later byte differs, so voting needs resync (MFM clock bits) per copy first.
    The fdrawcmd vote likely has the same problem. Histogram thresholds were recalibrated from these files.
+   Test build 3: "Rescue sectors from flux" — own MFM decoder `Formats/MfmDecoder.cs` (nominal cell 1/2 µs,
+   9 PLL variants for incomplete tracks) + `App/FluxRescue.cs` (several .scp files combined, geometry guessed
+   from sector IDs, result = image + RescueState sidecar); GUI: image window of a .scp → "Záchrana sektorů…"
+   (`Dialogs/FluxRescueDialog.cs`, `Jobs.RescueFromFlux`). On Wary's files: healthy 2880/2880; damaged NEC 2806,
+   Samsung 2808, together 2808/2880; the two drives' overlapping sectors were byte-identical.
 2. **Backup with a record** (small, no hardware risk) — 3 gw command, 4 quick backup, 16 archive log,
    12 checksums (TOSEC matching after), MD5 directory export from 40, 45 incomplete backups, 43 bandwidth test;
    42 disk library builds on it (maybe its own release).

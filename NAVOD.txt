@@ -123,6 +123,12 @@ NOVÉ VE VERZI 0.9
    stejným souborem — i v jiné mechanice, po vyčištění hlavy nebo přes Greaseweazle — přečtou
    se jen chybějící sektory. Experimentálně (jen fdrawcmd.sys): když se sektor nepřečte ani po
    všech pokusech, složí se hlasováním bit po bitu z vadných čtení (neověřené, v mapě žlutě).
+ • Záchrana sektorů z toku (Greaseweazle): uložený tok .scp otevři přes „Otevřít obraz…“ a klikni
+   na „Záchrana sektorů…“. Program tok převede vlastním převodem (disketa v mechanice není
+   potřeba), z každé otáčky vezme sektory s platným kontrolním součtem a stopy s chybami zkusí
+   převést i s jiným nastavením. Přidáš-li toky téže diskety z více mechanik, sektory se doplní
+   navzájem. Výsledek je obraz .img a seznam chybějících sektorů — pokračovat jde i Záchranou
+   vadné diskety s disketou v mechanice. Umí PC, Atari ST a MSX (MFM, 512 bajtů na sektor).
  • Známka diskety (A / B / C) po zápisovém testu — jestli se disketa hodí na data.
  • Greaseweazle: po čtení se do výpisu zapíšou otáčky mechaniky.
 

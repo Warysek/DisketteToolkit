@@ -27,6 +27,8 @@ internal sealed class RescueDialog : DialogBase
         var flow = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true };
         flow.Controls.Add(Heading(Tr.T("Jak záchrana funguje")));
         flow.Controls.Add(Note(Tr.T("Program disketu přečte do obrazu a každý nečitelný sektor zkusí ještě mnohokrát. Co nepřečte, zapíše si do seznamu vedle obrazu. Když pak záchranu spustíš znovu se stejným souborem — klidně s disketou v jiné mechanice, po vyčištění hlavy nebo přes Greaseweazle — přečtou se jen chybějící sektory. Co nepřečte jedna mechanika, často přečte jiná."), Theme.Text, 600));
+        if (d.Kind == DriveKind.Greaseweazle)
+            flow.Controls.Add(Note(Tr.T("Greaseweazle: víc vytáhneš z uloženého toku. Ulož disketu jako tok (.scp, ideálně 5 otáček), otevři ho přes Otevřít obraz… a klikni na Záchrana sektorů…"), Theme.Accent, 600));
 
         flow.Controls.Add(Heading(Tr.T("Obraz")));
         _path.Text = suggested;

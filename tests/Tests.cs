@@ -1283,6 +1283,50 @@ internal static class Tests
         Assert(!ok && detail.Contains("41"), "zevnitř ztratí krok: " + detail);
     }
 
+    private static void T_Flux_MfmDecodeAndRescue()
+    {
+        // malá „disketa“ 3 stopy × 2 strany × 9 sektorů DD, zakódovaná do toku MFM s chvěním
+        var g = new DiskGeometry(3, 2, 9);
+        var rnd = new Random(7);
+        byte[] Data(int c, int h, int r) { var d = new byte[512]; for (int i = 0; i < 512; i++) d[i] = (byte)(c * 31 + h * 7 + r * 13 + i); return d; }
+        double[] Track(int c, int h, bool corrupt) =>
+            MfmDecoder.Encode(Enumerable.Range(1, 9).Select(r => (c, h, r, Data(c, h, r))), 2.0, corrupt).Select(x => x + (rnd.NextDouble() - 0.5) * 0.3).ToArray();
+        string dir = Path.Combine(Path.GetTempPath(), "dtk-flux-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            // soubor A: stopa 1 strana 1 má ve všech otáčkách vadná data; soubor B (jiná mechanika) ji má dobře, ale chybí mu stopa 2
+            var a = new Dictionary<(int, int), List<double[]>>();
+            var b = new Dictionary<(int, int), List<double[]>>();
+            for (int c = 0; c < 3; c++)
+                for (int h = 0; h < 2; h++)
+                {
+                    bool bad = c == 1 && h == 1;
+                    a[(c, h)] = new() { Track(c, h, bad), Track(c, h, bad) };
+                    if (c != 2) b[(c, h)] = new() { Track(c, h, false), Track(c, h, false) };
+                }
+            string pa = Path.Combine(dir, "a.scp"), pb = Path.Combine(dir, "b.scp");
+            File.WriteAllBytes(pa, ScpFile.Build(a, 2));
+            File.WriteAllBytes(pb, ScpFile.Build(b, 2));
+
+            var dec = MfmDecoder.Decode(ScpFile.Load(pa).FluxUs(0, 0), 2.0, 0.05, 0);
+            Eq(18, dec.Count(s => s.Ok), "dvě otáčky × 9 sektorů s platným CRC");
+            Assert(dec.First(s => s.Sector == 5).Data.SequenceEqual(Data(0, 0, 5)), "obsah sektoru");
+            Assert(MfmDecoder.Decode(ScpFile.Load(pa).FluxUs(1, 1), 2.0, 0.05, 0).All(s => !s.Ok), "poškozená data mají špatné CRC");
+
+            var one = FluxRescue.Run(new[] { pa });
+            Eq(g, one.Geometry, "formát z toku");
+            Eq(9, one.MissingLbas().Count(), "z jednoho souboru chybí stopa 1/1");
+            var both = FluxRescue.Run(new[] { pa, pb });
+            Eq(0, both.MissingLbas().Count(), "dva soubory se doplní");
+            Eq(9, both.FromFile[1], "druhý soubor dodal jen chybějící");
+            var img = new DiskImage(g);
+            both.FillImage(img);
+            Assert(img.Data.Skip((int)g.Offset(1, 1, 3)).Take(512).SequenceEqual(Data(1, 1, 4)), "sektor z druhého souboru v obrazu");
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
     private static void T_Rescue_VoteAndRetry()
     {
         // hlasování: 9 kopií, každá s jinými 6 pokaženými bity → původní obsah

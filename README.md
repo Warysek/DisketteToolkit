@@ -37,7 +37,7 @@ The program downloads gw.exe and fdrawcmd.sys itself when you need them.
 - Batch backup: a box of disks one after another into numbered images (disk-001.st, disk-002.st…)
 - Drag an image file onto the window to open it
 - Drive diagnostics (internal drive + fdrawcmd.sys, Greaseweazle): speed with wobble and a live gauge for adjusting, sensor check, head moves and cleaning, repeated track read (dirty head vs. damaged disk), track layout listing (fdrawcmd.sys), warm-up and step accuracy tests, flux histogram and USB bandwidth test (Greaseweazle)
-- Rescue a bad disk: many retries per unreadable sector, continue in another drive (only the missing sectors are read), experimental bit voting from bad reads (fdrawcmd.sys)
+- Rescue a bad disk: many retries per unreadable sector, continue in another drive (only the missing sectors are read), experimental bit voting from bad reads (fdrawcmd.sys); rescue sectors from saved Greaseweazle flux (.scp) with an own MFM decoder, combining captures from several drives
 - Error reason for every failed sector in the map, read history that tells a faulty drive from a faulty disk, disk grade (A/B/C) after a write test
 - Surface test (read-only, write test with restore, destructive) with a FastCopy-style map
 - Experimental repair format (internal drive + fdrawcmd.sys): a defect on a track is covered by an extra sector instead of being marked bad in the FAT

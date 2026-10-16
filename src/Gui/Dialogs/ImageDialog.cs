@@ -121,6 +121,7 @@ internal sealed class ImageDialog : DialogBase
                 try { using var h = new FluxHistogramForm(path, 0, 0); h.ShowDialog(this); }
                 catch (Exception e) { MessageBox.Show(this, e.Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Error); }
             };
+            AddButton(Tr.T("Záchrana sektorů…"), DialogResult.Ignore);
         }
         var extract = AddButton(Tr.T("Rozbalit soubory…"), DialogResult.None);
         extract.Enabled = hasFiles;

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -212,6 +213,62 @@ internal sealed class Jobs
         Warn(Tr.F("Chybí ještě {0} sektorů (z {1}). Obraz je uložený: {2}", st.Missing.Count, img!.Geometry.TotalSectors, path));
         if (st.Voted.Count > 0) Warn(Tr.F("{0} z nich je v obrazu poskládaných hlasováním — nejpravděpodobnější obsah, ale neověřený.", st.Voted.Count));
         Info(Tr.T("Vlož disketu do jiné mechaniky (nebo vyčisti hlavu) a spusť Záchranu znovu se stejným souborem — přečtou se jen chybějící sektory."));
+    }
+
+    /// <summary>
+    /// Záchrana sektorů z uložených toků (.scp): převod vlastním dekodérem, sektory z více souborů (mechanik)
+    /// se doplňují. Výsledek je obraz + seznam chybějících sektorů, takže Záchrana vadné diskety může
+    /// pokračovat s disketou v mechanice. Když obraz už je rozpracovaná záchrana, doplní jen chybějící.
+    /// </summary>
+    public void RescueFromFlux(IList<string> scpFiles, string path)
+    {
+        if (DeviceFactory.IsFlux(path)) throw new OperationException(Tr.T("Záchrana ukládá obraz sektorů (.st, .msa, .img, .adf) — ne tok."));
+        Title(Tr.F("Záchrana sektorů z toku do {0}", Path.GetFileName(path)));
+        foreach (var f in scpFiles) Dim(f);
+        DiskImage? img = null;
+        RescueState? st = null;
+        if (File.Exists(path) && File.Exists(RescueState.SidecarPath(path)))
+        {
+            img = ImageFile.Load(path).Image ?? throw new OperationException(Tr.T("Obraz nejde načíst."));
+            st = RescueState.Load(path, img.Geometry)!;
+            Info(Tr.F("Pokračuji v záchraně: chybí ještě {0} sektorů, z toho poskládaných hlasováním {1}.", st.Missing.Count, st.Voted.Count));
+            if (st.Missing.Count == 0) { Ok(Tr.T("Všechny sektory už jsou přečtené.")); return; }
+        }
+        else if (File.Exists(path))
+            Warn(Tr.T("Soubor už existuje, ale není to rozpracovaná záchrana — přepíšu ho."));
+
+        FluxRescueResult r;
+        try { r = FluxRescue.Run(scpFiles, img?.Geometry, P, Ct); }
+        finally { TrackActivity.End(); }
+
+        int recovered;
+        if (img == null)
+        {
+            img = new DiskImage(r.Geometry);
+            recovered = r.FillImage(img);
+            st = new RescueState(img.Geometry);
+            foreach (long l in r.MissingLbas()) st.Missing.Add(l);
+            Info(Tr.F("Formát podle sektorů v toku: {0}", r.Geometry));
+        }
+        else
+        {
+            recovered = r.FillImage(img, st!.Missing);
+            var missing = new HashSet<long>(r.MissingLbas());
+            foreach (long l in st!.Missing.ToList())
+                if (!missing.Contains(l)) { st.Missing.Remove(l); st.Voted.Remove(l); }
+        }
+        for (int i = 0; i < scpFiles.Count; i++)
+            Info(Tr.F("{0}: {1} sektorů", Path.GetFileName(scpFiles[i]), r.FromFile[i] + r.Sectors.Values.Count(v => v.file == i && v.variant > 0)));
+        if (r.FromVariants > 0) Info(Tr.F("Z toho {0} sektorů přibylo až s jiným nastavením převodu toku.", r.FromVariants));
+
+        ImageFile.Save(img, path);
+        st!.History.Add(Tr.F("{0:yyyy-MM-dd HH:mm} z toku ({1}): doplněno {2}, chybí {3}", DateTime.Now, string.Join(", ", scpFiles.Select(Path.GetFileName)), recovered, st.Missing.Count));
+        if (st.Missing.Count == 0) File.Delete(RescueState.SidecarPath(path));
+        else st.Save(path);
+
+        if (st.Missing.Count == 0) { Ok(Tr.F("Celá disketa je zachráněná: {0}", path)); return; }
+        Warn(Tr.F("Chybí ještě {0} sektorů (z {1}). Obraz je uložený: {2}", st.Missing.Count, img.Geometry.TotalSectors, path));
+        Info(Tr.T("Ulož tok téže diskety z jiné mechaniky a spusť záchranu znovu se stejným obrazem — doplní se jen chybějící sektory. Pokračovat jde i Záchranou vadné diskety s disketou v mechanice."));
     }
 
     private static string Sha256(string file)
