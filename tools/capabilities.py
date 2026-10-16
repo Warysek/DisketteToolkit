@@ -66,6 +66,8 @@ FEATURES = [
     (("Track layout listing", "Výpis rozložení stop"), N, Y, N, ("", "")),
     (("Flux histogram, USB bandwidth test", "Histogram toku, test propustnosti USB"), N, N, Y, ("", "")),
     (("Read history: drive or disk at fault?", "Historie čtení: vadná mechanika, nebo disketa?"), Y, Y, Y, ("", "")),
+    (("Rescue a bad disk (continue in another drive)", "Záchrana vadné diskety (pokračování v jiné mechanice)"), Y, Y, Y,
+     ("bit voting from bad reads: fdrawcmd only, experimental", "skládání z vadných čtení: jen fdrawcmd, experimentální")),
     (("Extra tracks 81–84", "Stopy 81–84 navíc"), N, Y, Y, ("", "")),
     (("Copy protections", "Kopírovací ochrany"), N, M, Y,
      ("fdrawcmd: simple ones only, not in the program yet", "fdrawcmd: jen jednodušší, program zatím ne")),

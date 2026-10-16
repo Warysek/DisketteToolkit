@@ -60,6 +60,9 @@ last track / sweep, head cleaning with a cleaning disk, repeated read of one tra
 (dirty head vs. damaged disk, stops when a disk is falling apart), track layout listing
 (fdrawcmd.sys only), warm-up test, step accuracy test, flux histogram and USB bandwidth
 test (Greaseweazle only), and a note, last speed and last cleaning date per drive.
+Rescue a bad disk ("Rescue a bad disk..."): retries every unreadable sector, saves the list
+of missing sectors next to the image and, when run again with the same file in another drive,
+reads only the missing ones; experimental bit voting from bad reads (fdrawcmd.sys only).
 Hover a red or yellow cell in the sector map to see why the sector failed. A read history
 tells a faulty drive from a faulty disk, and a write test gives the disk a grade (A/B/C).
 

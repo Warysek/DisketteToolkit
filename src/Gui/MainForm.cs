@@ -51,7 +51,7 @@ internal sealed class MainForm : Form, IJobHost
     private readonly Panel _right = new();
     private readonly FlowLayoutPanel _actions = new();
     private readonly Label _secDisk = new(), _secImages = new(), _secHelp = new();
-    private readonly ActionButton _aRead = new(), _aWrite = new(), _aFormat = new(), _aTest = new(), _aErase = new(), _aSetup = new(), _aBoot = new(), _aBatch = new(), _aDiag = new();
+    private readonly ActionButton _aRead = new(), _aWrite = new(), _aFormat = new(), _aTest = new(), _aErase = new(), _aSetup = new(), _aBoot = new(), _aBatch = new(), _aDiag = new(), _aRescue = new();
     private readonly ActionButton _iOpen = new(), _iCheck = new(), _iConvert = new(), _iNew = new();
     private readonly ActionButton _hFormats = new(), _hAbout = new(), _hDonate = new();
     private readonly ToolTip _tips = new();
@@ -249,6 +249,7 @@ internal sealed class MainForm : Form, IJobHost
         Section(_secDisk);
         Add(_aRead, "⭳", (_, _) => DoRead());
         Add(_aBatch, "⭳", (_, _) => DoRead(batch: true));
+        Add(_aRescue, "✚", (_, _) => DoRescue());
         Add(_aWrite, "⭱", (_, _) => DoWrite(null));
         Add(_aFormat, "▦", (_, _) => DoFormat());
         Add(_aTest, "✚", (_, _) => DoTest());
@@ -392,6 +393,7 @@ internal sealed class MainForm : Form, IJobHost
 
         _aRead.Text = Tr.T("Záloha do obrazu");
         _aBatch.Text = Tr.T("Hromadná záloha…");
+        _aRescue.Text = Tr.T("Záchrana vadné diskety…");
         _aWrite.Text = Tr.T("Zapsat obraz na disketu");
         _aFormat.Text = Tr.T("Formátovat…");
         _aTest.Text = Tr.T("Test povrchu a kontrola");
@@ -612,6 +614,7 @@ internal sealed class MainForm : Form, IJobHost
         }
         Set(_aRead, Op(OperationAdvisor.Read), d?.Kind == DriveKind.Greaseweazle ? Tr.T("formát pozná sám; i tok .SCP / .HFE") : Tr.T("disketa → .ST / .MSA / .IMG"));
         Set(_aBatch, Op(OperationAdvisor.Read), Tr.T("víc disket za sebou, soubory se očíslují"));
+        Set(_aRescue, Op(OperationAdvisor.Read), Tr.T("opakované čtení, pokračování v jiné mechanice"));
         Set(_aWrite, Op(OperationAdvisor.Write), Tr.T("obraz → disketa (jako RawWrite), s kontrolou"));
         Set(_aFormat, Op(OperationAdvisor.Format), Tr.T("Atari, PC, MSX, Mac, Amiga…"));
         var surface = Op(OperationAdvisor.Surface);
@@ -678,6 +681,21 @@ internal sealed class MainForm : Form, IJobHost
         Remember(dlg.FileName);
         if (batch) RunJob(j => j.BatchRead(d, dlg.FileName));
         else RunJob(j => j.ReadDisk(d, dlg.FileName, SideMode.Auto));
+    }
+
+    private void DoRescue()
+    {
+        if (!CheckReady(_aRescue)) return;
+        var d = Selected!;
+        string suggested = Path.Combine(InitialFolder(), Tr.T("zachrana") + ".st");
+        using var dlg = new RescueDialog(d, suggested);
+        if (dlg.ShowDialog(this) != DialogResult.OK || dlg.Path_.Length == 0) return;
+        string path = dlg.Path_;
+        if (Path.GetExtension(path).Length == 0) path += ".st";
+        Remember(path);
+        int tries = dlg.Tries;
+        bool vote = dlg.Vote;
+        RunJob(j => j.RescueDisk(d, path, tries, vote));
     }
 
     private void DoWrite(string? path)
@@ -1280,6 +1298,15 @@ internal sealed class MainForm : Form, IJobHost
                 _driveBox.SelectedIndex = 1;
                 RunJob(j => { j.Diagnose(Selected!, new DiagRequest { Action = DiagAction.Rpm }); j.Diagnose(Selected!, new DiagRequest { Action = DiagAction.Sensors }); j.Diagnose(Selected!, new DiagRequest { Action = DiagAction.TrackRead, Cyl = 22, Reads = 8 }); });
                 break;
+            case "rescue" when _drives.Count > 0:
+                {
+                    _driveBox.SelectedIndex = 0;
+                    d = Selected!;
+                    string f = Path.Combine(tmp, "zachrana.st");
+                    if (File.Exists(f)) File.Delete(f);
+                    RunJob(j => { j.RescueDisk(d, f, 5, false); j.RescueDisk(d, f, 5, false); });
+                    break;
+                }
             case "histogram":
                 BeginInvoke(new Action(() => new FluxHistogramForm(DemoDrives.DemoScp(22, 0), 22, 0).Show(this)));
                 break;

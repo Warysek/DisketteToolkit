@@ -1279,6 +1279,54 @@ internal static class Tests
         Assert(!ok && detail.Contains("41"), "zevnitř ztratí krok: " + detail);
     }
 
+    private static void T_Rescue_VoteAndRetry()
+    {
+        // hlasování: 9 kopií, každá s jinými 6 pokaženými bity → původní obsah
+        var rnd = new Random(3);
+        var orig = new byte[512]; rnd.NextBytes(orig);
+        var copies = Enumerable.Range(0, 9).Select(_ => { var c = (byte[])orig.Clone(); for (int i = 0; i < 6; i++) c[rnd.Next(512)] ^= (byte)(1 << rnd.Next(8)); return c; }).ToList();
+        var (voted, uncertain) = MediaChecks.Vote(copies);
+        Assert(voted.SequenceEqual(orig), "hlasování vrátí původní data");
+        Eq(0, uncertain, "žádné nejisté bity");
+
+        // fdrawcmd: trvale vadný sektor se poskládá hlasováním, ostatní data zůstanou
+        var img = FormatProfiles.Find("atari")!.Build!("RESCUE");
+        new Random(9).NextBytes(img.Data);
+        var fdc = FakeFdc.WithImage(img);
+        fdc.Tracks[(5, 0)][2].CrcError = true;
+        var dev = new AtariFloppy.Core.Drives.Fdraw.FdrawDevice(fdc, "B:");
+        var result = new OperationResult();
+        var read = DiskOperations.ReadDisk(dev, SideMode.Auto, result);
+        long lba = img.Geometry.Lba(5, 0, 2);
+        var st = new RescueState(read.Geometry);
+        foreach (var bsec in result.BadSectors) st.Missing.Add(read.Geometry.Lba(bsec.Track, bsec.Side, bsec.Sector - 1));
+        Eq(1, st.Missing.Count, "jeden chybějící sektor");
+        var rr = Rescue.RetryMissing(dev, read, st, 15, vote: true);
+        Eq(1, rr.NewlyVoted, "poskládán hlasováním");
+        Assert(st.Voted.Contains(lba) && st.Missing.Contains(lba), "poskládaný zůstává mezi chybějícími");
+        Assert(read.Data.Skip((int)lba * 512).Take(512).SequenceEqual(img.Data.Skip((int)lba * 512).Take(512)), "poskládaná data = původní");
+
+        // bez hlasování: sektor, který se napodruhé přečte, se doplní
+        var mem = new MemoryDevice(RandomImage(DiskGeometry.Dd720, 4));
+        long flaky = DiskGeometry.Dd720.Lba(12, 1, 6);
+        mem.FlakySectors[flaky] = 9;
+        var r2 = new OperationResult();
+        var img2 = DiskOperations.ReadDisk(mem, SideMode.Double, r2);
+        var st2 = new RescueState(img2.Geometry);
+        foreach (var bsec in r2.BadSectors) st2.Missing.Add(img2.Geometry.Lba(bsec.Track, bsec.Side, bsec.Sector - 1));
+        Assert(st2.Missing.Contains(flaky), "napoprvé nepřečtený");
+        var rr2 = Rescue.RetryMissing(mem, img2, st2, 10, vote: false);
+        Eq(1, rr2.Recovered, "doplněn opakovaným čtením");
+        Eq(0, st2.Missing.Count, "nic nechybí");
+
+        // stav se uloží a načte
+        string path = Path.Combine(_tmp, "zachrana.st");
+        st.History.Add("test");
+        st.Save(path);
+        var back = RescueState.Load(path, read.Geometry)!;
+        Assert(back.Missing.SetEquals(st.Missing) && back.Voted.SetEquals(st.Voted) && back.History.Contains("test"), "stav záchrany");
+    }
+
     private static void T_Diag_GwParsers()
     {
         Eq(200.123, AtariFloppy.Core.Drives.Gw.GwSession.ParsePeriodMs("Rate: 299.815 rpm ; Period: 200.123 ms") ?? 0, "gw rpm");

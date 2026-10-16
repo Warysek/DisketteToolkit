@@ -189,7 +189,10 @@ Order of work (proposed to Wary 2026-10-13; groups = one release each, by import
    `Analysis/TrackLayout.cs`, `Gui/Dialogs/DiagDialog.cs`. Not yet: layout via gw.
    Test build 2 of 0.9 added: 26 error reasons in the map (`Drives/SectorErrors.cs`), 30 flux histogram
    (`Formats/ScpFile.cs`, `Analysis/FluxHistogram.cs`, GW + .scp files), 43 USB bandwidth, RPM after each gw read,
-   and own ideas 46–51. Still open from this area: 28 statistical rebuild, revolution comparison.
+   and own ideas 46–51, plus "Rescue a bad disk" (`App/Rescue.cs`, `Jobs.RescueDisk`): retries per missing sector,
+   state in `<image>.rescue.txt`, continuing in another drive reads only missing sectors (= first version of 15),
+   and experimental bit voting from bad reads (first version of 28, fdrawcmd only — `IFdc.ReadRaw`; whether
+   fdrawcmd.sys returns data on a CRC error is NOT verified). Still open: revolution comparison, 28 via flux.
 2. **Backup with a record** (small, no hardware risk) — 3 gw command, 4 quick backup, 16 archive log,
    12 checksums (TOSEC matching after), MD5 directory export from 40, 45 incomplete backups, 43 bandwidth test;
    42 disk library builds on it (maybe its own release).

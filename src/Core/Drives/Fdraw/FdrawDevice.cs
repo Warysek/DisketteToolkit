@@ -48,6 +48,16 @@ public sealed class FdrawDevice : ISectorDevice
     /// <summary>Řadič pro diagnostiku mechaniky (otáčky, čidla, rozložení stop).</summary>
     internal IFdc Fdc => _fdc;
 
+    /// <summary>Jeden sektor i s chybou (viz IFdc.ReadRaw): ok = bez chyby; data = co řadič přenesl, nebo null.</summary>
+    public bool ReadSectorRaw(long lba, out byte[]? data)
+    {
+        var g = MediaGeometry ?? throw new OperationException(Tr.T("Disketa není rozpoznaná."));
+        long track = lba / g.SectorsPerTrack;
+        int cyl = (int)(track / g.Sides), head = (int)(track % g.Sides), idx = (int)(lba % g.SectorsPerTrack);
+        SeekTo(cyl);
+        return _fdc.ReadRaw(cyl, head, _firstSectorId + idx, SizeCode(g.BytesPerSector), out data);
+    }
+
     /// <summary>Přesun hlavy (vždy skutečně, ne podle zapamatované polohy) — pro diagnostiku a servis.</summary>
     public void MoveHead(int cyl)
     {

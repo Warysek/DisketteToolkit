@@ -110,6 +110,110 @@ internal sealed class Jobs
         Ok(Tr.F("Hromadná záloha skončila. Uložených disket: {0}, složka {1}.", saved, Path.GetDirectoryName(Path.GetFullPath(path))));
     }
 
+    /// <summary>
+    /// Záchrana vadné diskety: přečte ji do obrazu, chybějící sektory zkouší znovu (až „tries“×) a stav uloží
+    /// vedle obrazu. Další spuštění se stejným souborem — klidně v jiné mechanice — čte jen chybějící sektory.
+    /// </summary>
+    public void RescueDisk(DetectedDrive d, string path, int tries, bool vote)
+    {
+        if (DeviceFactory.IsFlux(path)) throw new OperationException(Tr.T("Záchrana ukládá obraz sektorů (.st, .msa, .img, .adf) — ne tok."));
+        Title(Tr.F("Záchrana vadné diskety z {0} do {1}", d.Id, Path.GetFileName(path)));
+        DiskImage? img = null;
+        RescueState? st = null;
+        if (File.Exists(path) && File.Exists(RescueState.SidecarPath(path)))
+        {
+            img = ImageFile.Load(path).Image ?? throw new OperationException(Tr.T("Obraz nejde načíst."));
+            st = RescueState.Load(path, img.Geometry)!;
+            Info(Tr.F("Pokračuji v záchraně: chybí ještě {0} sektorů, z toho poskládaných hlasováním {1}.", st.Missing.Count, st.Voted.Count));
+            if (st.Missing.Count == 0) { Ok(Tr.T("Všechny sektory už jsou přečtené.")); return; }
+        }
+        else if (File.Exists(path))
+            Warn(Tr.T("Soubor už existuje, ale není to rozpracovaná záchrana — přepíšu ho."));
+
+        int recovered = 0;
+        try
+        {
+            if (d.Kind == DriveKind.Greaseweazle)
+            {
+                var gw = _h.Factory.OpenGw(d, Ct);
+                var fmt = img != null ? GwFormat.ForImage(img) : GwProbe(gw, null);
+                gw.Retries = Math.Max(3, Math.Min(tries, 30));
+                var r = gw.Read(fmt, P, Ct);
+                if (img == null)
+                {
+                    img = r.Image;
+                    st = new RescueState(img.Geometry);
+                    for (long l = 0; l < img.Geometry.TotalSectors; l++)
+                        if (r.Map[l] is not (SectorStatus.Ok or SectorStatus.Weak)) st.Missing.Add(l);
+                }
+                else
+                {
+                    if (!Equals(r.Image.Geometry, img.Geometry)) throw new OperationException(Tr.F("Disketa má jiný formát ({0}) než rozpracovaný obraz ({1}).", r.Image.Geometry, img.Geometry));
+                    foreach (long l in st!.Missing.ToList())
+                        if (r.Map[l] is SectorStatus.Ok or SectorStatus.Weak)
+                        {
+                            Buffer.BlockCopy(r.Image.Data, (int)(l * img.Geometry.BytesPerSector), img.Data, (int)(l * img.Geometry.BytesPerSector), img.Geometry.BytesPerSector);
+                            st.Missing.Remove(l);
+                            st.Voted.Remove(l);
+                            recovered++;
+                        }
+                }
+                if (vote) Dim(Tr.T("Skládání z vadných čtení přes Greaseweazle zatím není — jen opakované čtení (gw zkouší každou stopu znovu)."));
+                LogGwRpm(gw);
+            }
+            else
+            {
+                using var dev = _h.Factory.OpenForRead(d, write: false);
+                if (img == null)
+                {
+                    var result = new OperationResult();
+                    img = DiskOperations.ReadDisk(dev, SideMode.Auto, result, P, Ct);
+                    st = new RescueState(img.Geometry);
+                    foreach (var b in result.BadSectors) st.Missing.Add(img.Geometry.Lba(b.Track, b.Side, b.Sector - 1));
+                    Report(result);
+                }
+                else
+                {
+                    dev.RefreshMedia();
+                    var mg = dev.MediaGeometry;
+                    if (mg == null || mg.SectorsPerTrack != img.Geometry.SectorsPerTrack || mg.BytesPerSector != img.Geometry.BytesPerSector)
+                        throw new OperationException(Tr.F("Disketa v mechanice má jiný formát ({0}) než rozpracovaný obraz ({1}).", mg?.ToString() ?? Tr.T("nerozpoznaný"), img.Geometry));
+                }
+                if (st!.Missing.Count > 0)
+                {
+                    Info(Tr.F("Zkouším {0} chybějících sektorů znovu, každý až {1}×.", st.Missing.Count, tries));
+                    Rescue.ShowState(st, Tr.T("Záchrana vadné diskety"));
+                    try
+                    {
+                        var rr = Rescue.RetryMissing(dev, img, st, tries, vote, P, Ct);
+                        recovered += rr.Recovered;
+                        if (rr.VoteUnavailable) Dim(Tr.T("Skládání z vadných čtení umí jen interní mechanika s fdrawcmd.sys — tady jen opakované čtení."));
+                        if (rr.NewlyVoted > 0) Warn(Tr.F("Poskládáno hlasováním z vadných čtení: {0} sektorů, nejistých bitů celkem {1}.", rr.NewlyVoted, rr.UncertainBits));
+                        else if (vote && !rr.VoteUnavailable && st.Missing.Count > 0)
+                            Dim(Tr.T("Z vadných čtení se nic poskládat nedalo — ovladač při chybě nejspíš data nevrací (neověřeno, pošli prosím výpis)."));
+                    }
+                    finally { TrackActivity.End(); }
+                }
+            }
+        }
+        finally
+        {
+            if (img != null && st != null)
+            {
+                ImageFile.Save(img, path);
+                st.History.Add(Tr.F("{0:yyyy-MM-dd HH:mm} {1} ({2}): doplněno {3}, chybí {4}, poskládáno {5}", DateTime.Now, d.Id, d.Name, recovered, st.Missing.Count, st.Voted.Count));
+                if (st.Missing.Count == 0) File.Delete(RescueState.SidecarPath(path));
+                else st.Save(path);
+            }
+        }
+        // do historie čtení záchranu nezapisujeme: chybějící sektory jsou součet přes všechny mechaniky
+        if (recovered > 0) Ok(Tr.F("Doplněno sektorů: {0}.", recovered));
+        if (st!.Missing.Count == 0) { Ok(Tr.F("Celá disketa je zachráněná: {0}", path)); return; }
+        Warn(Tr.F("Chybí ještě {0} sektorů (z {1}). Obraz je uložený: {2}", st.Missing.Count, img!.Geometry.TotalSectors, path));
+        if (st.Voted.Count > 0) Warn(Tr.F("{0} z nich je v obrazu poskládaných hlasováním — nejpravděpodobnější obsah, ale neověřený.", st.Voted.Count));
+        Info(Tr.T("Vlož disketu do jiné mechaniky (nebo vyčisti hlavu) a spusť Záchranu znovu se stejným souborem — přečtou se jen chybějící sektory."));
+    }
+
     private static string Sha256(string file)
     {
         using var sha = System.Security.Cryptography.SHA256.Create();

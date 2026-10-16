@@ -143,5 +143,21 @@ internal sealed class FakeFdc : IFdc
 
     public void Motor(bool on) => MotorOn = on;
 
+    private readonly Random _noise = new(7);
+    /// <summary>Kolik bitů pokazí každé chybné čtení (náhodně, jinde při každém čtení).</summary>
+    public int NoiseBits = 6;
+
+    public bool ReadRaw(int cyl, int head, int sector, int sizeCode, out byte[]? data)
+    {
+        data = null;
+        var t = Track(head);
+        var sec = t?.FirstOrDefault(x => x.Id.Sector == sector && x.Id.Cyl == cyl);
+        if (sec == null) return false;
+        data = (byte[])sec.Data.Clone();
+        if (!sec.CrcError) return true;
+        for (int i = 0; i < NoiseBits; i++) data[_noise.Next(data.Length)] ^= (byte)(1 << _noise.Next(8));
+        return false;
+    }
+
     public void Dispose() { }
 }

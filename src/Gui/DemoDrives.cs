@@ -307,5 +307,17 @@ internal sealed class DemoFdc : AtariFloppy.Core.Drives.Fdraw.IFdc
         (byte)(AtariFloppy.Core.Drives.Fdraw.St3.Ready | AtariFloppy.Core.Drives.Fdraw.St3.TwoSide | (_cyl == 0 ? AtariFloppy.Core.Drives.Fdraw.St3.Track0 : 0));
 
     public void Motor(bool on) { }
+
+    public bool ReadRaw(int cyl, int head, int sector, int sizeCode, out byte[]? data)
+    {
+        try { data = Read(cyl, head, sector, sizeCode, 1); return true; }
+        catch (SectorIOException)
+        {
+            data = new byte[128 << sizeCode];
+            data[_rnd.Next(data.Length)] ^= (byte)(1 << _rnd.Next(8));
+            return false;
+        }
+    }
+
     public void Dispose() { }
 }

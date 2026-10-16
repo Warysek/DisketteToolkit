@@ -21,6 +21,26 @@ public static class MediaChecks
         return last >= first + 2 && last >= 2 && rising;
     }
 
+    /// <summary>
+    /// Hlasování po bitech z několika vadných kopií sektoru (jako SpinRite): každý bit má hodnotu, kterou má
+    /// většina kopií. uncertain = počet bitů, kde se kopie skoro rovnoměrně přou (40–60 %).
+    /// Výsledek NENÍ ověřený kontrolním součtem — je to nejpravděpodobnější obsah.
+    /// </summary>
+    public static (byte[] data, int uncertain) Vote(IReadOnlyList<byte[]> copies)
+    {
+        int len = copies[0].Length, n = copies.Count, uncertain = 0;
+        var result = new byte[len];
+        for (int i = 0; i < len; i++)
+            for (int bit = 0; bit < 8; bit++)
+            {
+                int ones = 0;
+                foreach (var c in copies) if ((c[i] >> bit & 1) != 0) ones++;
+                if (ones * 2 > n) result[i] |= (byte)(1 << bit);
+                if (ones * 10 >= n * 4 && ones * 10 <= n * 6) uncertain++;
+            }
+        return (result, uncertain);
+    }
+
     /// <summary>Známka diskety po zápisovém testu: A = bez chyb, B = jen pár slabých míst, C = nespolehlivá.</summary>
     public static (char grade, string text) Grade(int total, int weak, int bad)
     {

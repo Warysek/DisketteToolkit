@@ -191,6 +191,19 @@ public sealed class WinFdc : IFdc
         return Ioctl(IOCTL_FDCMD_SENSE_DRIVE_STATUS, new[] { (byte)head }, o) ? o[0] : null;
     }
 
+    public bool ReadRaw(int cyl, int head, int sector, int sizeCode, out byte[]? data)
+    {
+        // Výchozí vzorek: když ho po chybě najdeme v bufferu celý, řadič žádná data nepřenesl.
+        // READ_DATA je METHOD_OUT_DIRECT, takže data z chybného čtení by tam být měla (neověřeno).
+        var buf = new byte[128 << sizeCode];
+        for (int i = 0; i < buf.Length; i++) buf[i] = (byte)(0xA5 ^ i);
+        if (Ioctl(IOCTL_FDCMD_READ_DATA, RwParams(cyl, head, sector, sizeCode, 1), buf)) { data = buf; return true; }
+        bool untouched = true;
+        for (int i = 0; i < buf.Length && untouched; i++) untouched = buf[i] == (byte)(0xA5 ^ i);
+        data = untouched ? null : buf;
+        return false;
+    }
+
     public void Motor(bool on) => Ioctl(on ? IOCTL_FD_MOTOR_ON : IOCTL_FD_MOTOR_OFF, null, null);
 
     private static Exception Error(int err) => err switch

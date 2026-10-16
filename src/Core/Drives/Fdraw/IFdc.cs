@@ -49,6 +49,11 @@ public interface IFdc : IDisposable
     /// <summary>Stavový bajt mechaniky ST3 (ochrana proti zápisu, stopa 0 …).</summary>
     byte? DriveStatus(int head);
     void Motor(bool on);
+    /// <summary>
+    /// Čtení jednoho sektoru i s chybou: vrací true při bezchybném čtení. Při chybě (CRC) vrátí v data to,
+    /// co řadič přesto přenesl, nebo null, když nic. Pro skládání slabých sektorů z více čtení.
+    /// </summary>
+    bool ReadRaw(int cyl, int head, int sector, int sizeCode, out byte[]? data);
 }
 
 /// <summary>Výsledek časovaného skenu stopy: doba otáčky a sektory s polohou od indexu.</summary>
