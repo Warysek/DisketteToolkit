@@ -1365,6 +1365,9 @@ internal static class Tests
         Eq(SectorStatus.Ok, map.Get(0, 0, 5), "OK");
         Eq(2, map.Count(SectorStatus.Bad), "2 vadné");
 
+        var raw = new AtariFloppy.Core.Drives.Gw.GwOutput();
+        Eq((12, 1), raw.Feed("T12.1: Raw Flux (100000 flux in 600.00ms)") ?? (-1, -1), "průběh zálohy toku");
+
         var f = new AtariFloppy.Core.Drives.Gw.GwOutput();
         f.Feed("** FATAL ERROR:"); f.Feed("No Index Pulse Detected");
         Eq("No Index Pulse Detected", f.Fatal, "fatální chyba");

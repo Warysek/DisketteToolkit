@@ -17,6 +17,8 @@ public sealed class GwOutput
 {
     private static readonly Regex TrackRx = new(@"^T(\d+)\.(\d+):\s+(.+?)\s+\((\d+)/(\d+) sectors\)(.*)$", RegexOptions.Compiled);
     private static readonly Regex EmptyRx = new(@"^T(\d+)\.(\d+):\s+(.+?)\s+Empty\b", RegexOptions.Compiled);
+    /// <summary>Záloha toku bez dekódování: „T12.1: Raw Flux (100000 flux in 600.00ms)“.</summary>
+    private static readonly Regex RawRx = new(@"^T(\d+)\.(\d+):\s+Raw Flux\b", RegexOptions.Compiled);
     private static readonly Regex GiveUpRx = new(@"^T(\d+)\.(\d+): Giving up: (\d+) sectors missing", RegexOptions.Compiled);
     private static readonly Regex WriteRx = new(@"^T(\d+)\.(\d+): Writing Track(?: \(Verify Failure: Retry #(\d+)\))?", RegexOptions.Compiled);
     private static readonly Regex EraseRx = new(@"^T(\d+)\.(\d+): Erasing Track", RegexOptions.Compiled);
@@ -80,6 +82,12 @@ public sealed class GwOutput
                                     int.Parse(m.Groups[4].Value), int.Parse(m.Groups[5].Value), m.Groups[6].Value.Contains("Retry #"));
             Reads.Add(r);
             if (r.IsRetry) RetriedTracks.Add((r.Cyl, r.Head));
+            return (r.Cyl, r.Head);
+        }
+        if ((m = RawRx.Match(line)).Success)
+        {
+            var r = new GwTrackRead(int.Parse(m.Groups[1].Value), int.Parse(m.Groups[2].Value), "Raw Flux", 0, 0, false);
+            Reads.Add(r);
             return (r.Cyl, r.Head);
         }
         if ((m = EmptyRx.Match(line)).Success)
