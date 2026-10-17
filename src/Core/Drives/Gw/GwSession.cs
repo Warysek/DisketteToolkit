@@ -456,7 +456,7 @@ public sealed class GwSession
         if (_writeBandwidthOk) return;
         var lines = Bandwidth(ct);
         if (lines.Any(l => l.IndexOf("BELOW REQUIRED", StringComparison.OrdinalIgnoreCase) >= 0))
-            throw new OperationException(Tr.T("Zápis jsem nezačal: USB mezi počítačem a Greaseweazle nestíhá (test propustnosti je pod minimem, které gw pro zápis potřebuje). Zápis by se uprostřed stopy přerušil a poškodil disketu. Zapoj Greaseweazle přímo do portu v počítači (zkus i USB 2.0), bez rozbočovače, krátkým kvalitním kabelem a zkus to znovu.")
+            throw new OperationException(Tr.T("Zápis jsem nezačal: USB mezi počítačem a Greaseweazle nestíhá (test propustnosti je pod minimem, které gw pro zápis potřebuje). Zápis by se uprostřed stopy přerušil a poškodil disketu. Zapoj Greaseweazle přímo do portu v počítači (zkus i USB 2.0), bez rozbočovače, krátkým kvalitním kabelem a zkus to znovu. Když nepomůže ani jiný kabel a port: u některých stolních PC s deskou AMD (AM5 — B650, X670, X870) USB řadič posílá data do pomalých USB zařízení jen zlomkem rychlosti; zápis pak jde jen z jiného počítače nebo přes přídavnou USB kartu do PCIe.")
                                          + "\n" + string.Join("\n", lines.Where(l => l.IndexOf("Bandwidth", StringComparison.OrdinalIgnoreCase) >= 0 || l.Contains("REQUIRED"))));
         _writeBandwidthOk = true;
     }

@@ -524,7 +524,7 @@ internal sealed class Jobs
                     var lines = diag.Bandwidth(Ct);
                     foreach (var l in lines) Dim(l);
                     if (lines.Any(l => l.Contains("WARNING") || l.Contains("ERROR")))
-                        Warn(Tr.T("USB nestíhá nebo přenáší data s chybami — zkus jiný port (přímo v počítači, ne přes rozbočovač) a kratší nebo kvalitnější kabel."));
+                        Warn(Tr.T("USB nestíhá nebo přenáší data s chybami — zkus jiný port (přímo v počítači, ne přes rozbočovač) a kratší nebo kvalitnější kabel. Když nepomůže ani jiný kabel a port: u některých stolních PC s deskou AMD (AM5 — B650, X670, X870) USB řadič posílá data do pomalých USB zařízení jen zlomkem rychlosti; zápis pak jde jen z jiného počítače nebo přes přídavnou USB kartu do PCIe."));
                     else Ok(Tr.T("Propustnost USB stačí pro čtení i zápis toku."));
                     break;
                 }
