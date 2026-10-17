@@ -108,7 +108,6 @@ Intel 82078 (44 vývodů) = Intel 82078 (44-pin)
 Intel 82078 (64 vývodů) = Intel 82078 (64-pin)
 neznámý typ = unknown type
 řadič odmítl rychlost  = the controller refused data rate
-Disketa je chráněná proti zápisu — posuň jezdec. = The disk is write-protected — slide the tab.
 Mechanika není připravená — je vložená disketa? = The drive is not ready — is a disk inserted?
 
 # ---------------------------------------------------------------- format profiles (evaluation)
@@ -190,7 +189,6 @@ přečteno jen {0} z {1} B = only {0} of {1} B read
 zapsáno jen {0} z {1} B = only {0} of {1} B written
 Windows umí formátovat jen 640 KB, 720 KB a 1,44 MB, ne {0}. = Windows can only format 640 KB, 720 KB and 1.44 MB, not {0}.
 nastavení pozice selhalo:  = seek failed:
-Disketa je chráněná proti zápisu — posuň jezdec (okénko musí být zavřené). = The disk is write-protected — slide the tab (the window must be closed).
 Windows zápis odmítly (přístup odepřen). Spusť program jako správce a zavři okna, která mají disketu otevřenou. = Windows refused the write (access denied). Run the program as administrator and close windows showing the disk.
 {0} (kód {1}) = {0} (code {1})
 
@@ -1185,7 +1183,7 @@ Stopa {0}, strana {1}: {2} = Track {0}, side {1}: {2}
 (rozptyl {0:0} ns) =  (spread {0:0} ns)
 Špičky: = Peaks: 
 Měřím propustnost USB = Measuring USB bandwidth
-USB nestíhá nebo přenáší data s chybami — zkus jiný port (přímo v počítači, ne přes rozbočovač) a kratší nebo kvalitnější kabel. = USB can't keep up or garbles data — try another port (directly on the computer, not through a hub) and a shorter or better cable.
+USB nestíhá nebo přenáší data s chybami — zkus jiný port (přímo v počítači, ne přes rozbočovač) a kratší nebo kvalitnější kabel. Když nepomůže ani jiný kabel a port: u některých stolních PC s deskou AMD (AM5 — B650, X670, X870) USB řadič posílá data do pomalých USB zařízení jen zlomkem rychlosti; zápis pak jde jen z jiného počítače nebo přes přídavnou USB kartu do PCIe. = USB can't keep up or garbles data — try another port (directly on the computer, not through a hub) and a shorter or better cable. If no other cable or port helps: on some desktop PCs with an AMD board (AM5 — B650, X670, X870) the USB controller sends data to slow USB devices at a fraction of the speed; then writing only works from another computer or through an add-in PCIe USB card.
 Propustnost USB stačí pro čtení i zápis toku. = USB bandwidth is enough for reading and writing flux.
 Test zahřátí: {0} minut. Zastavit jde kdykoli tlačítkem Přerušit nebo v okénku s otáčkami. = Warm-up test: {0} minutes. Stop it any time with Cancel or in the speed window.
 {0,2}:{1:00}  {2:0.00} ot./min = {0,2}:{1:00}  {2:0.00} rpm
@@ -1278,3 +1276,26 @@ Ulož tok téže diskety z jiné mechaniky a spusť záchranu znovu se stejným 
 Histogram toku — čtení z mechaniky = Flux histogram — read from the drive
 Magnetický tok — seznam souborů z něj neukážu. Sektory PC / Atari / MSX diskety z něj vytáhne Záchrana sektorů…, na disketu ho zapíše Greaseweazle. = Magnetic flux — no file list for it. Rescue sectors… extracts the sectors of a PC / Atari / MSX disk from it; a Greaseweazle writes it back to a disk.
 {0}: navíc {1} sektorů, které v předchozích souborech nebyly = {0}: {1} more sectors that the previous files did not have
+ — stopy {0}–{1} jsou za koncem souborového systému, do obrazu je nedávám =  — tracks {0}–{1} lie beyond the end of the file system and are left out of the image
+{0} sektorů má čitelnou hlavičku i data, jen nesedí kontrolní součet — tyhle může zachránit další čtení (víc otáček, jiná mechanika). = {0} sectors have a readable header and data, only the checksum is wrong — further reads (more revolutions, another drive) may rescue them.
+U {0} sektorů se našla jen hlavička, data ne — šance je malá. = For {0} sectors only the header was found, not the data — the chance is small.
+{0} sektorů nepřečetla ani jedna z {1} mechanik, i když tam signál je — šance je malá. = None of the {1} drives read {0} sectors, although there is signal — the chance is small.
+{0} sektorů se nepřečetlo, i když tam signál je — zkus tok z jiné mechaniky (jinak seřízená hlava je může přečíst). = {0} sectors were not read although there is signal — try a flux from another drive (a differently aligned head may read them).
+{0} sektorů leží na místech bez magnetického záznamu — ty už nevrátí žádná mechanika. = {0} sectors lie where the magnetic recording is gone — no drive will bring them back.
+Další mechanika už nejspíš nepomůže — v těchto místech je disketa nezachranitelná. = Another drive will most likely not help — the disk cannot be rescued in these places.
+Má smysl uložit tok téže diskety z další mechaniky a spustit záchranu znovu se stejným obrazem — doplní se jen chybějící sektory. = It is worth saving a flux of the same disk from another drive and running the rescue again with the same image — only missing sectors are filled in.
+hlavička i data jsou, jen nesedí kontrolní součet — další čtení může pomoct = header and data are there, only the checksum is wrong — further reads may help
+našla se jen hlavička sektoru, data ne = only the sector header was found, not the data
+sektor se nenašel, i když na stopě signál je = sector not found although the track has signal
+na stopě chybí magnetický záznam — nezachranitelné = the magnetic recording on the track is gone — cannot be rescued
+Jestli pomůže další mechanika, nejlíp řekne tok: ulož disketu jako .scp, otevři ho přes Otevřít obraz… a klikni na Záchrana sektorů… = Whether another drive would help is best told by flux: save the disk as .scp, open it with Open image… and click Rescue sectors…
+{0} sektorů se čte s chybou kontrolního součtu — data tam jsou, jen slabá; další pokusy nebo jiná mechanika je může přečíst. = {0} sectors read with a checksum error — the data is there, only weak; more attempts or another drive may read them.
+{0} sektorů mechanika vůbec nenašla (chybí nebo je poškozená hlavička) — šance je menší. = The drive did not find {0} sectors at all (header missing or damaged) — the chance is smaller.
+Tenhle pokus nepřidal ani jeden sektor. Pokud nepomohla ani předchozí mechanika, je disketa v těchto místech nejspíš nezachranitelná. = This attempt added no sector. If the previous drive did not help either, the disk most likely cannot be rescued in these places.
+Disketa je chráněná proti zápisu. Vyndej ji a v rohu diskety najdi malý posuvný jezdec se čtvercovým okénkem: posuň ho tak, aby okénko bylo ZAKRYTÉ (otevřené okénko \= ochrana zapnutá). U 5,25" diskety odlep nálepku z výřezu na boku. Pak disketu vlož znovu. = The disk is write-protected. Take it out and find the small sliding tab with a square window in a corner of the disk: slide it so that the window is CLOSED (open window \= protected). On a 5.25" disk remove the sticker from the notch on the side. Then insert the disk again.
+ — počítač nestihl Greaseweazle posílat data pro zápis přes USB. Zapoj ho přímo do portu v počítači (ne přes rozbočovač nebo přední panel), zkus kratší kabel a zavři programy, které zatěžují počítač. Propustnost ověří Diagnostika mechaniky → Test propustnosti USB. =  — the computer could not send the write data to the Greaseweazle over USB fast enough. Plug it directly into a port on the computer (not via a hub or the front panel), try a shorter cable and close programs that load the computer. Diagnostics → USB bandwidth test checks the throughput.
+ — stopa {0} je za koncem souborového systému, do obrazu ji nedávám =  — track {0} lies beyond the end of the file system and is left out of the image
+Kořenový adresář nevypadá jako FAT — většina záznamů jsou nesmysly. Disketa má nejspíš jen boot sektor ve formátu DOS a za ním vlastní data (zavaděč, hra). Kontrolu a opravu přeskakuji, aby se nic nepoškodilo. = The root directory does not look like FAT — most entries are nonsense. The disk most likely has only a DOS-style boot sector followed by its own data (a boot loader, a game). Skipping the check and repair so nothing gets damaged.
+Zápis jsem nezačal: USB mezi počítačem a Greaseweazle nestíhá (test propustnosti je pod minimem, které gw pro zápis potřebuje). Zápis by se uprostřed stopy přerušil a poškodil disketu. Zapoj Greaseweazle přímo do portu v počítači (zkus i USB 2.0), bez rozbočovače, krátkým kvalitním kabelem a zkus to znovu. Když nepomůže ani jiný kabel a port: u některých stolních PC s deskou AMD (AM5 — B650, X670, X870) USB řadič posílá data do pomalých USB zařízení jen zlomkem rychlosti; zápis pak jde jen z jiného počítače nebo přes přídavnou USB kartu do PCIe. = Writing not started: the USB link between the computer and the Greaseweazle is too slow (the bandwidth test is below the minimum gw needs for writing). The write would stop in the middle of a track and damage the disk. Plug the Greaseweazle directly into a port on the computer (try USB 2.0 too), without a hub, with a short good cable, and try again. If no other cable or port helps: on some desktop PCs with an AMD board (AM5 — B650, X670, X870) the USB controller sends data to slow USB devices at a fraction of the speed; then writing only works from another computer or through an add-in PCIe USB card.
+ — zapsaná stopa se po zpětném přečtení neshodovala ani po opakování: disketa má na tomhle místě slabý nebo poškozený povrch. =  — the written track did not match when read back, even after retries: the disk has a weak or damaged surface at this spot.
+ — POZOR: sektory jsou jen na stopě 0, zbytek diskety je prázdný (smazaná nebo nedopsaná disketa). Naformátuj ji, nebo na ni zapiš obraz. =  — NOTE: there are sectors only on track 0, the rest of the disk is empty (erased or unfinished disk). Format it or write an image to it.

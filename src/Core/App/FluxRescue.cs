@@ -10,6 +10,19 @@ using AtariFloppy.Core.I18n;
 
 namespace AtariFloppy.Core.App;
 
+/// <summary>Co se o chybějícím sektoru v toku zjistilo — podle toho, jestli má smysl další čtení.</summary>
+public enum MissingKind
+{
+    /// <summary>Hlavička i data se našla, jen nesedí kontrolní součet — další čtení může pomoct.</summary>
+    Weak,
+    /// <summary>Našla se jen hlavička, data za ní ne.</summary>
+    HeaderOnly,
+    /// <summary>Signál na stopě je, ale sektor se nenašel vůbec (poškozený záznam nebo jiné seřízení hlavy).</summary>
+    Unreadable,
+    /// <summary>Na stopě chybí magnetický záznam (dlouhá místa bez změn) — nevrátí ho žádná mechanika.</summary>
+    NoSignal,
+}
+
 /// <summary>Výsledek záchrany sektorů z jednoho nebo více souborů toku.</summary>
 public sealed class FluxRescueResult
 {
@@ -20,6 +33,33 @@ public sealed class FluxRescueResult
     public int[] FromFile { get; init; } = Array.Empty<int>();
     /// <summary>Kolik sektorů přibylo až jiným nastavením převodu.</summary>
     public int FromVariants { get; set; }
+    /// <summary>Chybějící sektory a co se o nich zjistilo.</summary>
+    public Dictionary<(int c, int h, int r), MissingKind> Missing { get; } = new();
+
+    /// <summary>
+    /// Rada, jestli má smysl číst dál: (upozornění?, text). hopeless = zbylé sektory už další mechanika
+    /// nejspíš nevrátí (nejsou slabé, a buď nemají signál, nebo je nepřečetly už aspoň dvě mechaniky).
+    /// </summary>
+    public (List<(bool warn, string text)> lines, bool hopeless) Advice(int drives)
+    {
+        var lines = new List<(bool, string)>();
+        int weak = Missing.Count(m => m.Value == MissingKind.Weak);
+        int header = Missing.Count(m => m.Value == MissingKind.HeaderOnly);
+        int unread = Missing.Count(m => m.Value == MissingKind.Unreadable);
+        int none = Missing.Count(m => m.Value == MissingKind.NoSignal);
+        if (weak > 0) lines.Add((false, Tr.F("{0} sektorů má čitelnou hlavičku i data, jen nesedí kontrolní součet — tyhle může zachránit další čtení (víc otáček, jiná mechanika).", weak)));
+        if (header > 0) lines.Add((false, Tr.F("U {0} sektorů se našla jen hlavička, data ne — šance je malá.", header)));
+        if (unread > 0)
+            lines.Add((false, drives >= 2
+                ? Tr.F("{0} sektorů nepřečetla ani jedna z {1} mechanik, i když tam signál je — šance je malá.", unread, drives)
+                : Tr.F("{0} sektorů se nepřečetlo, i když tam signál je — zkus tok z jiné mechaniky (jinak seřízená hlava je může přečíst).", unread)));
+        if (none > 0) lines.Add((false, Tr.F("{0} sektorů leží na místech bez magnetického záznamu — ty už nevrátí žádná mechanika.", none)));
+        bool hopeless = Missing.Count > 0 && weak == 0 && (unread == 0 || drives >= 2);
+        lines.Add(hopeless
+            ? (true, Tr.T("Další mechanika už nejspíš nepomůže — v těchto místech je disketa nezachranitelná."))
+            : (false, Tr.T("Má smysl uložit tok téže diskety z další mechaniky a spustit záchranu znovu se stejným obrazem — doplní se jen chybějící sektory.")));
+        return (lines, hopeless);
+    }
 
     public IEnumerable<long> MissingLbas()
     {
@@ -63,6 +103,15 @@ public static class FluxRescue
         var fromFile = new int[files.Count];
         var found = new Dictionary<(int c, int h, int r), (byte[] data, int file, int variant)>();
         var cells = new Dictionary<(int file, int c, int h), double>();
+        var seen = new Dictionary<(int c, int h, int r), MissingKind>();     // nejlepší neplatný nález sektoru
+        var signal = new Dictionary<(int c, int h), bool>();                 // aspoň jeden soubor má na stopě záznam
+        void Seen(DecodedSector s)
+        {
+            if (s.Ok) return;
+            var kind = s.Data.Length > 0 ? MissingKind.Weak : MissingKind.HeaderOnly;
+            var key = (s.Cyl, s.Head, s.Sector);
+            if (!seen.TryGetValue(key, out var k) || kind < k) seen[key] = kind;
+        }
         int total = files.Sum(f => f.scp.Tracks().Count()), done = 0;
 
         // 1. průchod: výchozí nastavení na všech stopách všech souborů
@@ -75,8 +124,10 @@ public static class FluxRescue
                 double? cell = CellUs(flux);
                 if (cell == null) continue;
                 cells[(fi, c, h)] = cell.Value;
+                if (DropoutShare(flux, cell.Value) < 0.05) signal[(c, h)] = true;
                 foreach (var s in MfmDecoder.Decode(flux, cell.Value, MfmDecoder.Variants[0].gain, MfmDecoder.Variants[0].phase))
-                    if (s.Ok && s.SizeCode == 2 && !found.ContainsKey((s.Cyl, s.Head, s.Sector)))
+                    if (!s.Ok) Seen(s);
+                    else if (s.SizeCode == 2 && !found.ContainsKey((s.Cyl, s.Head, s.Sector)))
                     {
                         found[(s.Cyl, s.Head, s.Sector)] = (s.Data, fi, 0);
                         fromFile[fi]++;
@@ -105,7 +156,8 @@ public static class FluxRescue
             var flux = files[fi].scp.FluxUs(c, h);
             for (int v = 1; v < MfmDecoder.Variants.Length && Incomplete(c, h); v++)
                 foreach (var s in MfmDecoder.Decode(flux, cells[(fi, c, h)], MfmDecoder.Variants[v].gain, MfmDecoder.Variants[v].phase))
-                    if (s.Ok && s.SizeCode == 2 && s.Cyl == c && s.Head == h && !result.Sectors.ContainsKey((c, h, s.Sector)))
+                    if (!s.Ok) Seen(s);
+                    else if (s.SizeCode == 2 && s.Cyl == c && s.Head == h && !result.Sectors.ContainsKey((c, h, s.Sector)))
                     {
                         result.Sectors[(c, h, s.Sector)] = (s.Data, fi, v);
                         result.FromVariants++;
@@ -122,9 +174,30 @@ public static class FluxRescue
             for (int h = 0; h < g.Sides; h++)
                 for (int r = 1; r <= g.SectorsPerTrack; r++)
                     if (!result.Sectors.ContainsKey((c, h, r)))
-                        TrackActivity.Reason(c, h, r - 1, Tr.T("v žádném souboru toku nebyl s platným kontrolním součtem"));
+                    {
+                        var kind = seen.TryGetValue((c, h, r), out var k) ? k : signal.ContainsKey((c, h)) ? MissingKind.Unreadable : MissingKind.NoSignal;
+                        result.Missing[(c, h, r)] = kind;
+                        TrackActivity.Reason(c, h, r - 1, kind switch
+                        {
+                            MissingKind.Weak => Tr.T("hlavička i data jsou, jen nesedí kontrolní součet — další čtení může pomoct"),
+                            MissingKind.HeaderOnly => Tr.T("našla se jen hlavička sektoru, data ne"),
+                            MissingKind.Unreadable => Tr.T("sektor se nenašel, i když na stopě signál je"),
+                            _ => Tr.T("na stopě chybí magnetický záznam — nezachranitelné"),
+                        });
+                    }
         progress?.Invoke(1, 1, Tr.T("Hotovo"));
         return result;
+    }
+
+    /// <summary>
+    /// Podíl času stopy v mezerách delších než 6 buněk (MFM jich má nejvýš 4): místa bez magnetického záznamu.
+    /// Zdravé stopy na skutečných disketách 0–0,4 %, stopa se sloupnutou vrstvou 30 %.
+    /// </summary>
+    public static double DropoutShare(IReadOnlyList<double> flux, double cellUs)
+    {
+        double total = 0, gaps = 0;
+        foreach (double f in flux) { total += f; if (f > 6 * cellUs) gaps += f; }
+        return total > 0 ? gaps / total : 1;
     }
 
     /// <summary>

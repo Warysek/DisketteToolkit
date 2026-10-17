@@ -131,7 +131,7 @@ internal sealed class Jobs
         else if (File.Exists(path))
             Warn(Tr.T("Soubor už existuje, ale není to rozpracovaná záchrana — přepíšu ho."));
 
-        int recovered = 0;
+        int recovered = 0, stillCrc = 0;
         try
         {
             if (d.Kind == DriveKind.Greaseweazle)
@@ -188,6 +188,7 @@ internal sealed class Jobs
                     {
                         var rr = Rescue.RetryMissing(dev, img, st, tries, vote, P, Ct);
                         recovered += rr.Recovered;
+                        stillCrc = rr.StillCrc;
                         if (rr.VoteUnavailable) Dim(Tr.T("Skládání z vadných čtení umí jen interní mechanika s fdrawcmd.sys — tady jen opakované čtení."));
                         if (rr.NewlyVoted > 0) Warn(Tr.F("Poskládáno hlasováním z vadných čtení: {0} sektorů, nejistých bitů celkem {1}.", rr.NewlyVoted, rr.UncertainBits));
                         else if (vote && !rr.VoteUnavailable && st.Missing.Count > 0)
@@ -212,7 +213,18 @@ internal sealed class Jobs
         if (st!.Missing.Count == 0) { Ok(Tr.F("Celá disketa je zachráněná: {0}", path)); return; }
         Warn(Tr.F("Chybí ještě {0} sektorů (z {1}). Obraz je uložený: {2}", st.Missing.Count, img!.Geometry.TotalSectors, path));
         if (st.Voted.Count > 0) Warn(Tr.F("{0} z nich je v obrazu poskládaných hlasováním — nejpravděpodobnější obsah, ale neověřený.", st.Voted.Count));
-        Info(Tr.T("Vlož disketu do jiné mechaniky (nebo vyčisti hlavu) a spusť Záchranu znovu se stejným souborem — přečtou se jen chybějící sektory."));
+        // má smysl další mechanika? — podle druhu chyby (CRC = data tam jsou) a podle toho, jestli pokus něco přidal
+        if (d.Kind == DriveKind.Greaseweazle)
+            Info(Tr.T("Jestli pomůže další mechanika, nejlíp řekne tok: ulož disketu jako .scp, otevři ho přes Otevřít obraz… a klikni na Záchrana sektorů…"));
+        else
+        {
+            if (stillCrc > 0) Info(Tr.F("{0} sektorů se čte s chybou kontrolního součtu — data tam jsou, jen slabá; další pokusy nebo jiná mechanika je může přečíst.", stillCrc));
+            if (st.Missing.Count > stillCrc) Info(Tr.F("{0} sektorů mechanika vůbec nenašla (chybí nebo je poškozená hlavička) — šance je menší.", st.Missing.Count - stillCrc));
+        }
+        if (recovered == 0 && st.History.Count >= 2 && stillCrc == 0)
+            Warn(Tr.T("Tenhle pokus nepřidal ani jeden sektor. Pokud nepomohla ani předchozí mechanika, je disketa v těchto místech nejspíš nezachranitelná."));
+        else
+            Info(Tr.T("Vlož disketu do jiné mechaniky (nebo vyčisti hlavu) a spusť Záchranu znovu se stejným souborem — přečtou se jen chybějící sektory."));
     }
 
     /// <summary>
@@ -272,7 +284,12 @@ internal sealed class Jobs
 
         if (st.Missing.Count == 0) { Ok(Tr.F("Celá disketa je zachráněná: {0}", path)); return; }
         Warn(Tr.F("Chybí ještě {0} sektorů (z {1}). Obraz je uložený: {2}", st.Missing.Count, img.Geometry.TotalSectors, path));
-        Info(Tr.T("Ulož tok téže diskety z jiné mechaniky a spusť záchranu znovu se stejným obrazem — doplní se jen chybějící sektory. Pokračovat jde i Záchranou vadné diskety s disketou v mechanice."));
+        // rada jen k sektorům, které pořád chybí (u pokračující záchrany mohly ostatní přijít dřív)
+        foreach (var key in r.Missing.Keys.ToList())
+            if (key.c >= img.Geometry.Tracks || key.h >= img.Geometry.Sides || !st.Missing.Contains(img.Geometry.Lba(key.c, key.h, key.r - 1)))
+                r.Missing.Remove(key);
+        var (advice, _) = r.Advice(scpFiles.Count);
+        foreach (var (warn, text) in advice) if (warn) Warn(text); else Info(text);
     }
 
     private static string Sha256(string file)
@@ -507,7 +524,7 @@ internal sealed class Jobs
                     var lines = diag.Bandwidth(Ct);
                     foreach (var l in lines) Dim(l);
                     if (lines.Any(l => l.Contains("WARNING") || l.Contains("ERROR")))
-                        Warn(Tr.T("USB nestíhá nebo přenáší data s chybami — zkus jiný port (přímo v počítači, ne přes rozbočovač) a kratší nebo kvalitnější kabel."));
+                        Warn(Tr.T("USB nestíhá nebo přenáší data s chybami — zkus jiný port (přímo v počítači, ne přes rozbočovač) a kratší nebo kvalitnější kabel. Když nepomůže ani jiný kabel a port: u některých stolních PC s deskou AMD (AM5 — B650, X670, X870) USB řadič posílá data do pomalých USB zařízení jen zlomkem rychlosti; zápis pak jde jen z jiného počítače nebo přes přídavnou USB kartu do PCIe."));
                     else Ok(Tr.T("Propustnost USB stačí pro čtení i zápis toku."));
                     break;
                 }
@@ -1059,7 +1076,7 @@ internal sealed class Jobs
 
     private void ShowReport(FatCheckReport rep)
     {
-        if (!rep.IsFat) { foreach (var i in rep.Issues) Err(i.Message); return; }
+        if (!rep.IsFat) { foreach (var i in rep.Issues) if (i.Severity == IssueSeverity.Error) Err(i.Message); else Warn(i.Message); return; }
         Info(Tr.F("Souborů {0}, adresářů {1}, obsazeno {2} KB, volno {3} KB", rep.Files, rep.Directories, rep.UsedBytes / 1024, rep.FreeBytes / 1024));
         if (rep.Issues.Count == 0) { Ok(Tr.T("Souborový systém je v pořádku.")); return; }
         foreach (var i in rep.Issues.OrderByDescending(i => i.Severity))

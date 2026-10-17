@@ -18,6 +18,13 @@ while i < len(rest):
     files.append(a); i += 1
 if action == "info":
     print("Host Tools: fake\nDevice:\n  Model:     Greaseweazle V4.1\n  Firmware:  1.6"); sys.exit(0)
+if action == "bandwidth":
+    # AFLOPPY_FAKE_SLOW_USB=1 simuluje pomalé USB (jako levný dlouhý kabel)
+    slow = os.environ.get("AFLOPPY_FAKE_SLOW_USB") == "1"
+    print("Write Bandwidth:    %s Mbps" % ("2.634" if slow else "9.800"))
+    print("Estimated Consistent Min. Bandwidth: %s Mbps" % ("2.321" if slow else "9.100"))
+    if slow: print("-> **WARNING** BELOW REQUIRED MIN.: 4.627 Mbps")
+    sys.exit(0)
 if action == "delays":
     print("Step Delay: 3000us"); sys.exit(0)
 if not os.path.exists(disk) and action == "read":

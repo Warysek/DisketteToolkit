@@ -509,6 +509,18 @@ internal static class Tests
         }
     }
 
+    private static void T_Fat_ForeignDataBehindDosBootIsLeftAlone()
+    {
+        // jako Smart Boot Manager: DOS boot sektor s platným BPB, ale v kořenovém adresáři vlastní data
+        var img = DiskFormatter.CreateBlank(DiskGeometry.Hd1440, FormatStyle.Pc).Data;
+        var bs = new BootSector(img);
+        int root = (bs.ReservedSectors + bs.FatCount * bs.SectorsPerFat) * 512;
+        var rnd = new Random(3);
+        for (int i = root; i < root + 32 * 24; i++) img[i] = (byte)rnd.Next(1, 256);
+        var rep = FatDoctor.Check(img);
+        Assert(!rep.IsFat && !rep.HasRepairable, "cizí data se neopravují: " + string.Join(" | ", rep.Issues.Select(i => i.Message)));
+    }
+
     private static void T_Fat_RepairsTypicalDamage()
     {
         string st = MakeFatImage("damaged.st", FormatStyle.Pc, out byte[] big, out byte[] small);
@@ -1283,7 +1295,17 @@ internal static class Tests
         Assert(!ok && detail.Contains("41"), "zevnitř ztratí krok: " + detail);
     }
 
-    private static void T_Gw_ImdCylinderIds()
+    private static void T_Gw_ExplainErrors()
+    {
+        string v = AtariFloppy.Core.Drives.Gw.GwSession.Explain("Failed to verify Track 0.0");
+        Assert(v.Contains("povrch") && !v.Contains("indexový puls"), "chyba ověření není chybějící index: " + v);
+        Assert(AtariFloppy.Core.Drives.Gw.GwSession.Explain("Command Failed: GetFluxStatus: No Index").Contains("napájení"), "No Index");
+        Assert(AtariFloppy.Core.Drives.Gw.GwSession.Explain("Command Failed: Seek: Track 0 not found").Contains("stopu 0"), "Track 0 not found");
+        Assert(AtariFloppy.Core.Drives.Gw.GwSession.Explain("Command Failed: GetFluxStatus: Flux Underflow").Contains("USB"), "Flux Underflow");
+        Assert(AtariFloppy.Core.Drives.Gw.GwSession.Explain("Track0 signal absent after seek to cylinder 0").Contains("stopu 0"), "Track0 signal absent");
+    }
+
+    private static void T_Gw_ImdTracks()
     {
         // stopa 79 normálně, „stopa 80“ s hlavičkami stopy 79 (hlava dál nedojela) → mapa válců
         var ms = new MemoryStream();
@@ -1302,9 +1324,17 @@ internal static class Tests
         try
         {
             File.WriteAllBytes(f, ms.ToArray());
-            var ids = AtariFloppy.Core.Drives.Gw.GwSession.ImdCylinderIds(f)!;
-            Assert(ids[(79, 0)].SequenceEqual(new[] { 79, 79 }), "stopa 79");
-            Assert(ids[(80, 0)].SequenceEqual(new[] { 79, 79 }), "stopa 80 má hlavičky stopy 79");
+            var imd = AtariFloppy.Core.Drives.Gw.GwSession.ImdTracks(f)!;
+            Assert(imd[(79, 0)].CylinderIds.SequenceEqual(new[] { 79, 79 }), "stopa 79");
+            Assert(imd[(80, 0)].CylinderIds.SequenceEqual(new[] { 79, 79 }), "stopa 80 má hlavičky stopy 79");
+            Eq(512, imd[(79, 0)].Sectors[1].Length, "celý sektor");
+            Assert(imd[(79, 0)].Sectors[2].All(x => x == 0xE5), "komprimovaný sektor");
+            // PC 1,44 MB s pozůstatkem 81. stopy: BPB říká 2880 sektorů → 80 stop; Atari 82 stop zůstane
+            var pc = DiskFormatter.CreateBlank(DiskGeometry.Hd1440, FormatStyle.Pc).Data.Take(512).ToArray();
+            Eq(80, AtariFloppy.Core.Drives.Gw.GwSession.TracksOfFileSystem(81, 2, 18, 512, pc), "81 → 80 podle FAT");
+            var at = DiskFormatter.CreateBlank(new DiskGeometry(82, 2, 10), FormatStyle.Atari).Data.Take(512).ToArray();
+            Eq(82, AtariFloppy.Core.Drives.Gw.GwSession.TracksOfFileSystem(82, 2, 10, 512, at), "Atari 82 stop zůstane");
+            Eq(81, AtariFloppy.Core.Drives.Gw.GwSession.TracksOfFileSystem(81, 2, 18, 512, new byte[512]), "bez BPB beze změny");
         }
         finally { File.Delete(f); }
     }
@@ -1343,6 +1373,14 @@ internal static class Tests
             var one = FluxRescue.Run(new[] { pa });
             Eq(g, one.Geometry, "formát z toku");
             Eq(9, one.MissingLbas().Count(), "z jednoho souboru chybí stopa 1/1");
+            Assert(one.Missing.Count == 9 && one.Missing.Values.All(k => k == MissingKind.Weak), "vadná data = slabé sektory");
+            Assert(!one.Advice(1).hopeless, "slabé sektory: další čtení má smysl");
+            var lost = new FluxRescueResult();
+            lost.Missing[(9, 0, 1)] = MissingKind.NoSignal;
+            Assert(lost.Advice(1).hopeless, "bez záznamu = beznadějné");
+            lost.Missing[(8, 1, 1)] = MissingKind.Unreadable;
+            Assert(!lost.Advice(1).hopeless && lost.Advice(2).hopeless, "nečitelný: s jednou mechanikou zkusit další, po dvou už ne");
+            Assert(FluxRescue.DropoutShare(new[] { 2.0, 3.0, 40.0, 4.0 }, 1.0) > 0.5 && FluxRescue.DropoutShare(new[] { 2.0, 3.0, 4.0 }, 1.0) == 0, "místa bez záznamu");
             var both = FluxRescue.Run(new[] { pa, pb });
             Eq(0, both.MissingLbas().Count(), "dva soubory se doplní");
             Eq(9, both.FromFile[1], "druhý soubor dodal jen chybějící");
@@ -1501,6 +1539,19 @@ internal static class Tests
         Eq(g.TrackCount, w.Written.Count, "zapsané stopy");
         var r2 = gw.Read(fmt);
         Assert(r2.Image.Data.SequenceEqual(img2.Data), "data po zápisu");
+
+        // pomalé USB: zápis se vůbec nezačne a disketa zůstane beze změny
+        var before = File.ReadAllBytes(disk);
+        Environment.SetEnvironmentVariable("AFLOPPY_FAKE_SLOW_USB", "1");
+        try
+        {
+            bool refused = false;
+            try { FakeGw(disk).Write(img, fmt, verify: true); }
+            catch (OperationException e) { refused = e.Message.Contains("USB"); }
+            Assert(refused, "pomalé USB: zápis odmítnut");
+            Assert(File.ReadAllBytes(disk).SequenceEqual(before), "disketa beze změny");
+        }
+        finally { Environment.SetEnvironmentVariable("AFLOPPY_FAKE_SLOW_USB", null); }
     }
 
     private static void T_Gw_MissingSectorsAndAmiga()

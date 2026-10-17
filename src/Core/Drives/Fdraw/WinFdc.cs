@@ -208,7 +208,7 @@ public sealed class WinFdc : IFdc
 
     private static Exception Error(int err) => err switch
     {
-        Native.ERROR_WRITE_PROTECT => new OperationException(Tr.T("Disketa je chráněná proti zápisu — posuň jezdec.")),
+        Native.ERROR_WRITE_PROTECT => new OperationException(Tr.T("Disketa je chráněná proti zápisu. Vyndej ji a v rohu diskety najdi malý posuvný jezdec se čtvercovým okénkem: posuň ho tak, aby okénko bylo ZAKRYTÉ (otevřené okénko = ochrana zapnutá). U 5,25\" diskety odlep nálepku z výřezu na boku. Pak disketu vlož znovu.")),
         Native.ERROR_NOT_READY or Native.ERROR_NO_MEDIA_IN_DRIVE => new OperationException(Tr.T("Mechanika není připravená — je vložená disketa?")),
         _ => new SectorIOException(WinFloppyDevice.Msg(err), err),
     };

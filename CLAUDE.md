@@ -181,6 +181,11 @@ Own ideas (not seen in any researched tool), agreed with Wary 2026-10-16:
 50. **Drive × disk cross-check** — same disk bad in two drives = disk; almost every disk bad in one drive = drive
     (read history, `App/ReadHistory.cs`, history.csv next to settings; disk identity = boot sector hash).
 51. **Disk grade A/B/C** after a write test (`MediaChecks.Grade`); later also from flux histogram spread.
+52. **Repair format via Greaseweazle** (agreed with Wary 2026-10-17) — the fdrawcmd repair format adds a spare F0
+    sector; gw cannot, but a custom diskdef can set `gap4a` / `gap1` per track (checked in gw `codec/ibm/ibm.py`),
+    shifting all sectors so the bad spot falls into a gap. Locate the bad spot from flux (dropout position, see
+    `FluxRescue.DropoutShare`) and compute the shift instead of trying blindly; write + verify per track. HD tracks
+    have little slack (~500 B) — smaller gap3 needed; DD has more. Prototype and test on real disks first.
 
 Order of work (proposed to Wary 2026-10-13; groups = one release each, by importance x ease):
 1. **Drive diagnostics** — 20 RPM, 22 head service + sensors, 17 head cleaning, 23 drive profiles.
@@ -204,13 +209,17 @@ Order of work (proposed to Wary 2026-10-13; groups = one release each, by import
    from sector IDs, result = image + RescueState sidecar); GUI: image window of a .scp → "Záchrana sektorů…"
    (`Dialogs/FluxRescueDialog.cs`, `Jobs.RescueFromFlux`). On Wary's files: healthy 2880/2880; damaged NEC 2806,
    Samsung 2808, together 2808/2880; the two drives' overlapping sectors were byte-identical.
+   Rescue advice ("can another drive help?"): flux rescue classifies each missing sector — Weak (data with bad
+   CRC seen), HeaderOnly, Unreadable (track has signal), NoSignal (≥5 % of track time in gaps > 6 cells) —
+   `FluxRescueResult.Advice`; drive rescue counts sectors whose last error was CRC (23). gw probe trims tracks
+   beyond the FAT size from the boot sector (`GwSession.TracksOfFileSystem`; a 1.44 MB disk read as 81 tracks).
    Known limit: read history identifies a drive by its Id (COM port for Greaseweazle), so different drives on one
    Greaseweazle — and one drive on two PCs — are not told apart (items 49/50); needs a user-chosen drive name.
 2. **Backup with a record** (small, no hardware risk) — 3 gw command, 4 quick backup, 16 archive log,
    12 checksums (TOSEC matching after), MD5 directory export from 40, 45 incomplete backups, 43 bandwidth test;
    42 disk library builds on it (maybe its own release).
 3. **Reading bad disks** (after Greaseweazle feedback) — 1 second pass, 15 combine reads, 21 dirty head vs
-   damaged disk, 26 error reasons in the map.
+   damaged disk, 26 error reasons in the map. Plus 52 repair format via Greaseweazle.
 4. **Greaseweazle flux first** — 5 flux then image, 2 format detection, outputs/replay from 40.
 5. **Gotek stick wizard** — 34.
 6. **Understanding a disk** — 27 track layout (fdrawcmd scan already used), 33 file map + sector viewer,

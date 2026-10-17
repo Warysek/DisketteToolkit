@@ -181,14 +181,20 @@ public sealed class GwSession
         }
     }
 
-    private static string Explain(string msg)
+    public static string Explain(string msg)
     {
         string m = msg.ToLowerInvariant();
         if (m.Contains("could not auto-probe") || m.Contains("no greaseweazle") || m.Contains("could not open"))
             return msg + Tr.T(" — Greaseweazle není připojený, nebo ho používá jiný program.");
-        if (m.Contains("track 0") || m.Contains("no index"))
+        // přesné hlášky firmwaru (Ack v gw usb.py) — ne jen „track 0“, to je i v „Failed to verify Track 0.0“
+        if (m.Contains("track 0 not found") || m.Contains("track0 signal absent") || m.Contains("no index"))
             return msg + Tr.T(" — mechanika nehlásí stopu 0 / indexový puls: je vložená disketa, připojené napájení a správně nastavená mechanika (A/B)?");
-        if (m.Contains("write protect")) return Tr.T("Disketa je chráněná proti zápisu — posuň jezdec.");
+        if (m.Contains("failed to verify"))
+            return msg + Tr.T(" — zapsaná stopa se po zpětném přečtení neshodovala ani po opakování: disketa má na tomhle místě slabý nebo poškozený povrch.");
+        if (m.Contains("write protect")) return Tr.T("Disketa je chráněná proti zápisu. Vyndej ji a v rohu diskety najdi malý posuvný jezdec se čtvercovým okénkem: posuň ho tak, aby okénko bylo ZAKRYTÉ (otevřené okénko = ochrana zapnutá). U 5,25\" diskety odlep nálepku z výřezu na boku. Pak disketu vlož znovu.");
+        // firmware hlásí, že mu PC při zápisu nestihlo poslat data (vyprázdněný buffer) — gw to už samo zkoušel znovu
+        if (m.Contains("flux underflow"))
+            return msg + Tr.T(" — počítač nestihl Greaseweazle posílat data pro zápis přes USB. Zapoj ho přímo do portu v počítači (ne přes rozbočovač nebo přední panel), zkus kratší kabel a zavři programy, které zatěžují počítač. Propustnost ověří Diagnostika mechaniky → Test propustnosti USB.");
         return msg;
     }
 
@@ -256,14 +262,29 @@ public sealed class GwSession
                     int heads = final.TryGetValue((0, 1), out var t01) && t01.Found > 0 ? 2 : 1;
                     // stopa za 79 se počítá, jen když její sektory mají v hlavičce opravdu tohle číslo stopy —
                     // jinak hlava dál nedojela nebo čte přeslech ze stopy 79 (disketa pak vyšla jako 81 stop)
-                    var ids = ImdCylinderIds(Path.Combine(dir, "probe.imd"));
+                    var imd = ImdTracks(Path.Combine(dir, "probe.imd"));
                     int maxCyl = final.Where(kv => kv.Value.Found > 0)
-                                      .Where(kv => kv.Key.cyl < 80 || ids == null || ids.TryGetValue(kv.Key, out var c) && c.Count > 0 && c.All(x => x == kv.Key.cyl))
+                                      .Where(kv => kv.Key.cyl < 80 || imd == null || imd.TryGetValue(kv.Key, out var t) && t.CylinderIds.Count > 0 && t.CylinderIds.All(x => x == kv.Key.cyl))
                                       .Max(kv => kv.Key.cyl);
                     int tracks = maxCyl >= 79 ? maxCyl + 1 : maxCyl >= 39 ? 40 : 80;
                     int bps = ImdSectorSize(Path.Combine(dir, "probe.imd")) ?? 512;
+                    // stopy za 79, které už nepatří souborovému systému (FAT podle boot sektoru), jsou zbytek
+                    // dřívějšího formátu — PC disketa 1,44 MB tak vycházela jako 81 stop
+                    string note = "";
+                    byte[]? boot = imd != null && imd.TryGetValue((0, 0), out var t00) && t00.Sectors.TryGetValue(1, out var b0) ? b0 : null;
+                    int fsTracks = TracksOfFileSystem(tracks, heads, spt, bps, boot);
+                    if (fsTracks < tracks)
+                    {
+                        note = fsTracks == tracks - 1
+                            ? Tr.F(" — stopa {0} je za koncem souborového systému, do obrazu ji nedávám", fsTracks)
+                            : Tr.F(" — stopy {0}–{1} jsou za koncem souborového systému, do obrazu je nedávám", fsTracks, tracks - 1);
+                        tracks = fsTracks;
+                    }
+                    // sektory jen na stopě 0 (zkouší se i 39 a 79+): disketa je smazaná nebo zápis skončil na začátku
+                    if (!final.Any(kv => kv.Key.cyl > 0 && kv.Value.Found > 0))
+                        note += Tr.T(" — POZOR: sektory jsou jen na stopě 0, zbytek diskety je prázdný (smazaná nebo nedopsaná disketa). Naformátuj ji, nebo na ni zapiš obraz.");
                     var g = new DiskGeometry(tracks, heads, spt, bps);
-                    return new GwProbe { Format = GwFormat.ForGeometry(g), Summary = $"MFM (PC / Atari / MSX …): {g}" };
+                    return new GwProbe { Format = GwFormat.ForGeometry(g), Summary = $"MFM (PC / Atari / MSX …): {g}" + note };
                 }
             }
 
@@ -307,39 +328,61 @@ public sealed class GwSession
     }
 
     /// <summary>
-    /// Čísla stop z hlaviček sektorů pro každou stopu IMD souboru (ImageDisk), jak ho zapisuje gw:
-    /// záznam stopy = režim, válec, hlava (bit 7 = mapa válců, bit 6 = mapa hlav), počet sektorů, velikost,
-    /// mapa sektorů, [mapa válců], [mapa hlav], data sektorů (0 = žádná, sudé = 1 bajt, liché = celý sektor).
+    /// Počet stop podle souborového systému (BPB v boot sektoru), když na disketě našel gw víc než 80 stop a BPB
+    /// sedí s formátem; jinak beze změny. Zkracuje jen stopy za 79 — nikdy pod 80.
     /// </summary>
-    public static Dictionary<(int cyl, int head), List<int>>? ImdCylinderIds(string path)
+    public static int TracksOfFileSystem(int tracks, int heads, int spt, int bps, byte[]? boot)
+    {
+        if (tracks <= 80 || boot == null || boot.Length < 512) return tracks;
+        var bs = new Fs.BootSector(boot);
+        if (bs.BytesPerSector != bps || bs.SectorsPerTrack != spt || bs.Heads != heads || bs.TotalSectors <= 0 || bs.TotalSectors % (spt * heads) != 0)
+            return tracks;
+        int fs = bs.TotalSectors / (spt * heads);
+        return fs >= 80 && fs < tracks ? fs : tracks;
+    }
+
+    /// <summary>Stopa z IMD souboru: čísla stop z hlaviček sektorů a data sektorů podle čísla sektoru.</summary>
+    public sealed record ImdTrack(List<int> CylinderIds, Dictionary<int, byte[]> Sectors);
+
+    /// <summary>
+    /// Stopy IMD souboru (ImageDisk), jak ho zapisuje gw: záznam stopy = režim, válec, hlava (bit 7 = mapa válců,
+    /// bit 6 = mapa hlav), počet sektorů, velikost, mapa sektorů, [mapa válců], [mapa hlav], data sektorů
+    /// (0 = žádná, sudé = 1 bajt opakovaný, liché = celý sektor).
+    /// </summary>
+    public static Dictionary<(int cyl, int head), ImdTrack>? ImdTracks(string path)
     {
         if (!File.Exists(path)) return null;
         var b = File.ReadAllBytes(path);
         int i = Array.IndexOf(b, (byte)0x1A);
         if (i < 0) return null;
         i++;
-        var result = new Dictionary<(int, int), List<int>>();
+        var result = new Dictionary<(int, int), ImdTrack>();
         try
         {
             while (i + 5 <= b.Length)
             {
                 int cyl = b[i + 1], head = b[i + 2], n = b[i + 3], size = 128 << Math.Min((int)b[i + 4], 6);
-                i += 5 + n;                                          // hlavička + mapa sektorů
+                var rmap = new int[n];
+                for (int k = 0; k < n; k++) rmap[k] = b[i + 5 + k];
+                i += 5 + n;
                 var cyls = new List<int>();
                 if ((head & 0x80) != 0) { for (int k = 0; k < n; k++) cyls.Add(b[i + k]); i += n; }
                 else for (int k = 0; k < n; k++) cyls.Add(cyl);
                 if ((head & 0x40) != 0) i += n;
+                var sectors = new Dictionary<int, byte[]>();
                 for (int k = 0; k < n; k++)
                 {
                     int rec = b[i++];
                     if (rec == 0) continue;
-                    i += rec % 2 == 0 ? 1 : size;
+                    var data = new byte[size];
+                    if (rec % 2 == 0) { for (int x = 0; x < size; x++) data[x] = b[i]; i++; }
+                    else { Buffer.BlockCopy(b, i, data, 0, size); i += size; }
+                    sectors[rmap[k]] = data;
                 }
-                if (i > b.Length) return null;
-                result[(cyl, head & 1)] = cyls;
+                result[(cyl, head & 1)] = new ImdTrack(cyls, sectors);
             }
         }
-        catch (IndexOutOfRangeException) { return null; }
+        catch (Exception e) when (e is IndexOutOfRangeException or ArgumentException) { return null; }
         return result;
     }
 
@@ -407,8 +450,26 @@ public sealed class GwSession
 
     // ------------------------------------------------------------------ zápis
 
+    private bool _writeBandwidthOk;
+
+    /// <summary>
+    /// Před zápisem změří propustnost USB (gw bandwidth). Když gw hlásí, že nestačí, nezapisuje se vůbec:
+    /// zápis by se uprostřed stopy přerušil („Flux Underflow“) a stopu poškodil — stalo se na skutečné disketě.
+    /// Měří se jednou za relaci.
+    /// </summary>
+    private void EnsureWriteBandwidth(CancellationToken ct)
+    {
+        if (_writeBandwidthOk) return;
+        var lines = Bandwidth(ct);
+        if (lines.Any(l => l.IndexOf("BELOW REQUIRED", StringComparison.OrdinalIgnoreCase) >= 0))
+            throw new OperationException(Tr.T("Zápis jsem nezačal: USB mezi počítačem a Greaseweazle nestíhá (test propustnosti je pod minimem, které gw pro zápis potřebuje). Zápis by se uprostřed stopy přerušil a poškodil disketu. Zapoj Greaseweazle přímo do portu v počítači (zkus i USB 2.0), bez rozbočovače, krátkým kvalitním kabelem a zkus to znovu. Když nepomůže ani jiný kabel a port: u některých stolních PC s deskou AMD (AM5 — B650, X670, X870) USB řadič posílá data do pomalých USB zařízení jen zlomkem rychlosti; zápis pak jde jen z jiného počítače nebo přes přídavnou USB kartu do PCIe.")
+                                         + "\n" + string.Join("\n", lines.Where(l => l.IndexOf("Bandwidth", StringComparison.OrdinalIgnoreCase) >= 0 || l.Contains("REQUIRED"))));
+        _writeBandwidthOk = true;
+    }
+
     public GwOutput Write(DiskImage img, GwFormat f, bool verify, ProgressHandler? progress = null, CancellationToken ct = default)
     {
+        EnsureWriteBandwidth(ct);
         string dir = TempDir();
         try
         {
@@ -430,6 +491,7 @@ public sealed class GwSession
     /// <summary>Zápis hotového souboru, kterému gw rozumí sám (.scp, .hfe, .ipf, .raw, .adf, .d81 …).</summary>
     public GwOutput WriteFile(string path, GwFormat? f, bool verify, int totalTracks, ProgressHandler? progress = null, CancellationToken ct = default)
     {
+        EnsureWriteBandwidth(ct);
         string dir = TempDir();
         try
         {

@@ -3,7 +3,10 @@ using System.Collections.Generic;
 
 namespace AtariFloppy.Core.Formats;
 
-/// <summary>Sektor nalezený v magnetickém toku: číslo z hlavičky (C/H/R/N), data a jestli sedí kontrolní součet dat.</summary>
+/// <summary>
+/// Sektor nalezený v magnetickém toku: číslo z hlavičky (C/H/R/N), data a jestli sedí kontrolní součet dat.
+/// Prázdná Data = našla se jen hlavička, data za ní ne.
+/// </summary>
 public sealed record DecodedSector(int Cyl, int Head, int Sector, int SizeCode, bool Ok, byte[] Data);
 
 /// <summary>
@@ -38,6 +41,7 @@ public static class MfmDecoder
             int mark = ByteAt(bits, j);
             if (mark == 0xFE && j + 16 * 7 <= bits.Length)
             {
+                if (id is { } prev) result.Add(new DecodedSector(prev.c, prev.h, prev.r, prev.n, false, Array.Empty<byte>()));
                 var hdr = new byte[7];
                 for (int k = 0; k < 7; k++) hdr[k] = (byte)ByteAt(bits, j + 16 * k);
                 id = Crc(hdr) == 0 ? (hdr[1], hdr[2], hdr[3], hdr[4] & 7) : null;

@@ -1,5 +1,5 @@
-Diskette Toolkit 0.9 (testovací verze)
-======================================
+Diskette Toolkit 0.9
+====================
 
 Diskety a obrazy disket pro Atari ST a další 3,5" systémy ve Windows 10 / 11.
 Nic se neinstaluje, stačí .NET Framework 4.8, který je součástí Windows 10 a 11.
@@ -129,6 +129,18 @@ NOVÉ VE VERZI 0.9
    převést i s jiným nastavením. Přidáš-li toky téže diskety z více mechanik, sektory se doplní
    navzájem. Výsledek je obraz .img a seznam chybějících sektorů — pokračovat jde i Záchranou
    vadné diskety s disketou v mechanice. Umí PC, Atari ST a MSX (MFM, 512 bajtů na sektor).
+   Na konci řekne, jestli má smysl zkoušet další mechaniku: slabé sektory (data jsou, jen nesedí
+   součet), nečitelné sektory se signálem a místa úplně bez magnetického záznamu (nezachranitelná).
+   Najetím myší na červené políčko v mapě uvidíš, do které skupiny sektor patří.
+ • Záchrana vadné diskety (USB, fdrawcmd.sys) na konci podobně rozliší sektory s chybou součtu
+   (data tam jsou) od sektorů, které mechanika vůbec nenašla.
+ • Greaseweazle: před každým zápisem (zápis obrazu, formát, oprava, zápisový test) program změří
+   propustnost USB. Když nestačí, zápis vůbec nezačne — jinak by se přerušil uprostřed stopy
+   („Flux Underflow“) a stopu poškodil. Pomůže krátký kvalitní kabel a port přímo v počítači.
+ • Kontrola souborového systému nechá být diskety, které mají jen DOS boot sektor a za ním vlastní
+   data (zavaděče jako Smart Boot Manager, hry) — dřív je „opravovala“ jako poškozenou FAT.
+ • Greaseweazle: disketa 1,44 MB se zbytkem staršího formátu na stopě 80 už nevychází jako 81 stop —
+   stopy za koncem souborového systému (podle boot sektoru) se do obrazu nedávají.
  • Známka diskety (A / B / C) po zápisovém testu — jestli se disketa hodí na data.
  • Greaseweazle: po čtení se do výpisu zapíšou otáčky mechaniky.
 

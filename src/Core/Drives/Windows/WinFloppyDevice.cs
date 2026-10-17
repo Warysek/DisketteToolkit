@@ -187,7 +187,7 @@ public sealed class WinFloppyDevice : ISectorDevice
         switch (err)
         {
             case Native.ERROR_WRITE_PROTECT:
-                return new OperationException(Tr.T("Disketa je chráněná proti zápisu — posuň jezdec (okénko musí být zavřené)."));
+                return new OperationException(Tr.T("Disketa je chráněná proti zápisu. Vyndej ji a v rohu diskety najdi malý posuvný jezdec se čtvercovým okénkem: posuň ho tak, aby okénko bylo ZAKRYTÉ (otevřené okénko = ochrana zapnutá). U 5,25\" diskety odlep nálepku z výřezu na boku. Pak disketu vlož znovu."));
             case Native.ERROR_NOT_READY:
             case Native.ERROR_NO_MEDIA_IN_DRIVE:
                 return new OperationException(Tr.T("Mechanika není připravená — je vložená disketa?"));
