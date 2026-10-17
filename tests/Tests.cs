@@ -1295,6 +1295,15 @@ internal static class Tests
         Assert(!ok && detail.Contains("41"), "zevnitř ztratí krok: " + detail);
     }
 
+    private static void T_Gw_ExplainErrors()
+    {
+        string v = AtariFloppy.Core.Drives.Gw.GwSession.Explain("Failed to verify Track 0.0");
+        Assert(v.Contains("povrch") && !v.Contains("indexový puls"), "chyba ověření není chybějící index: " + v);
+        Assert(AtariFloppy.Core.Drives.Gw.GwSession.Explain("Command Failed: GetFluxStatus: No Index").Contains("napájení"), "No Index");
+        Assert(AtariFloppy.Core.Drives.Gw.GwSession.Explain("Command Failed: Seek: Track 0 not found").Contains("stopu 0"), "Track 0 not found");
+        Assert(AtariFloppy.Core.Drives.Gw.GwSession.Explain("Command Failed: GetFluxStatus: Flux Underflow").Contains("USB"), "Flux Underflow");
+    }
+
     private static void T_Gw_ImdTracks()
     {
         // stopa 79 normálně, „stopa 80“ s hlavičkami stopy 79 (hlava dál nedojela) → mapa válců

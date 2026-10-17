@@ -181,13 +181,16 @@ public sealed class GwSession
         }
     }
 
-    private static string Explain(string msg)
+    public static string Explain(string msg)
     {
         string m = msg.ToLowerInvariant();
         if (m.Contains("could not auto-probe") || m.Contains("no greaseweazle") || m.Contains("could not open"))
             return msg + Tr.T(" — Greaseweazle není připojený, nebo ho používá jiný program.");
-        if (m.Contains("track 0") || m.Contains("no index"))
+        // přesné hlášky firmwaru (Ack v gw usb.py) — ne jen „track 0“, to je i v „Failed to verify Track 0.0“
+        if (m.Contains("track 0 not found") || m.Contains("no index"))
             return msg + Tr.T(" — mechanika nehlásí stopu 0 / indexový puls: je vložená disketa, připojené napájení a správně nastavená mechanika (A/B)?");
+        if (m.Contains("failed to verify"))
+            return msg + Tr.T(" — zapsaná stopa se po zpětném přečtení neshodovala ani po opakování: disketa má na tomhle místě slabý nebo poškozený povrch.");
         if (m.Contains("write protect")) return Tr.T("Disketa je chráněná proti zápisu. Vyndej ji a v rohu diskety najdi malý posuvný jezdec se čtvercovým okénkem: posuň ho tak, aby okénko bylo ZAKRYTÉ (otevřené okénko = ochrana zapnutá). U 5,25\" diskety odlep nálepku z výřezu na boku. Pak disketu vlož znovu.");
         // firmware hlásí, že mu PC při zápisu nestihlo poslat data (vyprázdněný buffer) — gw to už samo zkoušel znovu
         if (m.Contains("flux underflow"))
