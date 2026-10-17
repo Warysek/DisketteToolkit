@@ -1302,6 +1302,7 @@ internal static class Tests
         Assert(AtariFloppy.Core.Drives.Gw.GwSession.Explain("Command Failed: GetFluxStatus: No Index").Contains("napájení"), "No Index");
         Assert(AtariFloppy.Core.Drives.Gw.GwSession.Explain("Command Failed: Seek: Track 0 not found").Contains("stopu 0"), "Track 0 not found");
         Assert(AtariFloppy.Core.Drives.Gw.GwSession.Explain("Command Failed: GetFluxStatus: Flux Underflow").Contains("USB"), "Flux Underflow");
+        Assert(AtariFloppy.Core.Drives.Gw.GwSession.Explain("Track0 signal absent after seek to cylinder 0").Contains("stopu 0"), "Track0 signal absent");
     }
 
     private static void T_Gw_ImdTracks()

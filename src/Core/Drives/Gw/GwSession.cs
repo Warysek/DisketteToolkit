@@ -187,7 +187,7 @@ public sealed class GwSession
         if (m.Contains("could not auto-probe") || m.Contains("no greaseweazle") || m.Contains("could not open"))
             return msg + Tr.T(" — Greaseweazle není připojený, nebo ho používá jiný program.");
         // přesné hlášky firmwaru (Ack v gw usb.py) — ne jen „track 0“, to je i v „Failed to verify Track 0.0“
-        if (m.Contains("track 0 not found") || m.Contains("no index"))
+        if (m.Contains("track 0 not found") || m.Contains("track0 signal absent") || m.Contains("no index"))
             return msg + Tr.T(" — mechanika nehlásí stopu 0 / indexový puls: je vložená disketa, připojené napájení a správně nastavená mechanika (A/B)?");
         if (m.Contains("failed to verify"))
             return msg + Tr.T(" — zapsaná stopa se po zpětném přečtení neshodovala ani po opakování: disketa má na tomhle místě slabý nebo poškozený povrch.");
