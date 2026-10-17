@@ -18,13 +18,35 @@ Try it without hardware: `DisketteToolkit.exe --demo` (simulated drives).
 
 See also: [Privacy](#privacy) · [Code signing policy](#code-signing-policy)
 
+## What's new in 0.9
+
+- **Drive diagnostics** (Greaseweazle, internal drive + fdrawcmd.sys): drive speed with wobble and a live gauge
+  for turning the speed trimmer, warm-up test, sensor check, head to track 0 / 79 / sweep, step accuracy test,
+  head cleaning, repeated track read (dirty head or damaged disk?), USB bandwidth test, flux histogram per track
+- **Rescue a bad disk**: many retries per unreadable sector, continue in another drive (only missing sectors are
+  read), and at the end advice whether another drive can still help or the spot is lost
+- **Rescue sectors from flux**: open a Greaseweazle `.scp`, decode it with the built-in MFM decoder, combine captures
+  of the same disk from several drives into one image
+- Error reason for every failed sector in the map, read history (disk or drive?), disk grade A/B/C after a write test
+- Safer Greaseweazle writes: USB bandwidth is checked first, a write that would stop mid-track is not started
+- The FAT check leaves boot loaders and other non-FAT disks alone
+
+![Drive diagnostics — live drive speed](docs/screenshot-diagnostics.png)
+
+Tested on real hardware with a Greaseweazle V4.1 (NEC, Samsung and ALPS drives; HD and DD disks) and a
+Sony USB-FDU. The diagnostics on an internal drive with fdrawcmd.sys are **not verified on real hardware yet**.
+
+> On some desktop PCs with an AMD AM5 board (B650, X670, X870) the USB controller feeds slow USB devices too
+> slowly for Greaseweazle **writes** (reading works). Use another computer or an add-in PCIe USB card;
+> *Drive diagnostics → USB bandwidth test* shows whether your port is fast enough.
+
 ## Supported drives
 
 | Drive | What it can do |
 |---|---|
 | USB floppy drive | standard PC formats only (640 KB, 720 KB, 1.44 MB) |
-| Internal drive + [fdrawcmd.sys](https://simonowen.com/fdrawcmd/) | also Atari 800–900 KB (10/11 sectors, up to 84 tracks), DMF, 128–1024 byte sectors, step rate |
-| [Greaseweazle](https://github.com/keirf/greaseweazle) | everything incl. Amiga, Mac GCR, flux backups (.scp/.hfe) and writing IPF/SCP/HFE |
+| Internal drive + [fdrawcmd.sys](https://simonowen.com/fdrawcmd/) | also Atari 800–900 KB (10/11 sectors, up to 84 tracks), DMF, 128–1024 byte sectors, step rate; drive diagnostics |
+| [Greaseweazle](https://github.com/keirf/greaseweazle) | everything incl. Amiga, Mac GCR, flux backups (.scp/.hfe) and writing IPF/SCP/HFE; drive diagnostics |
 
 ![Drive capabilities](docs/drives-en.png)
 
@@ -37,7 +59,7 @@ The program downloads gw.exe and fdrawcmd.sys itself when you need them.
 - Batch backup: a box of disks one after another into numbered images (disk-001.st, disk-002.st…)
 - Drag an image file onto the window to open it
 - Drive diagnostics (internal drive + fdrawcmd.sys, Greaseweazle): speed with wobble and a live gauge for adjusting, sensor check, head moves and cleaning, repeated track read (dirty head vs. damaged disk), track layout listing (fdrawcmd.sys), warm-up and step accuracy tests, flux histogram and USB bandwidth test (Greaseweazle)
-- Rescue a bad disk: many retries per unreadable sector, continue in another drive (only the missing sectors are read), experimental bit voting from bad reads (fdrawcmd.sys); rescue sectors from saved Greaseweazle flux (.scp) with an own MFM decoder, combining captures from several drives
+- Rescue a bad disk: many retries per unreadable sector, continue in another drive (only the missing sectors are read), advice whether another drive can still help, experimental bit voting from bad reads (fdrawcmd.sys); rescue sectors from saved Greaseweazle flux (.scp) with an own MFM decoder, combining captures from several drives
 - Error reason for every failed sector in the map, read history that tells a faulty drive from a faulty disk, disk grade (A/B/C) after a write test
 - Surface test (read-only, write test with restore, destructive) with a FastCopy-style map
 - Experimental repair format (internal drive + fdrawcmd.sys): a defect on a track is covered by an extra sector instead of being marked bad in the FAT

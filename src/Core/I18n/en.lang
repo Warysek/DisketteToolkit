@@ -1278,7 +1278,7 @@ Magnetický tok — seznam souborů z něj neukážu. Sektory PC / Atari / MSX d
 {0}: navíc {1} sektorů, které v předchozích souborech nebyly = {0}: {1} more sectors that the previous files did not have
  — stopy {0}–{1} jsou za koncem souborového systému, do obrazu je nedávám =  — tracks {0}–{1} lie beyond the end of the file system and are left out of the image
 {0} sektorů má čitelnou hlavičku i data, jen nesedí kontrolní součet — tyhle může zachránit další čtení (víc otáček, jiná mechanika). = {0} sectors have a readable header and data, only the checksum is wrong — further reads (more revolutions, another drive) may rescue them.
-U {0} sektorů se našla jen hlavička, data ne — šance je malá. = For {0} sectors only the header was found, not the data — the chance is small.
+U {0} sektorů se našla jen hlavička, data ne — šance je malá. = Sectors with only a header found, no data: {0} — the chance is small.
 {0} sektorů nepřečetla ani jedna z {1} mechanik, i když tam signál je — šance je malá. = None of the {1} drives read {0} sectors, although there is signal — the chance is small.
 {0} sektorů se nepřečetlo, i když tam signál je — zkus tok z jiné mechaniky (jinak seřízená hlava je může přečíst). = {0} sectors were not read although there is signal — try a flux from another drive (a differently aligned head may read them).
 {0} sektorů leží na místech bez magnetického záznamu — ty už nevrátí žádná mechanika. = {0} sectors lie where the magnetic recording is gone — no drive will bring them back.
