@@ -1,4 +1,4 @@
-Diskette Toolkit 0.9 (testovací verze)
+Diskette Toolkit 0.9
 ======================================
 
 Diskety a obrazy disket pro Atari ST a další 3,5" systémy ve Windows 10 / 11.
