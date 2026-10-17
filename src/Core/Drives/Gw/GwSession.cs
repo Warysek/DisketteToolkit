@@ -280,6 +280,9 @@ public sealed class GwSession
                             : Tr.F(" — stopy {0}–{1} jsou za koncem souborového systému, do obrazu je nedávám", fsTracks, tracks - 1);
                         tracks = fsTracks;
                     }
+                    // sektory jen na stopě 0 (zkouší se i 39 a 79+): disketa je smazaná nebo zápis skončil na začátku
+                    if (!final.Any(kv => kv.Key.cyl > 0 && kv.Value.Found > 0))
+                        note += Tr.T(" — POZOR: sektory jsou jen na stopě 0, zbytek diskety je prázdný (smazaná nebo nedopsaná disketa). Naformátuj ji, nebo na ni zapiš obraz.");
                     var g = new DiskGeometry(tracks, heads, spt, bps);
                     return new GwProbe { Format = GwFormat.ForGeometry(g), Summary = $"MFM (PC / Atari / MSX …): {g}" + note };
                 }
