@@ -1,5 +1,5 @@
-Diskette Toolkit 0.9 (test version)
-===================================
+Diskette Toolkit 0.9
+====================
 
 Read, write, format and test floppy disks and disk images for the Atari ST and many
 other 3.5" systems (PC, MSX, Mac, Amiga, Amstrad PCW, MINIX, Linux, ...) on
@@ -15,6 +15,7 @@ Files in the ZIP:
   dtk.exe                    command line (Czech only for now)
   README.txt                 this file (English)
   NAVOD.txt                  full guide in Czech
+  LISEZ-MOI.txt              guide in French (thanks to Frederic, github.com/fsagez)
   Drives-EN.png              which drive can do what (Mechaniky-CZ.png = the same in Czech)
   Testy-Tests.html           test checklist for testers — open in a browser, fill in, save
   licence/                   GNU GPL v3 and the FreeDOS boot sector licence
