@@ -7,7 +7,8 @@ LogicalNames still use `AtariFloppy.*` on purpose; don't rename them.
 ## Language
 English is the project's main language on GitHub: README.md, commit messages, issues, release notes.
 The program UI follows the Windows language (Czech/Slovak → Czech, otherwise English). Czech users get
-`NAVOD.txt` (full guide) and `Mechaniky-CZ.png` in the ZIP; `README.txt` and `Drives-EN.png` are English.
+`NAVOD.txt` (full guide) and `Mechaniky-CZ.png` in the ZIP; `README.txt` and `Drives-EN.png` are English. `LISEZ-MOI.txt` is the French guide by Frederic (github.com/fsagez), who is also translating the UI
+(`fr.lang`, pending); when README.txt changes, tell Wary that the French guide may need the same change.
 
 ## Owner
 Wary (HoroPC) does not program. He decides WHAT, Claude writes all code. Talk to him in Czech, about behaviour he

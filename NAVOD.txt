@@ -12,6 +12,7 @@ V ZIPu je:
   dtk.exe               příkazová řádka (stejné funkce, pro skripty a pokročilé)
   NAVOD.txt             tento návod (česky)
   README.txt            stručný popis anglicky
+  LISEZ-MOI.txt         návod francouzsky (díky Fredericovi, github.com/fsagez)
   Mechaniky-CZ.png      co umí která mechanika (Drives-EN.png = totéž anglicky)
   Testy-Tests.html      seznam testů pro testery — otevři v prohlížeči, vyplň a ulož
   licence/              GNU GPL v3 a licence boot sektoru FreeDOS

@@ -1,0 +1,65 @@
+Diskette Toolkit 0.9
+====================
+
+Lecture, écriture, formatage et test de disquettes et d'images disque pour l'Atari ST et de nombreux autres systèmes 3,5 pouces (PC, MSX, Mac, Amiga, Amstrad PCW, MINIX, Linux, ...) sous Windows 10 / 11 (7 SP1 et 8.1 avec .NET Framework 4.8 installé). Inspiré du programme Atari FastCopy. Aucune installation requise — seul .NET Framework 4.8 est nécessaire et déjà intégré à Windows 10 et 11.
+
+Page du projet, téléchargements et rapports de bogues : https://github.com/Warysek/DisketteToolkit
+Soutenir le développement (don volontaire) : https://ko-fi.com/wary
+
+Fichiers contenus dans le ZIP :
+  DisketteToolkit.exe        interface graphique (GUI), en anglais ou en tchèque — sélectionnable dans le coin supérieur droit
+  dtk.exe                    ligne de commande (en tchèque uniquement pour le moment)
+  LISEZ-MOI.txt              ce fichier (guide en français)
+  README.txt                 guide complet en anglais
+  NAVOD.txt                  guide complet en tchèque
+  Drives-EN.png              quels périphériques font quoi (Mechaniky-CZ.png = idem en tchèque)
+  Testy-Tests.html           liste de contrôle pour les testeurs — à ouvrir dans un navigateur, à remplir, puis à enregistrer
+  licence/                   GNU GPL v3 et licence du secteur d'amorçage FreeDOS
+
+Pour commencer : décompressez tout (y compris DisketteToolkit.exe.config), double-cliquez sur DisketteToolkit.exe et accordez les droits d'administrateur (nécessaires pour l'accès direct aux lecteurs).
+Essayez-le sans matériel : DisketteToolkit.exe --demo   (lecteurs simulés)
+
+Lecteurs pris en charge
+  Lecteur de disquette USB       formats PC standard uniquement (640 Ko, 720 Ko, 1,44 Mo)
+  Lecteur interne + fdrawcmd.sys (simonowen.com/fdrawcmd)
+                         ainsi que Atari 800-900 Ko (10/11 secteurs, jusqu’à 84 pistes),
+                         DMF, secteurs de 128 à 1 024 octets, vitesse de pas
+  Greaseweazle (gw.exe disponible sur github.com/keirf/greaseweazle/releases, à placer dans
+  un dossier "greaseweazle" à côté du programme)
+                         tout, y compris Amiga, Mac GCR, sauvegardes Flux (.scp/.hfe)
+                         et écriture de fichiers IPF/SCP/HFE avec protection contre la copie
+
+Les modules complémentaires sont téléchargés par le programme (connexion Internet requise) :
+  Greaseweazle : sélectionnez-le comme lecteur → "Télécharger les outils hôtes Greaseweazle"
+    (dernière version de gw.exe depuis GitHub, y compris CAPSImg.dll, à placer dans le dossier du programme), puis "Mises à jour Greaseweazle" → mettez à jour gw.exe ou le firmware du périphérique.
+  Lecteur interne : "Installer le pilote fdrawcmd.sys" télécharge le fichier 
+    FdInstall.exe signé par l’auteur depuis simonowen.com, vérifie la signature et l’exécute.
+    Le pilote date de 2010 ; la fonctionnalité "Intégrité de la mémoire" de Windows 11 peut le bloquer.
+  Ligne de commande : dtk install gw | dtk firmware GW | dtk install fdrawcmd
+
+Disques de démarrage (bouton "Disque de démarrage...", ou dtk boot...) :
+  FreeDOS (téléchargé une fois depuis le dépôt officiel de FreeDOS 1.3, sous licence GPL),
+  MS-DOS extrait de votre propre Windows (diskcopy.dll, comme l’ancien "Créer une disquette de démarrage
+  MS-DOS"), bloc de démarrage Amiga ("install", KS 1.3 et 2.0+), disque Atari ST qui
+  lance automatiquement un programme depuis le dossier AUTO, et RawWrite d’images prêtes à l’emploi.
+  Le secteur d’amorçage FreeDOS est assemblé à partir du fichier FreeDOS boot.asm (GPL, voir third_party).
+
+Sauvegarde par lots (bouton "Sauvegarde par lots...") : sauvegarde une série de disques les uns après les autres sous forme d’images numérotées (disk-001.st, disk-002.st, etc.) ; un disque qui n’a pas été remplacé est détecté. Faites glisser un fichier image depuis l’Explorateur vers la fenêtre pour l’ouvrir.
+
+Diagnostic du lecteur (bouton "Diagnostic du lecteur..." ; lecteur interne avec fdrawcmd.sys ou Greaseweazle, pas de lecteurs USB) : vitesse (tr/min) avec oscillation et jauge en temps réel pour régler le compensateur de vitesse, vérification des capteurs (piste 0, protection en écriture, disque, index), déplacement de la tête vers la piste 0 / dernière piste / balayage, nettoyage de la tête à l’aide d’un disque de nettoyage, lecture répétée d’une piste (tête encrassée ou disque endommagé ; s’arrête lorsque le disque est en train de se désagréger), liste de la disposition des pistes (fdrawcmd.sys uniquement), test de préchauffage, test de précision des pas, histogramme de flux et test de la bande passante USB (Greaseweazle uniquement), ainsi qu’une note, la dernière vitesse et la date du dernier nettoyage pour chaque lecteur. Récupération d’un disque défectueux ("Rescue a bad disk...") : effectue de nouvelles tentatives sur chaque secteur illisible, enregistre la liste des secteurs manquants à côté de l’image et, lorsqu’il est relancé avec le même fichier sur un autre lecteur, ne lit que les secteurs manquants ; vote binaire expérimental à partir de lectures erronées (fdrawcmd.sys uniquement). Récupération de secteurs à partir du flux (Greaseweazle) : ouvrez un fichier .scp enregistré avec "Ouvrir l’image..." puis cliquez sur "Récupérer les secteurs...". Le programme décode lui-même le flux (aucun disque nécessaire), extrait chaque secteur présentant une somme de contrôle valide, quel que soit le tour de disque, réessaie les pistes endommagées avec d’autres paramètres de décodage et combine les fichiers de flux d’un même disque provenant de plusieurs lecteurs (PC, Atari ST, MSX : MFM, 512 octets). À la fin, le programme indique si un autre disque peut encore être utile : secteurs défectueux (données présentes, somme de contrôle erronée), secteurs illisibles avec signal, et zones où l'enregistrement magnétique a disparu (irrécupérable). Passez la souris sur une cellule rouge ou jaune de la carte des secteurs pour voir pourquoi le secteur est défectueux. Un historique de lecture permet de distinguer un lecteur défectueux d'un disque défectueux, et un test d'écriture attribue une note au disque (A/B/C). 
+
+Le programme détecte le lecteur et le disque inséré (DD/HD, formaté ou non) et indique, pour chaque opération et chaque format, si celle-ci est possible ou non, et pourquoi.
+
+La cartographie du disque affichée fonctionne comme le logiciel FastCopy : les colonnes correspondent aux pistes, les lignes aux secteurs, la face 0 en haut, la face 1 en bas ; pendant une opération, chaque secteur est coloré (vert : lu, violet : formaté, bleu : écrit, bleu sarcelle : vérifié, jaune : défaillant, rouge : illisible, rose : échec d'écriture) et un cadre blanc indique la position de la tête de lecture.
+
+La réparation du système de fichiers (FAT12 : Atari, PC, MSX) ne modifie que la table FAT et les entrées du répertoire, jamais les données des fichiers ; elle effectue d'abord une sauvegarde, n'écrit que les secteurs modifiés et vérifie chacun d'entre eux. Sur les disques dont la zone système est endommagée, elle refuse l'opération et recommande de réparer une image à la place (les réparations d'images s'effectuent toujours avec une copie).
+
+Ajouter une langue : Paramètres -> "Créer un modèle pour une nouvelle langue", traduisez le
+texte après "=" et enregistrez-le sous le nom xx.lang dans le dossier "lang" à côté du programme.
+
+Statut : testé avec de véritables outils sous Linux (mtools, dosfstools, hatari hmsa,
+hfsutils, e2fsprogs, cpmtools, amitools, le véritable programme Greaseweazle gw avec
+des disques simulés) et un contrôleur de disquette simulé. Les retours d’expérience sur du matériel réel
+sont les bienvenus.
+
+Licence: GNU GPL v3 (licence/LICENSE-GPL-3.0.txt). logiciel libre ; le code source est disponible gratuitement.

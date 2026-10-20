@@ -8,7 +8,7 @@ V=${V%.0}
 D=dist/pkg/DisketteToolkit-$V
 rm -rf dist/pkg && mkdir -p "$D/licence" "$D/lang"
 cp src/Gui/bin/Release/net48/DisketteToolkit.exe src/Gui/bin/Release/net48/DisketteToolkit.exe.config \
-   src/Cli/bin/Release/net48/dtk.exe src/Cli/bin/Release/net48/dtk.exe.config README.txt NAVOD.txt "$D/"
+   src/Cli/bin/Release/net48/dtk.exe src/Cli/bin/Release/net48/dtk.exe.config README.txt NAVOD.txt LISEZ-MOI.txt "$D/"
 cp docs/drives-en.png "$D/Drives-EN.png"
 cp docs/drives-cs.png "$D/Mechaniky-CZ.png"
 cp docs/tests.html "$D/Testy-Tests.html"
