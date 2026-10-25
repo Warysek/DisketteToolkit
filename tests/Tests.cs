@@ -1567,6 +1567,21 @@ internal static class Tests
             Eq("HXCPICFE", System.Text.Encoding.ASCII.GetString(h, 0, 8), "HFE hlavička");
             Eq(rate, BitConverter.ToUInt16(h, 12), "rychlost záznamu v HFE");
         }
+        // HD disketa naformátovaná jen na 5 sektorů: hustota se bere ze změřené rychlosti, ne z počtu sektorů
+        foreach (int kbps in new[] { 500, 250 })
+        {
+            var g5 = new DiskGeometry(80, 2, 5, 1024);
+            var img5 = new DiskImage(g5, Enumerable.Range(0, (int)g5.SizeBytes).Select(i => (byte)(i * 7)).ToArray());
+            string d5 = Path_($"five-{kbps}.scp");
+            ToFlux(img5, AtariFloppy.Core.Drives.Gw.GwFormat.ForGeometry(g5, null, kbps), d5);
+            var gw5 = FakeGw(d5);
+            var p5 = gw5.Probe();
+            Assert(p5.Format?.DiskDefs?.Contains($"rate = {kbps}") == true, $"rozpoznaná rychlost {kbps}: " + p5.Summary + "\n" + p5.Format?.DiskDefs);
+            Assert(gw5.Read(p5.Format!).Image.Data.SequenceEqual(img5.Data), $"data 5 × 1024 B při {kbps}");
+        }
+        // u formátů v nabídce se odhad hustoty z velikosti stopy musí shodovat s hustotou uvedenou v profilu
+        foreach (var pr in FormatProfiles.All.Where(x => x.Density != Density.ED))
+            Eq(pr.Density == Density.HD, pr.Geometry.IsHighDensity, "hustota profilu " + pr.Id);
         // Akai 1,6 MB (10 × 1024 B) je HD
         Assert(new DiskGeometry(80, 2, 10, 1024).IsHighDensity && !new DiskGeometry(80, 2, 5, 1024).IsHighDensity && !DiskGeometry.Dd720.IsHighDensity, "hustota podle velikosti stopy");
         Eq("akai.1600", AtariFloppy.Core.Drives.Gw.GwFormat.ForProfile(FormatProfiles.All.First(p => p.Id == "akai-1600"))?.Name, "Akai profil → gw");
