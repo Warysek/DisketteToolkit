@@ -23,10 +23,15 @@ public sealed class GwFormat
 
     public override string ToString() => DiskDefs != null ? Tr.F("{0} (vlastní definice formátu)", Description) : Description.Length > 0 ? $"{Description} (gw: {Name})" : Name;
 
-    /// <summary>IBM MFM formát (PC, Atari, MSX …) pro libovolnou geometrii: vestavěný, když existuje, jinak vlastní definice.</summary>
-    public static GwFormat ForGeometry(DiskGeometry g, string? preferredName = null)
+    /// <summary>
+    /// IBM MFM formát (PC, Atari, MSX …) pro libovolnou geometrii: vestavěný, když existuje, jinak vlastní definice.
+    /// <paramref name="measuredKbps"/> = rychlost záznamu změřená na disketě (rozpoznání formátu); bez ní se hustota
+    /// odhadne z velikosti stopy — to sedí na běžné formáty, ale HD disketa jde naformátovat i na málo sektorů.
+    /// </summary>
+    public static GwFormat ForGeometry(DiskGeometry g, string? preferredName = null, int? measuredKbps = null)
     {
-        string? named = preferredName ?? (g.BytesPerSector != 512 ? null : (g.Tracks, g.Sides, g.SectorsPerTrack) switch
+        bool hd = measuredKbps is int k ? k >= 450 : g.IsHighDensity;
+        string? named = preferredName ?? (g.BytesPerSector != 512 || hd != g.IsHighDensity ? null : (g.Tracks, g.Sides, g.SectorsPerTrack) switch
         {
             (80, 2, 9) => "atarist.720",
             (80, 1, 9) => "atarist.360",
@@ -42,7 +47,7 @@ public sealed class GwFormat
         if (named != null) return new GwFormat { Name = named, Geometry = g, Description = g.ToString() };
 
         int size = g.BytesPerSector switch { 128 => 128, 256 => 256, 1024 => 1024, _ => 512 };
-        int rate = g.IsHighDensity ? 500 : (g.SectorsPerTrack >= 11 && size == 512 ? 261 : 250);
+        int rate = hd ? 500 : (g.SectorsPerTrack >= 11 && size == 512 ? 261 : 250);
         var sb = new StringBuilder();
         sb.AppendLine("disk afloppy");
         sb.AppendLine($"    cyls = {g.Tracks}");
@@ -52,7 +57,7 @@ public sealed class GwFormat
         sb.AppendLine($"        bps = {size}");
         sb.AppendLine($"        gap3 = {FdrawDevice.Gap3(g)}");
         sb.AppendLine($"        rate = {rate}");
-        if (g.SectorsPerTrack >= 10 && size == 512 && !g.IsHighDensity) sb.AppendLine("        iam = no");
+        if (g.SectorsPerTrack >= 10 && size == 512 && !hd) sb.AppendLine("        iam = no");
         sb.AppendLine("    end");
         sb.AppendLine("end");
         return new GwFormat { Name = "afloppy", DiskDefs = sb.ToString(), Geometry = g, Description = g.ToString() };
@@ -286,7 +291,11 @@ public sealed class GwSession
                     if (!final.Any(kv => kv.Key.cyl > 0 && kv.Value.Found > 0))
                         note += Tr.T(" — POZOR: sektory jsou jen na stopě 0, zbytek diskety je prázdný (smazaná nebo nedopsaná disketa). Naformátuj ji, nebo na ni zapiš obraz.");
                     var g = new DiskGeometry(tracks, heads, spt, bps);
-                    return new GwProbe { Format = GwFormat.ForGeometry(g), Summary = $"MFM (PC / Atari / MSX …): {g}" + note };
+                    // hustotu bere z rychlosti, kterou gw na stopě 0 skutečně našel, ne z počtu sektorů
+                    int? kbps = imd != null && imd.TryGetValue((0, 0), out var r00) ? r00.RateKbps : null;
+                    if (kbps is int k && (k >= 450) != g.IsHighDensity)
+                        note += k >= 450 ? Tr.T(" — HD záznam (500 kbit/s) s málo sektory") : Tr.T(" — DD záznam (250 kbit/s)");
+                    return new GwProbe { Format = GwFormat.ForGeometry(g, null, kbps), Summary = $"MFM (PC / Atari / MSX …): {g}" + note };
                 }
             }
 
@@ -343,8 +352,8 @@ public sealed class GwSession
         return fs >= 80 && fs < tracks ? fs : tracks;
     }
 
-    /// <summary>Stopa z IMD souboru: čísla stop z hlaviček sektorů a data sektorů podle čísla sektoru.</summary>
-    public sealed record ImdTrack(List<int> CylinderIds, Dictionary<int, byte[]> Sectors);
+    /// <summary>Stopa z IMD souboru: čísla stop z hlaviček sektorů, data sektorů podle čísla sektoru a rychlost záznamu.</summary>
+    public sealed record ImdTrack(List<int> CylinderIds, Dictionary<int, byte[]> Sectors, int RateKbps);
 
     /// <summary>
     /// Stopy IMD souboru (ImageDisk), jak ho zapisuje gw: záznam stopy = režim, válec, hlava (bit 7 = mapa válců,
@@ -363,7 +372,7 @@ public sealed class GwSession
         {
             while (i + 5 <= b.Length)
             {
-                int cyl = b[i + 1], head = b[i + 2], n = b[i + 3], size = 128 << Math.Min((int)b[i + 4], 6);
+                int mode = b[i], cyl = b[i + 1], head = b[i + 2], n = b[i + 3], size = 128 << Math.Min((int)b[i + 4], 6);
                 var rmap = new int[n];
                 for (int k = 0; k < n; k++) rmap[k] = b[i + 5 + k];
                 i += 5 + n;
@@ -381,7 +390,7 @@ public sealed class GwSession
                     else { Buffer.BlockCopy(b, i, data, 0, size); i += size; }
                     sectors[rmap[k]] = data;
                 }
-                result[(cyl, head & 1)] = new ImdTrack(cyls, sectors);
+                result[(cyl, head & 1)] = new ImdTrack(cyls, sectors, (mode % 3) switch { 0 => 500, 1 => 300, _ => 250 });
             }
         }
         catch (Exception e) when (e is IndexOutOfRangeException or ArgumentException) { return null; }
