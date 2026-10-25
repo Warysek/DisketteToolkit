@@ -167,8 +167,12 @@ public static class GreaseweazleSetup
         return new ReleaseInfo(r.Tag, r.Tag.TrimStart('v', 'V'), asset.Name, asset.Url, asset.Size);
     }
 
+    /// <summary>
+    /// 64bitový balík gw jen na 64bitových Windows 8 a novějších — na Windows 7 běží jen 32bitový
+    /// (hlášení testera; i na 64bitových Windows 7). Windows 7 = verze 6.1.
+    /// </summary>
     public static ReleaseInfo GetLatest(CancellationToken ct = default) =>
-        ParseRelease(Http.GetString(ApiUrl, ct), Environment.Is64BitOperatingSystem);
+        ParseRelease(Http.GetString(ApiUrl, ct), Environment.Is64BitOperatingSystem && Environment.OSVersion.Version >= new Version(6, 2));
 
     /// <summary>Verze gw.exe, pokud se dá zjistit (náš zápis po instalaci, nebo název složky greaseweazle-1.23).</summary>
     public static string? VersionOf(string gwPath)

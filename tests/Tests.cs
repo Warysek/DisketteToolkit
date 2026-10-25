@@ -1554,6 +1554,24 @@ internal static class Tests
         finally { Environment.SetEnvironmentVariable("AFLOPPY_FAKE_SLOW_USB", null); }
     }
 
+    private static void T_Gw_FluxBackupHfeBitrate()
+    {
+        // gw do .hfe nezapíše bez rychlosti záznamu — program ji zjistí ze stopy 0 (DD 250, HD 500 kbit/s)
+        foreach (var (g, rate) in new[] { (DiskGeometry.Dd720, 250), (DiskGeometry.Hd1440, 500) })
+        {
+            string disk = Path_($"hfe-src-{rate}.scp"), outHfe = Path_($"hfe-out-{rate}.hfe");
+            ToFlux(DiskFormatter.CreateBlank(g, FormatStyle.Pc, null, new Random(rate)), AtariFloppy.Core.Drives.Gw.GwFormat.ForGeometry(g), disk);
+            if (File.Exists(outHfe)) File.Delete(outHfe);
+            FakeGw(disk).ReadFlux(outHfe, 1, 80);
+            var h = File.ReadAllBytes(outHfe);
+            Eq("HXCPICFE", System.Text.Encoding.ASCII.GetString(h, 0, 8), "HFE hlavička");
+            Eq(rate, BitConverter.ToUInt16(h, 12), "rychlost záznamu v HFE");
+        }
+        // Akai 1,6 MB (10 × 1024 B) je HD
+        Assert(new DiskGeometry(80, 2, 10, 1024).IsHighDensity && !new DiskGeometry(80, 2, 5, 1024).IsHighDensity && !DiskGeometry.Dd720.IsHighDensity, "hustota podle velikosti stopy");
+        Eq("akai.1600", AtariFloppy.Core.Drives.Gw.GwFormat.ForProfile(FormatProfiles.All.First(p => p.Id == "akai-1600"))?.Name, "Akai profil → gw");
+    }
+
     private static void T_Gw_MissingSectorsAndAmiga()
     {
         // disketa s 9 sektory, čtená jako 10sektorová → 10. sektor chybí na každé stopě

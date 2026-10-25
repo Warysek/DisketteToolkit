@@ -84,6 +84,8 @@ public sealed class GwFormat
         "mac-400" => Mac(false),
         "c1581" => Commodore1581(),
         "acorn" => new GwFormat { Name = "acorn.adfs.800", Geometry = p.Geometry, Description = "Acorn ADFS 800 KB" },
+        "akai-800" => new GwFormat { Name = "akai.800", Geometry = p.Geometry, Description = "Akai 800 KB" },
+        "akai-1600" => new GwFormat { Name = "akai.1600", Geometry = p.Geometry, Description = "Akai 1,6 MB" },
         "pc98" => new GwFormat { Name = "pc98.2hd", Geometry = p.Geometry, Description = "PC-98 1,23 MB" },
         "pc" or "amiga-crossdos" or "pcw" or "ql" or "minix" or "ext2-dd" => ForGeometry(p.Geometry, "ibm.720"),
         "pc-hd" or "mac-hfs" or "minix-hd" or "ext2" or "atari-hd" => ForGeometry(p.Geometry, "ibm.1440"),
@@ -441,6 +443,8 @@ public sealed class GwSession
     /// <summary>Záloha jako magnetický tok (.scp / .hfe / .raw) — uchová i kopírovací ochrany.</summary>
     public GwOutput ReadFlux(string outputPath, int revs, int tracks, ProgressHandler? progress = null, CancellationToken ct = default)
     {
+        // HFE potřebuje znát rychlost záznamu (gw: „HFE: Requires bitrate to be specified“) — zjistí se ze stopy 0
+        if (outputPath.EndsWith(".hfe", StringComparison.OrdinalIgnoreCase)) outputPath += "::bitrate=" + HfeBitrate(ct);
         var args = Common();
         args.AddRange(new[] { "--revs", revs.ToString(), "--tracks", $"c=0-{tracks - 1}", outputPath });
         TrackActivity.Begin(new DiskGeometry(tracks, 2, 1, 512), Tr.T("Čtení magnetického toku"));
@@ -601,6 +605,22 @@ public sealed class GwSession
         if (code != 0 || output.Fatal != null)
             throw new OperationException("Greaseweazle: " + Explain(output.Fatal ?? lines.LastOrDefault() ?? Tr.F("gw skončil s kódem {0}", code)));
         return lines;
+    }
+
+    /// <summary>Rychlost záznamu v kbit/s podle stopy 0: HD 500, DD 250 (délka bitové buňky z histogramu toku).</summary>
+    private int HfeBitrate(CancellationToken ct)
+    {
+        string dir = TempDir();
+        try
+        {
+            string scp = Path.Combine(dir, "t0.scp");
+            ReadTrackFlux(scp, 0, 0, 1, ct);
+            double? cell = App.FluxRescue.CellUs(Formats.ScpFile.Load(scp).FluxUs(0, 0));
+            if (cell == null)
+                throw new OperationException(Tr.T("Pro HFE potřebuji znát hustotu diskety, ale stopa 0 je prázdná nebo nečitelná. Ulož zálohu toku jako .scp — ta hustotu nepotřebuje."));
+            return cell.Value < 1.5 ? 500 : 250;
+        }
+        finally { TryDelete(dir); }
     }
 
     /// <summary>Magnetický tok jedné stopy do souboru .scp (pro histogram).</summary>
