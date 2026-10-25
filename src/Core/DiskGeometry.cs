@@ -19,8 +19,8 @@ public sealed record DiskGeometry(int Tracks, int Sides, int SectorsPerTrack, in
     public long SizeBytes => (long)TotalSectors * BytesPerSector;
     public int TrackCount => Tracks * Sides;
 
-    /// <summary>HD disketa (18+ sektorů na stopu).</summary>
-    public bool IsHighDensity => SectorsPerTrack >= 13;
+    /// <summary>HD disketa: stopa s víc daty, než se vejde na DD (víc než 12 × 512 B; Akai 10 × 1024 B je HD).</summary>
+    public bool IsHighDensity => TrackSize >= 13 * 512;
 
     /// <summary>Pořadové číslo sektoru (0 = boot sektor). Sektor je zde 0-based.</summary>
     public long Lba(int track, int side, int sector = 0) => ((long)track * Sides + side) * SectorsPerTrack + sector;
