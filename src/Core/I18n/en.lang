@@ -1303,7 +1303,6 @@ Zápis jsem nezačal: USB mezi počítačem a Greaseweazle nestíhá (test propu
  — POZOR: stopa 79 nejde přečíst, počet stop ({0}) beru ze souborového systému =  — NOTE: track 79 cannot be read, the number of tracks ({0}) is taken from the file system
 V mechanice je jiná disketa, než jakou obraz zachraňuje (boot sektor nesouhlasí). Vlož původní disketu, nebo zachraňuj do nového souboru. = The drive holds a different disk than the one this image is rescuing (the boot sector does not match). Insert the original disk, or rescue into a new file.
 Zápisový test neudělám: {0} sektorů nejde přečíst a Greaseweazle by je přepsal nulami. Zkus nejdřív Záchranu vadné diskety. = Write test not done: {0} sectors cannot be read and the Greaseweazle would overwrite them with zeros. Try Rescue a bad disk first.
-Opravu na disketu nezapíšu: {0} sektorů nejde přečíst a Greaseweazle přepisuje celou disketu, takže by je přepsal nulami. Ulož obraz, oprav ho a zapiš na jinou disketu. = The repair will not be written to the disk: {0} sectors cannot be read and the Greaseweazle rewrites the whole disk, so it would overwrite them with zeros. Save an image, repair it and write it to another disk.
 
 
 # ---------------------------------------------------------------- UI polish (výsledek operace, mapa, diagnostika)
@@ -1318,3 +1317,7 @@ jen Greaseweazle; soubor .scp otevřeš přes Otevřít obraz… = Greaseweazle 
 Otáčky = Speed
 Hlava a čidla = Head and sensors
 Čtení stop = Reading tracks
+POZOR: {0} sektorů nejde přečíst. Greaseweazle na jejich místo zapíše nuly. = WARNING: {0} sectors cannot be read. The Greaseweazle will write zeros in their place.
+Všechny jsou ve volném místě a oprava je označí jako vadné — nic se tím neztratí. = All of them are in free space and the repair marks them as bad — nothing is lost.
+{0} z nich patří souborům nebo systémové oblasti — jejich obsah bude navždy pryč a soubory, kterých se to týká, zůstanou poškozené. = {0} of them belong to files or the system area — their content will be gone for good and the files concerned stay damaged.
+{0} nečitelných sektorů, z toho s daty {1} — oprava je přes Greaseweazle přepíše nulami. = {0} unreadable sectors, {1} of them with data — the repair via Greaseweazle overwrites them with zeros.

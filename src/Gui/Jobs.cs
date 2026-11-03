@@ -840,17 +840,25 @@ internal sealed class Jobs
 
         CheckFileSystem(r.Image, r.Map, repair, plan =>
         {
-            if (unreadable > 0)
-            {
-                Err(Tr.F("Opravu na disketu nezapíšu: {0} sektorů nejde přečíst a Greaseweazle přepisuje celou disketu, takže by je přepsal nulami. Ulož obraz, oprav ho a zapiš na jinou disketu.", unreadable));
-                return;
-            }
             if (EnsureBackup(r.Image, d, backup, Tr.T("Kam uložit zálohu diskety před opravou")) == null)
             {
                 Warn(Tr.T("Bez zálohy opravu nezapíšu."));
                 return;
             }
-            if (!_h.Confirm(Tr.T("Zapsat opravu na disketu? Greaseweazle přepíše celou disketu opraveným obsahem."))) return;
+            // gw přepíše celou disketu: nečitelné sektory dostanou nuly. Rozhodne uživatel — řekneme mu, jestli v nich mohla být data.
+            string risk = "";
+            if (unreadable > 0)
+            {
+                var vol = Fat12Volume.TryOpen(plan.Repaired, out _);
+                int withData = Enumerable.Range(0, r.Map.Geometry.TotalSectors)
+                    .Count(l => r.Map[l] == SectorStatus.Bad && (vol == null || vol.HoldsData(l)));
+                risk = "\n\n" + Tr.F("POZOR: {0} sektorů nejde přečíst. Greaseweazle na jejich místo zapíše nuly.", unreadable) + "\n" +
+                       (withData == 0
+                           ? Tr.T("Všechny jsou ve volném místě a oprava je označí jako vadné — nic se tím neztratí.")
+                           : Tr.F("{0} z nich patří souborům nebo systémové oblasti — jejich obsah bude navždy pryč a soubory, kterých se to týká, zůstanou poškozené.", withData));
+                Warn(Tr.F("{0} nečitelných sektorů, z toho s daty {1} — oprava je přes Greaseweazle přepíše nulami.", unreadable, withData));
+            }
+            if (!_h.Confirm(Tr.T("Zapsat opravu na disketu? Greaseweazle přepíše celou disketu opraveným obsahem.") + risk, danger: unreadable > 0)) return;
             gw.Write(new DiskImage(r.Image.Geometry, plan.Repaired), fmt, true, P, Ct);
             Ok(Tr.T("Oprava zapsaná a ověřená."));
         }, () => EnsureBackup(r.Image, d, backup, Tr.T("Kam uložit obsah diskety (pro opravu obrazu)")));

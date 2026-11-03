@@ -72,6 +72,18 @@ public sealed class Fat12Volume
 
     public bool IsClusterUsed(int cluster) => NextCluster(cluster) != 0;
 
+    /// <summary>
+    /// Může sektor nést data? Systémová oblast (boot, FAT, adresář) ano; v datové oblasti jen cluster,
+    /// který není volný ani označený jako vadný.
+    /// </summary>
+    public bool HoldsData(long lba)
+    {
+        long o = lba * 512;
+        if (o < _dataOffset) return true;
+        long c = (o - _dataOffset) / _clusterSize;
+        return c < _clusterCount && NextCluster((int)c + 2) is not (0 or 0xFF7);
+    }
+
     public int UsedClusters
     {
         get
