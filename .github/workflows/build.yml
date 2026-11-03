@@ -49,7 +49,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends mono-complete mtools dosfstools hatari hfsutils \
             e2fsprogs util-linux cpmtools python3-pip
-          pip3 install --user --break-system-packages amitools greaseweazle
+          # gw není na PyPI — přímo z vydání na GitHubu
+          pip3 install --user --break-system-packages amitools "git+https://github.com/keirf/greaseweazle@v1.23"
 
       - name: Build tests
         run: dotnet build tests/Tests.csproj -c Release -nologo
