@@ -21,6 +21,11 @@ jobs:
           dotnet build src/Gui/Gui.csproj -c Release -nologo
           dotnet build src/Cli/Cli.csproj -c Release -nologo
 
+      - name: Tests (Windows part; tests needing Linux tools are skipped here)
+        run: |
+          dotnet build tests/Tests.csproj -c Release -nologo
+          tests/bin/Release/net48/AtariFloppy.Tests.exe
+
       - name: Package release ZIP
         shell: bash
         run: sh tools/package.sh
@@ -31,3 +36,28 @@ jobs:
           name: DisketteToolkit
           path: dist/DisketteToolkit-*.zip
           if-no-files-found: error
+
+  # Testy ověřují výsledky proti skutečným linuxovým nástrojům (mtools, Hatari, fsck, xdftool, gw …),
+  # proto běží na Linuxu s Mono. Chybějící nástroj tu je chyba (DTK_TESTS_STRICT).
+  tests:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Mono and the tools the tests compare against
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends mono-complete mtools dosfstools hatari hfsutils \
+            e2fsprogs util-linux cpmtools python3-pip
+          pip3 install --user --break-system-packages amitools greaseweazle
+
+      - name: Build tests
+        run: dotnet build tests/Tests.csproj -c Release -nologo
+
+      - name: Run tests
+        env:
+          DTK_TESTS_STRICT: "1"
+        run: mono tests/bin/Release/net48/AtariFloppy.Tests.exe
+
+      - name: Check translations
+        run: python3 tools/i18n_check.py src/Core/I18n/en.lang src/Core src/Gui

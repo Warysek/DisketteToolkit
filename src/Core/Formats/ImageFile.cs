@@ -131,7 +131,11 @@ public static class ImageFile
         };
         string? dir = Path.GetDirectoryName(Path.GetFullPath(path));
         if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
-        File.WriteAllBytes(path, data);
+        // nejdřív celý do dočasného souboru, pak jedním krokem na místo — přerušený zápis nezničí starý obraz
+        string tmp = path + ".tmp";
+        File.WriteAllBytes(tmp, data);
+        if (File.Exists(path)) File.Replace(tmp, path, null);
+        else File.Move(tmp, path);
     }
 
     private static bool StartsWith(byte[] b, string sig)

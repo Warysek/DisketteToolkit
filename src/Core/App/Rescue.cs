@@ -87,7 +87,7 @@ public static class Rescue
         foreach (long lba in todo)
         {
             ct.ThrowIfCancellationRequested();
-            int t = (int)(lba / g.SectorsPerTrack / g.Sides), s = (int)(lba / g.SectorsPerTrack % g.Sides), n = (int)(lba % g.SectorsPerTrack);
+            var (t, s, n) = g.Chs(lba);
             progress?.Invoke(done++, todo.Count, Tr.F("Zachraňuji stopu {0}, stranu {1}, sektor {2}", t, s, n + 1));
             TrackActivity.Head(t, s, TrackPhase.Reading);
             var copies = new List<byte[]>();
@@ -139,6 +139,18 @@ public static class Rescue
         return result;
     }
 
+    /// <summary>
+    /// Je v mechanice pořád stejná disketa jako v rozpracovaném obrazu? Porovnává otisk boot sektoru; když
+    /// boot sektor chybí v obrazu nebo se z diskety nepřečetl, nejde to poznat a vrací true.
+    /// </summary>
+    public static bool SameDisk(DiskImage img, RescueState st, byte[]? bootFromDisk)
+    {
+        if (bootFromDisk == null || st.Missing.Contains(0) || st.Voted.Contains(0)) return true;
+        string now = ReadHistory.DiskKey(bootFromDisk);
+        string before = ReadHistory.DiskKey(img.Data.Take(img.Geometry.BytesPerSector).ToArray());
+        return now.Length == 0 || before.Length == 0 || now == before;
+    }
+
     /// <summary>Zobrazí v mapě stav záchrany: přečtené, chybějící a poskládané sektory.</summary>
     public static void ShowState(RescueState st, string title)
     {
@@ -146,7 +158,7 @@ public static class Rescue
         TrackActivity.Begin(g, title);
         for (long l = 0; l < g.TotalSectors; l++)
         {
-            int t = (int)(l / g.SectorsPerTrack / g.Sides), s = (int)(l / g.SectorsPerTrack % g.Sides), n = (int)(l % g.SectorsPerTrack);
+            var (t, s, n) = g.Chs(l);
             TrackActivity.Sector(t, s, n, st.Voted.Contains(l) ? CellState.Weak : st.Missing.Contains(l) ? CellState.Bad : CellState.Read);
         }
     }

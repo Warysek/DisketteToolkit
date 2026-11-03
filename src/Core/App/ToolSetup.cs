@@ -4,6 +4,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net;
+using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Security.Cryptography.X509Certificates;
@@ -268,15 +269,69 @@ public static class FdrawcmdSetup
         return path;
     }
 
-    /// <summary>Kdo soubor digitálně podepsal (null = nepodepsaný nebo to nejde zjistit).</summary>
+    /// <summary>
+    /// Kdo soubor digitálně podepsal (null = nepodepsaný, podpis neplatí, nebo to nejde zjistit). Podpis ověřují
+    /// Windows (WinVerifyTrust) — samotné jméno z certifikátu by prošlo i u upraveného souboru nebo podvrženého certifikátu.
+    /// </summary>
     public static string? Signer(string file)
     {
         try
         {
+            if (!SignatureValid(file)) return null;
             var cert = X509Certificate.CreateFromSignedFile(file);
             return cert.Subject;
         }
         catch { return null; }
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct WinTrustFileInfo
+    {
+        public uint cbStruct;
+        public string pcwszFilePath;
+        public IntPtr hFile, pgKnownSubject;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WinTrustData
+    {
+        public uint cbStruct;
+        public IntPtr pPolicyCallbackData, pSIPClientData;
+        public uint dwUIChoice, fdwRevocationChecks, dwUnionChoice;
+        public IntPtr pFile;
+        public uint dwStateAction;
+        public IntPtr hWVTStateData, pwszURLReference;
+        public uint dwProvFlags, dwUIContext;
+    }
+
+    [DllImport("wintrust.dll", CharSet = CharSet.Unicode)]
+    private static extern int WinVerifyTrust(IntPtr hwnd, [MarshalAs(UnmanagedType.LPStruct)] Guid action, ref WinTrustData data);
+
+    private static readonly Guid GenericVerifyV2 = new("00AAC56B-CD44-11d0-8CC2-00C04FC295EE");
+
+    /// <summary>Platný Authenticode podpis od důvěryhodné autority (bez kontroly odvolání přes internet).</summary>
+    private static bool SignatureValid(string file)
+    {
+        var info = new WinTrustFileInfo { cbStruct = (uint)Marshal.SizeOf(typeof(WinTrustFileInfo)), pcwszFilePath = Path.GetFullPath(file) };
+        IntPtr pInfo = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(WinTrustFileInfo)));
+        try
+        {
+            Marshal.StructureToPtr(info, pInfo, false);
+            var data = new WinTrustData
+            {
+                cbStruct = (uint)Marshal.SizeOf(typeof(WinTrustData)),
+                dwUIChoice = 2,          // WTD_UI_NONE
+                dwUnionChoice = 1,       // WTD_CHOICE_FILE
+                pFile = pInfo,
+                dwProvFlags = 0x10,      // WTD_REVOCATION_CHECK_NONE
+            };
+            return WinVerifyTrust(IntPtr.Zero, GenericVerifyV2, ref data) == 0;
+        }
+        finally
+        {
+            Marshal.DestroyStructure(pInfo, typeof(WinTrustFileInfo));
+            Marshal.FreeHGlobal(pInfo);
+        }
     }
 
     /// <summary>Spustí instalátor a počká na něj (instalátor má vlastní okno se třemi kliknutími).</summary>
