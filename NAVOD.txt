@@ -1,5 +1,5 @@
-Diskette Toolkit 0.9
-====================
+Diskette Toolkit 0.9.1
+======================
 
 Diskety a obrazy disket pro Atari ST a další 3,5" systémy ve Windows 10 / 11.
 Nic se neinstaluje, stačí .NET Framework 4.8, který je součástí Windows 10 a 11.
@@ -84,6 +84,50 @@ Co vyzkoušet v 0.6 (Sony USB-FDU):
   5. Přepni jazyk na English a zpět.
   Pošli mi prosím snímek obrazovky, hlavně kdyby něco vypadalo divně
   (velikost písma, oříznuté texty) — okno jsem ladil bez skutečných Windows.
+
+
+NOVÉ VE VERZI 0.9.1 — OPRAVY
+----------------------------
+Ochrana dat
+ • Greaseweazle: zápisový test „s obnovou dat“ na disketě s nečitelnými sektory se neudělá —
+   Greaseweazle přepisuje celou disketu a nečitelná místa by přepsal nulami. Program poradí
+   Záchranu vadné diskety.
+ • Greaseweazle: oprava souborového systému na disketě s nečitelnými sektory se zeptá. Řekne, kolik
+   sektorů nejde přečíst a jestli v nich mohla být data (soubor nebo systémová oblast), nebo jsou
+   všechny ve volném místě, které oprava stejně označí jako vadné.
+ • Greaseweazle: když nejde přečíst poslední stopa, disketa se už nebere jako 40stopá (záloha by
+   měla jen polovinu) — počet stop se vezme z boot sektoru a výpis to oznámí.
+ • Záchrana vadné diskety: při pokračování program pozná, že je v mechanice jiná disketa, a odmítne
+   ji přimíchat do rozpracovaného obrazu.
+ • Uložení obrazu jde nejdřív do dočasného souboru; přerušené ukládání už nezničí předchozí obraz.
+ • Instalace fdrawcmd.sys: podpis staženého instalátoru ověřují Windows (dřív se kontrolovalo jen
+   jméno v certifikátu).
+Greaseweazle
+ • Hustota diskety (DD / HD) se bere z naměřené rychlosti záznamu, ne z počtu sektorů — HD disketa
+   s pár velkými sektory se už nečte jako DD.
+ • Záloha toku do .hfe funguje (dřív hlásila „Requires bitrate to be specified“).
+ • Windows 7: stáhne se 32bitový gw.exe, který tam běží.
+ • Nové formáty Akai S1000/S3000 (800 KB a 1,6 MB, sektory 1024 B).
+ • Aktualizace gw.exe a firmwaru jsou v Nastavení → Greaseweazle (tlačítko vpravo zůstává, jen když
+   gw.exe chybí).
+Okno programu
+ • Výsledek operace je vidět hned pod mapou: barevně a tučně nejdůležitější hlášení (červeně chyba,
+   žlutě varování, zeleně v pořádku) a pruh v barvě výsledku. Dřív tam bylo „Hotovo.“ a zelený pruh
+   i při vadných sektorech.
+ • Mapa sektorů: nečitelné sektory mají křížek, slabé tečku — rozlišíš je i bez barev. V úzkém okně
+   se popisy nepřekrývají. Na mapu se dá přejít klávesou Tab a šipkami chodit po sektorech.
+ • Tlačítka vpravo: hlavní akce větší, jejich obměny menší, každá má vlastní ikonu; „Magneticky
+   smazat“ je červené a úplně dole.
+ • Diagnostika mechaniky: volby ve skupinách (Otáčky, Hlava a čidla, Čtení stop, Greaseweazle);
+   u nedostupné volby je napsané proč.
+ • Levý panel je kratší: co hardware neumí, je na jednom řádku.
+ • Česky všude „obraz“ místo „image“, přeložené zbylé anglické výrazy.
+ • Klávesové zkratky: F5 obnoví mechaniky, Ctrl+O otevře obraz, Ctrl+S záloha diskety.
+ • Test povrchu, který najde opravitelné chyby, nabídne opravu hned („Opravit je teď?“) — disketa se
+   nečte znovu.
+ • Potvrzení před přepsáním, formátem a smazáním řekne, co na disketě teď je (systém, jmenovka,
+   obsazené místo).
+ • Výpis dole je vyšší; předěl nad ním jde táhnout myší (je na něm vidět úchyt).
 
 
 NOVÉ VE VERZI 0.9

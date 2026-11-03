@@ -1,4 +1,4 @@
-Diskette Toolkit 0.9
+Diskette Toolkit 0.9.1
 ====================
 
 Read, write, format and test floppy disks and disk images for the Atari ST and many
