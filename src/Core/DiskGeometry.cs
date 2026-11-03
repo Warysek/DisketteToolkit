@@ -25,6 +25,10 @@ public sealed record DiskGeometry(int Tracks, int Sides, int SectorsPerTrack, in
     /// <summary>Pořadové číslo sektoru (0 = boot sektor). Sektor je zde 0-based.</summary>
     public long Lba(int track, int side, int sector = 0) => ((long)track * Sides + side) * SectorsPerTrack + sector;
 
+    /// <summary>Opak Lba: stopa, strana a sektor (0-based) podle pořadového čísla.</summary>
+    public (int track, int side, int sector) Chs(long lba) =>
+        ((int)(lba / SectorsPerTrack / Sides), (int)(lba / SectorsPerTrack % Sides), (int)(lba % SectorsPerTrack));
+
     public long Offset(int track, int side, int sector = 0) => Lba(track, side, sector) * BytesPerSector;
 
     public override string ToString()

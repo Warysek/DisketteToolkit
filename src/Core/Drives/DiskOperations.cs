@@ -325,7 +325,10 @@ public static class DiskOperations
                 {
                     dev.WriteSectors(0, blank.Data, 0, layout.SystemSectors);
                     for (int l = 0; l < layout.SystemSectors; l++)
-                        TrackActivity.Sector(l / g.SectorsPerTrack / g.Sides, l / g.SectorsPerTrack % g.Sides, l % g.SectorsPerTrack, CellState.Written);
+                    {
+                        var (t, s, n) = g.Chs(l);
+                        TrackActivity.Sector(t, s, n, CellState.Written);
+                    }
                     break;
                 }
                 catch (SectorIOException e) when (attempt < Retries - 1) { _ = e; }
@@ -383,8 +386,8 @@ public static class DiskOperations
         {
             if (lba < layout.SystemSectors)
             {
-                var (t, s, n) = (lba / g.SectorsPerTrack / g.Sides, lba / g.SectorsPerTrack % g.Sides, lba % g.SectorsPerTrack + 1);
-                throw new OperationException(Tr.F("Disketa má vadný sektor v systémové oblasti (stopa {0}, strana {1}, sektor {2}). Taková disketa se nedá použít.", t, s, n));
+                var (t, s, n) = g.Chs(lba);
+                throw new OperationException(Tr.F("Disketa má vadný sektor v systémové oblasti (stopa {0}, strana {1}, sektor {2}). Taková disketa se nedá použít.", t, s, n + 1));
             }
             clusters.Add((int)((lba - layout.SystemSectors) / layout.SectorsPerCluster) + 2);
         }
@@ -407,7 +410,8 @@ public static class DiskOperations
             {
                 ct.ThrowIfCancellationRequested();
                 progress?.Invoke(done++, lbas.Count, Tr.F("Zapisuji sektor {0}", lba));
-                var (t, s, n) = ((int)(lba / media.SectorsPerTrack / media.Sides), (int)(lba / media.SectorsPerTrack % media.Sides), (int)(lba % media.SectorsPerTrack) + 1);
+                var (t, s, n) = media.Chs(lba);
+                n++;   // dál se počítá s číslem sektoru od 1
                 bool ok = false;
                 string err = "";
                 for (int attempt = 0; attempt < Retries && !ok; attempt++)

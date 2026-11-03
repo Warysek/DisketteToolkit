@@ -52,7 +52,7 @@ internal static class ToolsCommand
         try { exe = FdrawcmdSetup.Download(Progress, Program.Cancel.Token); }
         finally { Program.Busy = false; Ui.EndProgress(); }
         string? signer = FdrawcmdSetup.Signer(exe);
-        if (signer == null && !Ui.Confirm("Instalátor není digitálně podepsaný. Přesto spustit?")) return 1;
+        if (signer == null && !Ui.Confirm("Instalátor není digitálně podepsaný (nebo podpis neplatí). Přesto spustit?")) return 1;
         if (signer != null && signer.IndexOf("Simon Owen", StringComparison.OrdinalIgnoreCase) < 0)
             throw new OperationException($"Instalátor podepsal někdo jiný než autor ({signer}) — nespustím ho.");
         Ui.Dim("  Otevře se okno instalátoru — potvrď instalaci a zavři ho.");

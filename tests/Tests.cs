@@ -16,7 +16,7 @@ namespace AtariFloppy.Tests;
 
 internal static class Tests
 {
-    private static int _pass, _fail;
+    private static int _pass, _fail, _skip;
     private static string _tmp = "";
 
     private static int Main(string[] args)
@@ -29,6 +29,12 @@ internal static class Tests
                                         .Where(m => m.Name.StartsWith("T_")))
         {
             try { m.Invoke(null, null); _pass++; Console.WriteLine("  ok    " + m.Name); }
+            // DTK_TESTS_STRICT=1 (GitHub): chybějící nástroj je chyba, ať se kontrola tiše nevypne
+            catch (System.Reflection.TargetInvocationException e) when (e.InnerException is SkipException && Environment.GetEnvironmentVariable("DTK_TESTS_STRICT") != "1")
+            {
+                _skip++;
+                Console.WriteLine("  skip  " + m.Name + ": " + e.InnerException.Message);
+            }
             catch (System.Reflection.TargetInvocationException e)
             {
                 _fail++;
@@ -36,11 +42,15 @@ internal static class Tests
                 Console.WriteLine(e.InnerException?.StackTrace?.Split('\n').FirstOrDefault());
             }
         }
-        Console.WriteLine($"\n{_pass} ok, {_fail} selhalo");
+        Console.WriteLine($"\n{_pass} ok, {_fail} selhalo" + (_skip > 0 ? $", {_skip} přeskočeno (chybí nástroj)" : ""));
         return _fail == 0 ? 0 : 1;
     }
 
     // ------------------------------------------------------------------ pomocné
+
+    /// <summary>Test nejde spustit (chybí linuxový nástroj, na kterém se ověřuje) — není to chyba programu.</summary>
+    private sealed class SkipException : Exception { public SkipException(string m) : base(m) { } }
+    private static void Skip(string why) => throw new SkipException(why);
 
     private static void Assert(bool cond, string msg) { if (!cond) throw new Exception(msg); }
     private static void Eq<T>(T expected, T actual, string what)
@@ -50,14 +60,43 @@ internal static class Tests
 
     private static string Sh(string exe, string args, out int code)
     {
-        var p = Process.Start(new ProcessStartInfo(exe, args)
+        Process p;
+        try
         {
-            RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false,
-        })!;
+            p = Process.Start(new ProcessStartInfo(exe, args)
+            {
+                RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false,
+            })!;
+        }
+        catch (System.ComponentModel.Win32Exception) { throw new SkipException("chybí program " + exe); }
         string o = p.StandardOutput.ReadToEnd() + p.StandardError.ReadToEnd();
         p.WaitForExit();
         code = p.ExitCode;
         return o;
+    }
+
+    /// <summary>Místní web server pro testy stahování (python3, na Windows python).</summary>
+    private static Process HttpServer(int port, string dir)
+    {
+        foreach (var exe in new[] { "python3", "python" })
+        {
+            Process p;
+            try
+            {
+                p = Process.Start(new ProcessStartInfo(exe, $"-m http.server {port} --bind 127.0.0.1")
+                { WorkingDirectory = dir, UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true })!;
+            }
+            catch (System.ComponentModel.Win32Exception) { continue; }
+            // počkat, až server poslouchá (na Windows startuje python pomaleji)
+            for (int i = 0; i < 50 && !p.HasExited; i++)
+            {
+                try { using var c = new System.Net.Sockets.TcpClient("127.0.0.1", port); return p; }
+                catch (System.Net.Sockets.SocketException) { System.Threading.Thread.Sleep(100); }
+            }
+            if (!p.HasExited) return p;
+            // skončil hned: na Windows je „python3“ často jen odkaz na Microsoft Store
+        }
+        throw new SkipException("chybí python3");
     }
 
     private static DiskImage RandomImage(DiskGeometry g, int seed)
@@ -77,6 +116,7 @@ internal static class Tests
         Eq(1474560L, DiskGeometry.Hd1440.SizeBytes, "1.44M velikost");
         Eq(9L, DiskGeometry.Dd720.Lba(0, 1), "LBA stopa 0 strana 1");
         Eq(18L, DiskGeometry.Dd720.Lba(1, 0), "LBA stopa 1 strana 0");
+        Eq((79, 1, 8), DiskGeometry.Dd720.Chs(DiskGeometry.Dd720.Lba(79, 1, 8)), "Chs je opak Lba");
         Assert(DiskGeometry.TryParse("82x2x10", out var g) && g.TotalSectors == 1640, "parse 82x2x10");
         Assert(!DiskGeometry.TryParse("80x3x9", out _), "3 strany neplatné");
     }
@@ -1335,6 +1375,10 @@ internal static class Tests
             var at = DiskFormatter.CreateBlank(new DiskGeometry(82, 2, 10), FormatStyle.Atari).Data.Take(512).ToArray();
             Eq(82, AtariFloppy.Core.Drives.Gw.GwSession.TracksOfFileSystem(82, 2, 10, 512, at), "Atari 82 stop zůstane");
             Eq(81, AtariFloppy.Core.Drives.Gw.GwSession.TracksOfFileSystem(81, 2, 18, 512, new byte[512]), "bez BPB beze změny");
+            // stopa 79 nečitelná → probe vidí jen stopu 39; BPB 720 KB říká 80 stop, ne 40
+            var dd = DiskFormatter.CreateBlank(DiskGeometry.Dd720, FormatStyle.Atari).Data.Take(512).ToArray();
+            Eq(80, AtariFloppy.Core.Drives.Gw.GwSession.TracksOfFileSystem(40, 2, 9, 512, dd), "40 → 80 podle FAT");
+            Eq(40, AtariFloppy.Core.Drives.Gw.GwSession.TracksOfFileSystem(40, 2, 9, 512, new byte[512]), "40 bez BPB zůstane");
         }
         finally { File.Delete(f); }
     }
@@ -1389,6 +1433,30 @@ internal static class Tests
             Assert(img.Data.Skip((int)g.Offset(1, 1, 3)).Take(512).SequenceEqual(Data(1, 1, 4)), "sektor z druhého souboru v obrazu");
         }
         finally { Directory.Delete(dir, true); }
+    }
+
+    private static void T_Rescue_SameDisk()
+    {
+        var a = DiskFormatter.CreateBlank(DiskGeometry.Dd720, FormatStyle.Atari, "HRA A");
+        var b = DiskFormatter.CreateBlank(DiskGeometry.Dd720, FormatStyle.Atari, "HRA B");
+        b.Data[8] ^= 1;   // jiné sériové číslo = jiná disketa stejného formátu
+        var st = new RescueState(a.Geometry);
+        byte[] Boot(DiskImage i) => i.Data.Take(512).ToArray();
+        Assert(Rescue.SameDisk(a, st, Boot(a)), "stejná disketa");
+        Assert(!Rescue.SameDisk(a, st, Boot(b)), "jiná disketa");
+        Assert(Rescue.SameDisk(a, st, null), "boot sektor z diskety nejde přečíst → nejde poznat");
+        st.Missing.Add(0);
+        Assert(Rescue.SameDisk(a, st, Boot(b)), "boot sektor v obrazu chybí → nejde poznat");
+    }
+
+    private static void T_ImageFile_SaveReplaces()
+    {
+        string f = Path_("prepis.st");
+        ImageFile.Save(RandomImage(DiskGeometry.Dd720, 1), f);
+        var second = RandomImage(DiskGeometry.Dd720, 2);
+        ImageFile.Save(second, f);
+        Assert(File.ReadAllBytes(f).SequenceEqual(second.Data), "nový obsah");
+        Assert(!File.Exists(f + ".tmp"), "bez dočasného souboru");
     }
 
     private static void T_Rescue_VoteAndRetry()
@@ -1491,6 +1559,8 @@ internal static class Tests
 
     private static AtariFloppy.Core.Drives.Gw.GwSession FakeGw(string diskFile)
     {
+        // fake-gw.py se spouští přímo přes #! — to jde jen na Linuxu
+        if (Environment.OSVersion.Platform == PlatformID.Win32NT) Skip("fake-gw.py jen na Linuxu");
         Environment.SetEnvironmentVariable("AFLOPPY_FAKE_DISK", diskFile);
         string script = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "fake-gw.py");
         var tool = AtariFloppy.Core.Drives.Gw.GwTool.Find(Path.GetFullPath(script)) ?? throw new Exception("fake-gw.py nenalezen");
@@ -1759,8 +1829,7 @@ internal static class Tests
 
         var srv = new TcpListenerPort();
         int port = srv.Port;
-        var py = Process.Start(new ProcessStartInfo("python3", $"-m http.server {port} --bind 127.0.0.1")
-        { WorkingDirectory = web, UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true })!;
+        var py = HttpServer(port, web);
         try
         {
             string baseUrl = $"http://127.0.0.1:{port}/";
@@ -1803,6 +1872,26 @@ internal static class Tests
             catch (OperationException e) { Assert(e.Message.Contains("127.0.0.1"), e.Message); }
         }
         finally { try { py.Kill(); } catch { } }
+    }
+
+    private static void T_Setup_SignatureMustBeValid()
+    {
+        // jen na Windows (WinVerifyTrust); podepsaný soubor = mscorlib.dll z .NET Framework
+        // na Linuxu není co ověřovat (to není chybějící nástroj, proto ne Skip — v CI by to bylo selhání)
+        if (Environment.OSVersion.Platform != PlatformID.Win32NT) return;
+        string signed = typeof(object).Assembly.Location;
+        string? who = AtariFloppy.Core.App.FdrawcmdSetup.Signer(signed);
+        Assert(who != null && who.Contains("Microsoft"), "platný podpis: " + who);
+        // upravená kopie má pořád stejný certifikát, ale podpis už neplatí
+        string f = Path.Combine(Path.GetTempPath(), "dtk-podpis-" + Guid.NewGuid().ToString("N") + ".dll");
+        try
+        {
+            var bytes = File.ReadAllBytes(signed);
+            bytes[bytes.Length / 3] ^= 0xFF;
+            File.WriteAllBytes(f, bytes);
+            Assert(AtariFloppy.Core.App.FdrawcmdSetup.Signer(f) == null, "upravený soubor");
+        }
+        finally { File.Delete(f); }
     }
 
     private sealed class TcpListenerPort
@@ -1901,8 +1990,7 @@ internal static class Tests
                 using (var s = z.CreateEntry("SOURCE/" + file).Open()) s.WriteByte(1);
             }
         int port = new TcpListenerPort().Port;
-        var py = Process.Start(new ProcessStartInfo("python3", $"-m http.server {port} --bind 127.0.0.1")
-        { WorkingDirectory = web, UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true })!;
+        var py = HttpServer(port, web);
         var oldK = AtariFloppy.Core.Boot.FreeDosFiles.KernelUrls;
         var oldC = AtariFloppy.Core.Boot.FreeDosFiles.FreecomUrls;
         try

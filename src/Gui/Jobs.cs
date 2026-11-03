@@ -115,6 +115,8 @@ internal sealed class Jobs
     /// Záchrana vadné diskety: přečte ji do obrazu, chybějící sektory zkouší znovu (až „tries“×) a stav uloží
     /// vedle obrazu. Další spuštění se stejným souborem — klidně v jiné mechanice — čte jen chybějící sektory.
     /// </summary>
+    private static string OtherDiskMessage => Tr.T("V mechanice je jiná disketa, než jakou obraz zachraňuje (boot sektor nesouhlasí). Vlož původní disketu, nebo zachraňuj do nového souboru.");
+
     public void RescueDisk(DetectedDrive d, string path, int tries, bool vote)
     {
         if (DeviceFactory.IsFlux(path)) throw new OperationException(Tr.T("Záchrana ukládá obraz sektorů (.st, .msa, .img, .adf) — ne tok."));
@@ -150,6 +152,8 @@ internal sealed class Jobs
                 else
                 {
                     if (!Equals(r.Image.Geometry, img.Geometry)) throw new OperationException(Tr.F("Disketa má jiný formát ({0}) než rozpracovaný obraz ({1}).", r.Image.Geometry, img.Geometry));
+                    var boot = r.Map[0] is SectorStatus.Ok or SectorStatus.Weak ? r.Image.Data.Take(img.Geometry.BytesPerSector).ToArray() : null;
+                    if (!Rescue.SameDisk(img, st!, boot)) throw new OperationException(OtherDiskMessage);
                     foreach (long l in st!.Missing.ToList())
                         if (r.Map[l] is SectorStatus.Ok or SectorStatus.Weak)
                         {
@@ -179,6 +183,9 @@ internal sealed class Jobs
                     var mg = dev.MediaGeometry;
                     if (mg == null || mg.SectorsPerTrack != img.Geometry.SectorsPerTrack || mg.BytesPerSector != img.Geometry.BytesPerSector)
                         throw new OperationException(Tr.F("Disketa v mechanice má jiný formát ({0}) než rozpracovaný obraz ({1}).", mg?.ToString() ?? Tr.T("nerozpoznaný"), img.Geometry));
+                    byte[]? boot = null;
+                    try { boot = dev.ReadSectors(0, 1); } catch (SectorIOException) { }
+                    if (!Rescue.SameDisk(img, st!, boot)) throw new OperationException(OtherDiskMessage);
                 }
                 if (st!.Missing.Count > 0)
                 {
@@ -798,8 +805,12 @@ internal sealed class Jobs
         ShowSurface(r.Map, r.Warnings);
         LogGwRpm(gw);
         RecordRead(d, r.Image, r.Map);
+        // gw zapisuje vždy celou disketu — nečitelné sektory by přepsal nulami a zbytek dat v nich by byl pryč
+        int unreadable = r.Map.Count(SectorStatus.Bad);
 
-        if (mode != WriteTestMode.None)
+        if (mode == WriteTestMode.PreserveData && unreadable > 0)
+            Err(Tr.F("Zápisový test neudělám: {0} sektorů nejde přečíst a Greaseweazle by je přepsal nulami. Zkus nejdřív Záchranu vadné diskety.", unreadable));
+        else if (mode != WriteTestMode.None)
         {
             if (EnsureBackup(r.Image, d, backup, Tr.T("Kam uložit zálohu diskety před zápisovým testem")) == null) throw new OperationCanceledException();
             var content = mode == WriteTestMode.PreserveData ? r.Image : Repair.BlankLike(r.Image, fmt.Name.StartsWith("amiga"));
@@ -822,6 +833,11 @@ internal sealed class Jobs
 
         CheckFileSystem(r.Image, r.Map, repair, plan =>
         {
+            if (unreadable > 0)
+            {
+                Err(Tr.F("Opravu na disketu nezapíšu: {0} sektorů nejde přečíst a Greaseweazle přepisuje celou disketu, takže by je přepsal nulami. Ulož obraz, oprav ho a zapiš na jinou disketu.", unreadable));
+                return;
+            }
             if (EnsureBackup(r.Image, d, backup, Tr.T("Kam uložit zálohu diskety před opravou")) == null)
             {
                 Warn(Tr.T("Bez zálohy opravu nezapíšu."));

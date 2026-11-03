@@ -287,6 +287,12 @@ public sealed class GwSession
                             : Tr.F(" — stopy {0}–{1} jsou za koncem souborového systému, do obrazu je nedávám", fsTracks, tracks - 1);
                         tracks = fsTracks;
                     }
+                    else if (fsTracks > tracks)
+                    {
+                        // stopa 79 nešla přečíst — bez boot sektoru by záloha měla jen 40 stop
+                        note = Tr.F(" — POZOR: stopa 79 nejde přečíst, počet stop ({0}) beru ze souborového systému", fsTracks);
+                        tracks = fsTracks;
+                    }
                     // sektory jen na stopě 0 (zkouší se i 39 a 79+): disketa je smazaná nebo zápis skončil na začátku
                     if (!final.Any(kv => kv.Key.cyl > 0 && kv.Value.Found > 0))
                         note += Tr.T(" — POZOR: sektory jsou jen na stopě 0, zbytek diskety je prázdný (smazaná nebo nedopsaná disketa). Naformátuj ji, nebo na ni zapiš obraz.");
@@ -339,16 +345,18 @@ public sealed class GwSession
     }
 
     /// <summary>
-    /// Počet stop podle souborového systému (BPB v boot sektoru), když na disketě našel gw víc než 80 stop a BPB
-    /// sedí s formátem; jinak beze změny. Zkracuje jen stopy za 79 — nikdy pod 80.
+    /// Počet stop podle souborového systému (BPB v boot sektoru), když BPB sedí s formátem; jinak beze změny.
+    /// Víc než 80 stop zkracuje jen na stopy za 79 — nikdy pod 80. 40 stop (stopa 79 nešla přečíst) prodlouží
+    /// na 80–84, když to BPB říká.
     /// </summary>
     public static int TracksOfFileSystem(int tracks, int heads, int spt, int bps, byte[]? boot)
     {
-        if (tracks <= 80 || boot == null || boot.Length < 512) return tracks;
+        if ((tracks <= 80 && tracks != 40) || boot == null || boot.Length < 512) return tracks;
         var bs = new Fs.BootSector(boot);
         if (bs.BytesPerSector != bps || bs.SectorsPerTrack != spt || bs.Heads != heads || bs.TotalSectors <= 0 || bs.TotalSectors % (spt * heads) != 0)
             return tracks;
         int fs = bs.TotalSectors / (spt * heads);
+        if (tracks == 40) return fs is >= 80 and <= 84 ? fs : tracks;
         return fs >= 80 && fs < tracks ? fs : tracks;
     }
 
