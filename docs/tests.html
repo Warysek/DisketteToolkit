@@ -116,7 +116,7 @@ kbd{font:inherit;font-size:13px;background:var(--chip);border-radius:4px;padding
 
 <script id="saved" type="application/json">null</script>
 <script>
-const VERSION = "0.9";
+const VERSION = "0.9.1";
 const SRC = "<!doctype html>\n" + document.documentElement.outerHTML;
 
 const UI = {
@@ -150,6 +150,23 @@ const UI = {
 
 // [id, important, hardware (one status row each), CZ title, CZ how, CZ expected, EN title, EN how, EN expected]
 const NEW = [
+ {id:"f1", cs:"Opravy ve verzi 0.9.1", en:"Fixes in version 0.9.1", needCs:"disketa s vadnými sektory (ne cenný originál), Greaseweazle a/nebo USB disketovka", needEn:"a disk with bad sectors (not a precious original), Greaseweazle and/or USB drive", items:[
+  ["res",1,["usb","fd","gw"],"Výsledek pod mapou","<kbd>Záloha do obrazu</kbd> diskety s vadnými sektory, pak zdravé diskety.","Vadná: řádek pod mapou červeně „✗ Vadné sektory…“ / „✗ Sektorů …“ a červený pruh; v mapě křížky (nečitelné) a tečky (slabé). Zdravá: zeleně „✓ Uloženo…“.",
+   "Result under the map","<kbd>Back up to image</kbd> of a disk with bad sectors, then of a healthy disk.","Bad disk: the line under the map is red (“✗ Bad sectors…” / “✗ Sectors …”) with a red bar; crosses (unreadable) and dots (weak) in the map. Healthy disk: green “✓ Saved…”."],
+  ["fixnow",1,["usb","fd","gw"],"Oprava hned po testu","<kbd>Test povrchu a kontrola</kbd> bez zaškrtnuté opravy na disketě s opravitelnou chybou FAT (např. ztracený cluster) → <kbd>Ano</kbd> na „Opravit je teď?“.","Zeptá se na zálohu, ukáže změny, zapíše a napíše „Oprava zapsaná a ověřená“. Disketa se znovu nečte.",
+   "Repair right after the test","<kbd>Surface test and check</kbd> without repair ticked, on a disk with a repairable FAT error (e.g. a lost cluster) → <kbd>Yes</kbd> to “Repair them now?”.","Asks for a backup, shows the changes, writes them and says “Repair written and verified”. The disk is not read again."],
+  ["gwfix",1,["gw"],"Greaseweazle: oprava s nečitelnými sektory","Test povrchu s opravou na disketě, kde jsou nečitelné sektory jen ve volném místě.","Poslední otázka má červený vykřičník, počet nečitelných sektorů a větu „Všechny jsou ve volném místě…“. Po <kbd>Ano</kbd> se disketa přepíše; další test ukáže vadné clustery označené.",
+   "Greaseweazle: repair with unreadable sectors","Surface test with repair on a disk whose unreadable sectors are only in free space.","The last question has a red warning icon, the number of unreadable sectors and “All of them are in free space…”. After <kbd>Yes</kbd> the disk is rewritten; the next test shows the bad clusters marked."],
+  ["gwwt",0,["gw"],"Greaseweazle: zápisový test odmítne","Test povrchu → zápisový test s obnovou dat na disketě s nečitelnými sektory.","Odmítne s doporučením Záchrany vadné diskety; na zdravé disketě test proběhne.",
+   "Greaseweazle: write test refuses","Surface test → write test keeping data, on a disk with unreadable sectors.","Refuses and suggests Rescue a bad disk; on a healthy disk the test runs."],
+  ["other",0,["usb","fd","gw"],"Záchrana s jinou disketou","Rozpracuj Záchranu vadné diskety, pak vlož jinou disketu stejného formátu a spusť záchranu se stejným souborem.","Odmítne: v mechanice je jiná disketa.",
+   "Rescue with a different disk","Start Rescue a bad disk, then insert a different disk of the same format and continue with the same file.","Refuses: a different disk is in the drive."],
+  ["conf",0,["usb","fd","gw"],"Potvrzení řekne obsah","<kbd>Formátovat…</kbd> disketu se soubory, až k potvrzení (pak Ne).","V potvrzení „Na disketě teď je: … jmenovka …, obsazeno … KB“.",
+   "Confirmation names the content","<kbd>Format…</kbd> a disk with files, up to the confirmation (then No).","The confirmation says “The disk now holds: … label …, … KB used”."],
+  ["keys",0,null,"Klávesy a mapa","F5, Ctrl+O, Ctrl+S; klikni do mapy a chod šipkami.","F5 hledá mechaniky, Ctrl+O otevře obraz, Ctrl+S záloha. V mapě bílý rámeček a bublina s popisem sektoru.",
+   "Keys and the map","F5, Ctrl+O, Ctrl+S; click into the map and move with the arrows.","F5 searches drives, Ctrl+O opens an image, Ctrl+S backs up. In the map a white frame and a tooltip describing the sector."],
+  ["fdsig",0,["fd"],"Instalace fdrawcmd.sys","Interní mechanika bez ovladače → <kbd>Nainstalovat ovladač fdrawcmd.sys</kbd>.","Instalátor se spustí (podpis přijat).",
+   "Installing fdrawcmd.sys","Internal drive without the driver → <kbd>Install the fdrawcmd.sys driver</kbd>.","The installer starts (signature accepted)."]]},
  {id:"d1", cs:"Otevření diagnostiky", en:"Opening the diagnostics", needCs:"interní mechanika s fdrawcmd.sys a/nebo Greaseweazle", needEn:"internal drive with fdrawcmd.sys and/or Greaseweazle", items:[
   ["btn",1,["fd","gw","usb"],"Tlačítko „Diagnostika mechaniky…“","Vyber mechaniku v horní liště a podívej se do pravého sloupce pod <kbd>Spouštěcí disketa…</kbd>.","Interní mechanika s fdrawcmd.sys a Greaseweazle: tlačítko je vidět. USB disketovka: tlačítko není vidět.",
    "“Drive diagnostics…” button","Select the drive in the top bar and look in the right column below <kbd>Boot disk…</kbd>.","Internal drive with fdrawcmd.sys and Greaseweazle: the button is visible. USB drive: no button."],
@@ -269,8 +286,8 @@ const ALL = [
  {id:"a4", hw:"gw", cs:"Greaseweazle", en:"Greaseweazle", needCs:"Greaseweazle + 3,5\" mechanika, internet", needEn:"Greaseweazle + 3.5\" drive, internet", items:[
   ["dl",1,null,"Stažení gw.exe","Vyber Greaseweazle → <kbd>Stáhnout Greaseweazle Host Tools</kbd>.","gw.exe se stáhne vedle programu; vlevo cesta ke gw.exe.",
    "Downloading gw.exe","Select the Greaseweazle → <kbd>Download Greaseweazle Host Tools</kbd>.","gw.exe is downloaded next to the program; the left panel shows its path."],
-  ["fw",0,null,"Aktualizace firmwaru","<kbd>Aktualizace Greaseweazle</kbd> → firmware.","Průběh ve výpisu, na konci verze; GW funguje dál.",
-   "Firmware update","<kbd>Greaseweazle updates</kbd> → firmware.","Progress in the log, version at the end; the GW still works."],
+  ["fw",0,null,"Aktualizace firmwaru","<kbd>Nastavení</kbd> → <kbd>Aktualizovat firmware v Greaseweazle…</kbd>","Průběh ve výpisu, na konci verze; GW funguje dál.",
+   "Firmware update","<kbd>Settings</kbd> → <kbd>Update Greaseweazle firmware…</kbd>","Progress in the log, version at the end; the GW still works."],
   ["read",1,null,"Záloha (Atari / PC / Amiga)","Záloha do obrazu z Atari, PC a Amiga diskety.","Formát pozná sám, obraz jde otevřít (Hatari / WinUAE).",
    "Backup (Atari / PC / Amiga)","Back up an Atari, PC and Amiga disk.","The format is detected, the image opens (Hatari / WinUAE)."],
   ["flux",1,null,"Záloha toku .scp","Originální hra → Záloha → ulož jako .scp.","Vznikne .scp (několik MB).",

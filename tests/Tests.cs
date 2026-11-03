@@ -1435,6 +1435,27 @@ internal static class Tests
         finally { Directory.Delete(dir, true); }
     }
 
+    private static void T_Fat12_HoldsData()
+    {
+        // 1,44 MB PC: boot 1 + 2×9 FAT + 14 sektorů adresáře → data od sektoru 33, cluster = 1 sektor
+        var d = DiskFormatter.CreateBlank(DiskGeometry.Hd1440, FormatStyle.Pc).Data;
+        static void SetFat(byte[] disk, int cluster, int value)
+        {
+            int o = 512 + cluster * 3 / 2;
+            if ((cluster & 1) != 0) { disk[o] = (byte)(disk[o] & 0x0F | (value << 4) & 0xF0); disk[o + 1] = (byte)(value >> 4); }
+            else { disk[o] = (byte)value; disk[o + 1] = (byte)(disk[o + 1] & 0xF0 | (value >> 8) & 0x0F); }
+        }
+        SetFat(d, 10, 0xFF7);   // vadný cluster
+        SetFat(d, 11, 0xFFF);   // konec souboru = obsazený
+        var v = Fat12Volume.TryOpen(d, out _)!;
+        Assert(v.HoldsData(0), "boot sektor nese data");
+        Assert(v.HoldsData(20), "kořenový adresář nese data");
+        Assert(!v.HoldsData(33 + 8), "cluster 10 je označený jako vadný");
+        Assert(v.HoldsData(33 + 9), "cluster 11 patří souboru");
+        Assert(!v.HoldsData(33 + 10), "cluster 12 je volný");
+        Assert(!v.HoldsData(2879), "poslední sektor je volný");
+    }
+
     private static void T_Rescue_SameDisk()
     {
         var a = DiskFormatter.CreateBlank(DiskGeometry.Dd720, FormatStyle.Atari, "HRA A");

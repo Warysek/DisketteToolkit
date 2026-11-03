@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
@@ -54,7 +55,6 @@ internal sealed class DiagDialog : DialogBase
     {
         bool gw = d.Kind == DriveKind.Greaseweazle;
         var flow = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true };
-        flow.Controls.Add(Heading(Tr.T("Co udělat")));
 
         RadioButton R(string text) => new() { Text = text, AutoSize = true, Margin = new Padding(3, 2, 3, 2) };
         _items = new (RadioButton, DiagAction, Func<string>)[]
@@ -90,15 +90,29 @@ internal sealed class DiagDialog : DialogBase
                    : () => Tr.T("Tohle je jen pro Greaseweazle.")),
         };
         _items[0].radio.Checked = true;
-        if (gw) _items.First(i => i.action == DiagAction.Layout).radio.Enabled = false;
-        else
+        // nedostupné volby: zašedlé a hned vedle proč (na zašedlou volbu kliknout nejde, nápověda pod ní by se neukázala)
+        var unavailable = gw
+            ? new Dictionary<DiagAction, string> { [DiagAction.Layout] = Tr.T("jen interní mechanika s fdrawcmd.sys") }
+            : new Dictionary<DiagAction, string> { [DiagAction.Histogram] = Tr.T("jen Greaseweazle; soubor .scp otevřeš přes Otevřít obraz…") };
+        foreach (var kv in unavailable) _items.First(i => i.action == kv.Key).radio.Enabled = false;
+
+        // volby po skupinách; test USB má smysl jen u Greaseweazle, jinde ho neukazujeme
+        var groups = new (string title, DiagAction[] actions)[]
         {
-            _items.First(i => i.action == DiagAction.Histogram).radio.Enabled = false;
-            _items.First(i => i.action == DiagAction.Bandwidth).radio.Enabled = false;
+            (Tr.T("Otáčky"), new[] { DiagAction.Rpm, DiagAction.RpmLive, DiagAction.WarmUp }),
+            (Tr.T("Hlava a čidla"), new[] { DiagAction.Sensors, DiagAction.HeadZero, DiagAction.HeadLast, DiagAction.Sweep, DiagAction.StepTest, DiagAction.Clean }),
+            (Tr.T("Čtení stop"), new[] { DiagAction.TrackRead, DiagAction.Histogram, DiagAction.Layout }),
+            ("Greaseweazle", gw ? new[] { DiagAction.Bandwidth } : Array.Empty<DiagAction>()),
+        };
+        foreach (var (title, actions) in groups.Where(g => g.actions.Length > 0))
+        {
+            flow.Controls.Add(new Label { Text = title, AutoSize = true, Font = Theme.UiFont(9.5f, FontStyle.Bold), Margin = new Padding(0, flow.Controls.Count == 0 ? 0 : 10, 0, 2) });
+            foreach (var action in actions) AddItem(action);
         }
 
-        foreach (var (radio, action, _) in _items)
+        void AddItem(DiagAction action)
         {
+            var radio = _items.First(i => i.action == action).radio;
             // Volby s čísly jsou v samostatných řádcích (jiný rodič) — WinForms by je bral jako jinou skupinu,
             // takže ostatní volby odznačujeme ručně.
             var self = radio;
@@ -108,7 +122,9 @@ internal sealed class DiagDialog : DialogBase
                     foreach (var other in _items.Select(i => i.radio).Where(r => r != self)) other.Checked = false;
                 UpdateHelp();
             };
-            if (action == DiagAction.WarmUp)
+            if (unavailable.TryGetValue(action, out var why))
+                flow.Controls.Add(Row(radio, new Label { Text = "— " + why, AutoSize = true, ForeColor = Theme.TextDim, Margin = new Padding(0, 5, 3, 0) }));
+            else if (action == DiagAction.WarmUp)
                 flow.Controls.Add(Row(radio, new Label { Text = Tr.T("minut:"), AutoSize = true, Margin = new Padding(12, 6, 3, 0) }, _minutes));
             else if (action == DiagAction.Histogram)
                 flow.Controls.Add(Row(radio,

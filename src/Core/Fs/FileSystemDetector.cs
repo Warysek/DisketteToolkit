@@ -46,7 +46,7 @@ public static class FileSystemDetector
             string[] variants = { "OFS", "FFS", "OFS INTL", "FFS INTL", "OFS DirCache", "FFS DirCache", "OFS LongNames", "FFS LongNames" };
             string? vol = AmigaVolumeName(d);
             return new(FsKind.Amiga, $"AmigaDOS ({variants[d[3]]})",
-                Tr.T("Commodore Amiga (AmigaOS/Workbench), 880 KB DD nebo 1,76 MB HD. OFS je původní systém z AmigaOS 1.x, FFS rychlejší od AmigaOS 2.0. Diskety se v PC ani USB mechanice nedají přečíst (celá stopa je jeden blok) — jen image .ADF nebo Greaseweazle."),
+                Tr.T("Commodore Amiga (AmigaOS/Workbench), 880 KB DD nebo 1,76 MB HD. OFS je původní systém z AmigaOS 1.x, FFS rychlejší od AmigaOS 2.0. Diskety se v PC ani USB mechanice nedají přečíst (celá stopa je jeden blok) — jen obraz .ADF nebo Greaseweazle."),
                 string.Join(", ", new[] { vol != null ? Tr.F("jméno svazku „{0}“", vol) : null,
                                           Amiga.AmigaDos.IsBootable(d) ? Tr.T("spustitelná (bootblok)") : null }.Where(x => x != null)) is { Length: > 0 } det ? det : null);
         }

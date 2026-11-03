@@ -49,9 +49,9 @@ public static class Capabilities
         Feature.Standard1440 => Tr.T("Standardní 1,44 MB (80×2×18)"),
         Feature.ExtendedGeometry => Tr.T("10 sektorů, 81–83 stop (800–830 KB)"),
         Feature.ElevenSectors => Tr.T("11 sektorů na stopu"),
-        Feature.StepRate => Tr.T("Nastavení step rate"),
+        Feature.StepRate => Tr.T("Nastavení rychlosti krokování"),
         Feature.SimpleProtection => Tr.T("Jednoduché ochrany (CRC, nestandardní sektory)"),
-        Feature.FluxProtection => Tr.T("Weak bits, dlouhé stopy, časování"),
+        Feature.FluxProtection => Tr.T("Slabé bity, dlouhé stopy, časování"),
         Feature.WriteStxIpf => Tr.T("Plný zápis STX / IPF / raw"),
         _ => f.ToString(),
     };

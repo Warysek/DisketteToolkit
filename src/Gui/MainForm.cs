@@ -62,6 +62,12 @@ internal sealed class MainForm : Form, IJobHost
     private bool _busy, _closeWhenDone, _detecting;
     private string? _mapDrive;
 
+    // výsledek běžící úlohy: nejhorší hlášení a jeho poslední řádek (ukáže se pod mapou, až úloha skončí)
+    private LogKind _jobKind = LogKind.Info;
+    private string? _jobLine;
+    private int _jobIssues;
+    private bool _outcomeShown;
+
     // průběh (zapisuje vlákno úlohy, čte časovač okna)
     private volatile int _pDone, _pTotal;
     private volatile string _pText = "";
@@ -148,6 +154,7 @@ internal sealed class MainForm : Form, IJobHost
         _refreshBtn.Location = new Point(718, 15);
         _refreshBtn.Width = 110;
         _refreshBtn.Click += (_, _) => DetectDrives();
+        _tips.SetToolTip(_refreshBtn, "F5");
 
         _langBox.DropDownStyle = ComboBoxStyle.DropDownList;
         _langBox.Width = 120;
@@ -246,27 +253,30 @@ internal sealed class MainForm : Form, IJobHost
             _actions.Controls.Add(b);
         }
 
+        // hlavní akce větší, jejich obměny a servis menší; nevratné mazání úplně dole
+        const int main = 60, minor = 50;
         Section(_secDisk);
-        Add(_aRead, "⭳", (_, _) => DoRead());
-        Add(_aBatch, "⭳", (_, _) => DoRead(batch: true));
-        Add(_aRescue, "✚", (_, _) => DoRescue());
-        Add(_aWrite, "⭱", (_, _) => DoWrite(null));
-        Add(_aFormat, "▦", (_, _) => DoFormat());
-        Add(_aTest, "✚", (_, _) => DoTest());
-        Add(_aBoot, "⏻", (_, _) => DoBoot());
-        Add(_aDiag, "⏱", (_, _) => DoDiag());
-        Add(_aErase, "✖", (_, _) => DoErase());
+        Add(_aSetup, "✚", (_, _) => DoSetup(), minor);
+        Add(_aRead, "⭳", (_, _) => DoRead(), main);
+        Add(_aBatch, "⇊", (_, _) => DoRead(batch: true), minor);
+        Add(_aRescue, "⛑", (_, _) => DoRescue(), minor);
+        Add(_aWrite, "⭱", (_, _) => DoWrite(null), main);
+        Add(_aFormat, "▦", (_, _) => DoFormat(), main);
+        Add(_aTest, "◎", (_, _) => DoTest(), main);
+        Add(_aBoot, "⏻", (_, _) => DoBoot(), minor);
+        Add(_aDiag, "⏱", (_, _) => DoDiag(), minor);
+        Add(_aErase, "✖", (_, _) => DoErase(), minor);
         _aErase.Danger = true;
-        Add(_aSetup, "⭳", (_, _) => DoSetup());
         Section(_secImages);
-        Add(_iOpen, "🗀", (_, _) => DoOpenImage(null), 52);
-        Add(_iCheck, "✔", (_, _) => DoCheckImage(), 52);
-        Add(_iConvert, "⇄", (_, _) => DoConvert(), 52);
-        Add(_iNew, "✦", (_, _) => DoNewImage(), 52);
+        Add(_iOpen, "🗀", (_, _) => DoOpenImage(null), minor);
+        Add(_iCheck, "✔", (_, _) => DoCheckImage(), minor);
+        Add(_iConvert, "⇄", (_, _) => DoConvert(), minor);
+        Add(_iNew, "✦", (_, _) => DoNewImage(), minor);
         Section(_secHelp);
         Add(_hFormats, "☰", (_, _) => { using var f = new FormatsDialog(); f.ShowDialog(this); }, 44);
         Add(_hAbout, "ⓘ", (_, _) => ShowAbout(), 44);
-        Add(_hDonate, "♥", (_, _) => OpenLink(Program.DonateUrl), 52);
+        Add(_hDonate, "♥", (_, _) => OpenLink(Program.DonateUrl), minor);
+        _tips.SetToolTip(_iOpen, "Ctrl+O");
     }
 
     private void BuildCenter()
@@ -278,6 +288,15 @@ internal sealed class MainForm : Form, IJobHost
         _split.Panel2.Padding = new Padding(6, 6, 6, 12);
         _split.SplitterWidth = 6;
         _split.FixedPanel = FixedPanel.Panel2;
+        // úchyt uprostřed předělu — ať je vidět, že výpis jde zvětšit tažením
+        _split.Paint += (_, e) =>
+        {
+            var r = _split.SplitterRectangle;
+            int w = (int)(48 * e.Graphics.DpiX / 96), cy = r.Top + r.Height / 2;
+            using var p = new Pen(Color.FromArgb(0xB8, 0xBF, 0xC8));
+            e.Graphics.DrawLine(p, r.Left + (r.Width - w) / 2, cy - 1, r.Left + (r.Width + w) / 2, cy - 1);
+            e.Graphics.DrawLine(p, r.Left + (r.Width - w) / 2, cy + 1, r.Left + (r.Width + w) / 2, cy + 1);
+        };
 
         // průběh pod mapou
         _progressStrip.Dock = DockStyle.Bottom;
@@ -339,7 +358,9 @@ internal sealed class MainForm : Form, IJobHost
         base.OnLoad(e);
         FitToScreen();
         LayoutTop();
-        try { _split.SplitterDistance = Math.Max(300, _split.Height - 210); } catch { }
+        // výpis zhruba třetina výšky (ale aspoň 170 a nejvýš 300 bodů), mapa dostane zbytek
+        int logH = Math.Max(170, Math.Min(300, _split.Height / 3));
+        try { _split.SplitterDistance = Math.Max(300, _split.Height - logH); } catch { }
         Log(Tr.F("Diskette Toolkit {0} — diskety a obrazy pro Atari ST a další 3,5\" systémy.", Program.Version), LogKind.Title);
         if (_demo) Log(Tr.T("Ukázkový režim: mechaniky jsou simulované, nic se nezapisuje na skutečnou disketu."), LogKind.Warn);
         DetectDrives();
@@ -399,9 +420,9 @@ internal sealed class MainForm : Form, IJobHost
         _aTest.Text = Tr.T("Test povrchu a kontrola");
         _aErase.Text = Tr.T("Magneticky smazat");
         _aBoot.Text = Tr.T("Spouštěcí disketa…");
-        _aBoot.Subtitle = Tr.T("FreeDOS, MS-DOS, Amiga, Atari, RawWrite");
+        _aBoot.Subtitle = Tr.T("FreeDOS, MS-DOS, Amiga…");
         _aDiag.Text = Tr.T("Diagnostika mechaniky…");
-        _aDiag.Subtitle = Tr.T("otáčky, čidla, hlava, čištění, stopy");
+        _aDiag.Subtitle = Tr.T("otáčky, čidla, hlava, čištění");
         _iOpen.Text = Tr.T("Otevřít obraz…");
         _iOpen.Subtitle = Tr.T("obsah, formát, mapa sektorů");
         _iCheck.Text = Tr.T("Kontrola a oprava obrazu");
@@ -409,13 +430,13 @@ internal sealed class MainForm : Form, IJobHost
         _iConvert.Text = Tr.T("Převést formát…");
         _iConvert.Subtitle = "ST ⇄ MSA ⇄ IMG ⇄ DIM";
         _iNew.Text = Tr.T("Nový prázdný obraz…");
-        _iNew.Subtitle = Tr.T("Atari, PC, MSX, Mac, Amiga, Linux…");
+        _iNew.Subtitle = Tr.T("Atari, PC, Amiga, Mac a další");
         _hFormats.Text = Tr.T("Formáty všech systémů");
         _hAbout.Text = Tr.T("O programu");
         _hDonate.Text = Tr.T("Podpořit vývoj");
         _hDonate.Subtitle = Tr.T("dobrovolný příspěvek přes Ko-fi");
         UpdateActionButtons();
-        if (!_busy) _status.Text = Tr.T("Připraveno.");
+        if (!_busy && !_outcomeShown) _status.Text = Tr.T("Připraveno.");
         LayoutTop();
     }
 
@@ -435,7 +456,7 @@ internal sealed class MainForm : Form, IJobHost
         if (_detecting || _busy) return;
         _detecting = true;
         _refreshBtn.Enabled = false;
-        _status.Text = Tr.T("Hledám mechaniky…");
+        if (!_outcomeShown) _status.Text = Tr.T("Hledám mechaniky…");
         var log = new List<string>();
         Task.Run(() =>
         {
@@ -451,7 +472,7 @@ internal sealed class MainForm : Form, IJobHost
             RefreshDriveList();
             if (_drives.Count == 0)
                 Log(Tr.T("Nenašel jsem žádnou disketovou mechaniku ani Greaseweazle. USB disketovka se ve Windows ukazuje jako jednotka A: nebo B:."), LogKind.Warn);
-            if (!_busy) _status.Text = Tr.T("Připraveno.");
+            if (!_busy && !_outcomeShown) _status.Text = Tr.T("Připraveno.");
             RunScreenshotScript();
         }, TaskScheduler.FromCurrentSynchronizationContext());
     }
@@ -530,14 +551,22 @@ internal sealed class MainForm : Form, IJobHost
         if (sameReason) _info.Note(ops[0].Reason, Theme.Warn);
 
         _info.Heading(Tr.T("Co umí mechanika"));
-        foreach (var kv in d.Features.OrderBy(k => k.Key))
+        foreach (var kv in d.Features.OrderBy(k => k.Key).Where(k => k.Value != Availability.Unsupported))
         {
             var (g, c) = Theme.Mark(kv.Value);
-            string what = kv.Key == Feature.Standard720 && d.Note720 != null ? d.Note720 : Capabilities.Describe(kv.Value);
+            // u funkční věci stačí zelená fajfka, „funguje“ pod každým řádkem jen zabírá místo
+            string what = kv.Key == Feature.Standard720 && d.Note720 != null ? d.Note720 : kv.Value == Availability.Available ? "" : Capabilities.Describe(kv.Value);
             _info.Item(g, c, Capabilities.Describe(kv.Key), what);
         }
+        // co hardware principiálně neumí, stačí jeden řádek — opakované „hardware neumí“ jen zabírá místo
+        var cannot = d.Features.OrderBy(k => k.Key).Where(k => k.Value == Availability.Unsupported).Select(k => Capabilities.Describe(k.Key)).ToList();
+        if (cannot.Count > 0)
+        {
+            var (g, c) = Theme.Mark(Availability.Unsupported);
+            _info.Item(g, c, Tr.T("Hardware neumí"), string.Join(", ", cannot));
+        }
         if (d.Kind == DriveKind.Internal && !d.FdrawcmdInstalled)
-            _info.Note(Tr.T("Tip: po instalaci ovladače fdrawcmd.sys (simonowen.com/fdrawcmd) půjdou i nestandardní formáty (10/11 sektorů, 82 stop, step rate)."), Theme.Accent);
+            _info.Note(Tr.T("Tip: po instalaci ovladače fdrawcmd.sys (simonowen.com/fdrawcmd) půjdou i nestandardní formáty (10/11 sektorů, 82 stop, rychlost krokování)."), Theme.Accent);
         if (d.Kind == DriveKind.Usb)
             _info.Note(Tr.T("USB disketovka zvládá jen standardní formáty PC (720 KB, 1,44 MB). Rozšířené formáty Atari, Amigu a ochrany zvládne interní mechanika s fdrawcmd.sys nebo Greaseweazle."));
         _info.Done();
@@ -610,11 +639,12 @@ internal sealed class MainForm : Form, IJobHost
             bool ready = v != null && v.IsReady;
             b.Blocked = !ready;
             b.Subtitle = d == null ? Tr.T("není vybraná mechanika") : ready ? readyText : v?.Reason ?? "";
-            _tips.SetToolTip(b, d == null ? "" : v?.Reason ?? "");
+            string key = b == _aRead ? "Ctrl+S" : "";
+            _tips.SetToolTip(b, string.Join("\n", new[] { d == null ? "" : v?.Reason ?? "", key }.Where(x => x.Length > 0)));
         }
         Set(_aRead, Op(OperationAdvisor.Read), d?.Kind == DriveKind.Greaseweazle ? Tr.T("formát pozná sám; i tok .SCP / .HFE") : Tr.T("disketa → .ST / .MSA / .IMG"));
-        Set(_aBatch, Op(OperationAdvisor.Read), Tr.T("víc disket za sebou, soubory se očíslují"));
-        Set(_aRescue, Op(OperationAdvisor.Read), Tr.T("opakované čtení, pokračování v jiné mechanice"));
+        Set(_aBatch, Op(OperationAdvisor.Read), Tr.T("víc disket, soubory se očíslují"));
+        Set(_aRescue, Op(OperationAdvisor.Read), Tr.T("znovu čte vadná místa"));
         Set(_aWrite, Op(OperationAdvisor.Write), Tr.T("obraz → disketa (jako RawWrite), s kontrolou"));
         Set(_aFormat, Op(OperationAdvisor.Format), Tr.T("Atari, PC, MSX, Mac, Amiga…"));
         var surface = Op(OperationAdvisor.Surface);
@@ -623,19 +653,18 @@ internal sealed class MainForm : Form, IJobHost
         _aDiag.Visible = d != null && DeviceFactory.SupportsDiag(d);
         Set(_aErase, surface, Tr.T("celá disketa, bez formátu"));
 
-        // doplňky: ovladač / program, které mechanika potřebuje
-        _aSetup.Visible = d != null && (d.Kind == DriveKind.Greaseweazle || d.Kind == DriveKind.Internal && !d.FdrawcmdInstalled);
+        // doplňky: ovladač / program, které mechanika potřebuje (jen když chybí; aktualizace jsou v Nastavení)
+        _aSetup.Visible = d != null && (d.Kind == DriveKind.Greaseweazle && d.GwToolPath == null || d.Kind == DriveKind.Internal && !d.FdrawcmdInstalled);
         _aSetup.Blocked = false;
-        _aSetup.Glyph = d?.Kind == DriveKind.Greaseweazle && d.GwToolPath != null ? "⟳" : "⭳";
         if (d?.Kind == DriveKind.Greaseweazle)
         {
-            _aSetup.Text = d.GwToolPath == null ? Tr.T("Stáhnout Greaseweazle Host Tools") : Tr.T("Aktualizace Greaseweazle");
-            _aSetup.Subtitle = d.GwToolPath == null ? Tr.T("gw.exe z GitHubu, pár MB — jedním kliknutím") : Tr.T("gw.exe z GitHubu, firmware v zařízení");
+            _aSetup.Text = Tr.T("Stáhnout Greaseweazle Host Tools");
+            _aSetup.Subtitle = Tr.T("gw.exe z GitHubu, pár MB — jedním kliknutím");
         }
         else
         {
             _aSetup.Text = Tr.T("Nainstalovat ovladač fdrawcmd.sys");
-            _aSetup.Subtitle = Tr.T("ze simonowen.com — odemkne 10/11 sektorů, 82 stop, step rate");
+            _aSetup.Subtitle = Tr.T("ze simonowen.com — odemkne 10/11 sektorů, 82 stop, rychlost krokování");
         }
     }
 
@@ -712,7 +741,7 @@ internal sealed class MainForm : Form, IJobHost
         using var w = new WriteDialog(d, path, _settings.VerifyAfterWrite);
         if (w.ShowDialog(this) != DialogResult.OK) return;
         _settings.VerifyAfterWrite = w.Verify;
-        if (!ConfirmDanger(Tr.F("Všechna data na disketě {0} budou přepsána. Pokračovat?", d.Id))) return;
+        if (!ConfirmDanger(Tr.F("Všechna data na disketě {0} budou přepsána. Pokračovat?", d.Id) + DiskContent(d))) return;
         string p = path;
         bool format = w.FormatFirst, verify = w.Verify;
         RunJob(j => j.WriteImage(d, p, format, verify));
@@ -726,7 +755,7 @@ internal sealed class MainForm : Form, IJobHost
         if (f.ShowDialog(this) != DialogResult.OK || f.Profile == null) return;
         if (f.ImagePath != null) { CreateImage(f.Profile, f.ImagePath, f.DiskLabel); return; }
         var p = f.Profile;
-        if (!ConfirmDanger(Tr.F("Všechna data na disketě {0} budou smazána a disketa se naformátuje jako {1}. Pokračovat?", d.Id, p.Title))) return;
+        if (!ConfirmDanger(Tr.F("Všechna data na disketě {0} budou smazána a disketa se naformátuje jako {1}. Pokračovat?", d.Id, p.Title) + DiskContent(d))) return;
         bool quick = f.Quick, verify = f.Verify, shift = f.ShiftSectors;
         if (shift && !Confirm(Tr.T("Opravný formát je EXPERIMENTÁLNÍ. Vadná místa na stopách zkusí obejít vloženým sektorem navíc, místo aby je jen označil ve FAT. Disketa pak bude normálně čitelná v Atari i PC, ale vada se může časem rozšířit — na archiv a důležitá data ji nepoužívej. Pokračovat?"))) return;
         string? label = f.DiskLabel;
@@ -739,7 +768,7 @@ internal sealed class MainForm : Form, IJobHost
         var d = Selected!;
         using var t = new TestDialog(d, _settings.BackupFolder);
         if (t.ShowDialog(this) != DialogResult.OK) return;
-        if (t.Mode == WriteTestMode.Destructive && !ConfirmDanger(Tr.F("Destruktivní test SMAŽE všechna data na {0}. Záloha se před tím uloží do {1}. Pokračovat?", d.Id, t.BackupPath))) return;
+        if (t.Mode == WriteTestMode.Destructive && !ConfirmDanger(Tr.F("Destruktivní test SMAŽE všechna data na {0}. Záloha se před tím uloží do {1}. Pokračovat?", d.Id, t.BackupPath) + DiskContent(d))) return;
         if (t.Mode == WriteTestMode.PreserveData &&
             !Confirm(Tr.F("Test s obnovou dočasně přepisuje stopy. Před zápisem uložím zálohu diskety do {0}. Pokračovat?", t.BackupPath))) return;
         var mode = t.Mode;
@@ -762,7 +791,7 @@ internal sealed class MainForm : Form, IJobHost
         if (write)
         {
             if (!CheckReady(_aWrite)) return;
-            if (!ConfirmDanger(Tr.F("Všechna data na disketě {0} budou přepsána spouštěcí disketou. Pokračovat?", d!.Id))) return;
+            if (!ConfirmDanger(Tr.F("Všechna data na disketě {0} budou přepsána spouštěcí disketou. Pokračovat?", d!.Id) + DiskContent(d))) return;
         }
         if (save != null) Remember(save);
         bool verify = _settings.VerifyAfterWrite;
@@ -773,12 +802,8 @@ internal sealed class MainForm : Form, IJobHost
     {
         var d = Selected;
         if (d == null) return;
-        if (d.Kind == DriveKind.Internal) { RunInstall(j => j.InstallFdrawcmd()); return; }
-        if (d.GwToolPath == null) { RunInstall(j => j.InstallGw()); return; }
-        var menu = new ContextMenuStrip();
-        menu.Items.Add(Tr.T("Stáhnout nejnovější Host Tools (gw.exe)"), null, (_, _) => RunInstall(j => j.InstallGw()));
-        menu.Items.Add(Tr.T("Aktualizovat firmware v Greaseweazle"), null, (_, _) => RunInstall(j => j.UpdateGwFirmware(d)));
-        menu.Show(_aSetup, new Point(0, _aSetup.Height));
+        if (d.Kind == DriveKind.Internal) RunInstall(j => j.InstallFdrawcmd());
+        else RunInstall(j => j.InstallGw());
     }
 
     /// <summary>Instalace doplňků — po ní znovu najde mechaniky (změní se, co umí).</summary>
@@ -804,7 +829,7 @@ internal sealed class MainForm : Form, IJobHost
     {
         if (!CheckReady(_aErase)) return;
         var d = Selected!;
-        if (!ConfirmDanger(Tr.F("Magneticky smazat celou disketu přes {0}?", d.Name))) return;
+        if (!ConfirmDanger(Tr.F("Magneticky smazat celou disketu přes {0}?", d.Name) + DiskContent(d))) return;
         RunJob(j => j.Erase(d));
     }
 
@@ -1038,6 +1063,8 @@ internal sealed class MainForm : Form, IJobHost
     {
         if (_busy) return;
         _cts = new CancellationTokenSource();
+        _jobKind = LogKind.Info; _jobLine = null; _jobIssues = 0;
+        ShowOutcome(null);
         SetBusy(true);
         _pDone = 0; _pTotal = 0; _pText = Tr.T("Začínám…");
         var jobs = new Jobs(this);
@@ -1048,22 +1075,63 @@ internal sealed class MainForm : Form, IJobHost
         }, _cts.Token).ContinueWith(t =>
         {
             if (t.IsCanceled || t.Exception?.GetBaseException() is OperationCanceledException)
+            {
                 Log(Tr.T("Operace byla přerušena."), LogKind.Warn);
+                if (_jobKind < LogKind.Error) { _jobKind = LogKind.Warn; _jobLine = Tr.T("Operace byla přerušena."); }
+            }
             else if (t.Exception != null)
             {
                 var e = t.Exception.GetBaseException();
                 bool expected = e is OperationException or FormatException or FileNotFoundException or NotSupportedException or ArgumentException or IOException or SectorIOException;
                 Log(expected ? e.Message : Tr.T("Neočekávaná chyba: ") + e, LogKind.Error);
+                _jobKind = LogKind.Error;
+                _jobLine = expected ? e.Message : Tr.T("Neočekávaná chyba: ") + e.Message;
             }
             _map.End();
             SetBusy(false);
             _progress.Style = ProgressBarStyle.Continuous;
-            _status.Text = t.Exception == null && !t.IsCanceled ? Tr.T("Hotovo.") : Tr.T("Připraveno.");
-            _progress.Value = t.Exception == null && !t.IsCanceled ? _progress.Maximum : 0;
+            bool finished = t.Exception == null && !t.IsCanceled;
+            if (finished) _progress.Value = _progress.Maximum;
+            ShowOutcome(_jobLine ?? (finished ? Tr.T("Hotovo.") : Tr.T("Připraveno.")));
             _probe.Clear();
             if (redetect) DetectDrives(); else RefreshSelectedMedia();
             if (_closeWhenDone) Close();
         }, TaskScheduler.FromCurrentSynchronizationContext());
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")] private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wp, IntPtr lp);
+
+    /// <summary>
+    /// Výsledek úlohy pod mapou: nejhorší hlášení z výpisu (chyba / varování / v pořádku) barevně a tučně,
+    /// pruh v barvě výsledku. null = vrátit běžný vzhled (začíná nová úloha).
+    /// </summary>
+    private void ShowOutcome(string? text)
+    {
+        _outcomeShown = text != null;
+        var kind = text == null ? LogKind.Info : _jobKind;
+        _status.ForeColor = kind switch { LogKind.Error => Theme.Danger, LogKind.Warn => Theme.Warn, LogKind.Ok => Theme.Ok, _ => Theme.Text };
+        _status.Font = text != null && kind >= LogKind.Ok ? OutcomeFont : Font;
+        // PBM_SETSTATE: 1 = normální (zelený), 2 = chyba (červený), 3 = pozastaveno (žlutý)
+        try { SendMessage(_progress.Handle, 0x410, (IntPtr)(kind == LogKind.Error ? 2 : kind == LogKind.Warn ? 3 : 1), IntPtr.Zero); }
+        catch (Exception) { }   // jiný systém než Windows (ukázky pod Mono) — pruh zůstane jednobarevný
+        if (text == null) return;
+        string glyph = kind switch { LogKind.Error => "✗ ", LogKind.Warn => "! ", LogKind.Ok => "✓ ", _ => "" };
+        _status.Text = glyph + text + (_jobIssues > 1 ? "   ·   " + Tr.T("podrobnosti ve výpisu níže") : "");
+        _tips.SetToolTip(_status, _status.Text);
+    }
+
+    private static readonly Font OutcomeFont = Theme.UiFont(9.5f, FontStyle.Bold);
+
+    protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+    {
+        if (!_busy)
+            switch (keyData)
+            {
+                case Keys.F5: DetectDrives(); return true;
+                case Keys.Control | Keys.O: DoOpenImage(null); return true;
+                case Keys.Control | Keys.S: DoRead(); return true;
+            }
+        return base.ProcessCmdKey(ref msg, keyData);
     }
 
     private void CancelJob()
@@ -1176,6 +1244,12 @@ internal sealed class MainForm : Form, IJobHost
             LogKind.Dim => Theme.TextDim,
             _ => Theme.Text,
         };
+        if (_busy && kind is LogKind.Ok or LogKind.Warn or LogKind.Error)
+        {
+            // u chyb a varování bývá shrnutí první („Vadné sektory (2):“), podrobnosti až za ním; u úspěchu poslední
+            if (kind > _jobKind || kind == _jobKind && kind == LogKind.Ok) { _jobKind = kind; _jobLine = text.Trim().TrimEnd(':'); }
+            if (kind != LogKind.Ok) _jobIssues++;
+        }
         _log.SelectionStart = _log.TextLength;
         _log.SelectionLength = 0;
         if (kind == LogKind.Title && _log.TextLength > 0) _log.AppendText("\n");
@@ -1223,6 +1297,18 @@ internal sealed class MainForm : Form, IJobHost
     }
 
     private bool ConfirmDanger(string text) => Confirm(text, danger: true);
+
+    /// <summary>Co je na disketě teď (z rozpoznání pro levý panel) — do potvrzení, ať je jasné, o co by člověk přišel.</summary>
+    private string DiskContent(DetectedDrive d)
+    {
+        if (!_probe.TryGetValue(d.Id, out var p) || p.summary is not { } s) return "";
+        if (s.Fs.Kind == FsKind.Empty) return "\n\n" + Tr.T("Disketa teď vypadá prázdná.");
+        if (s.Fs.Kind == FsKind.Unknown) return "";
+        var parts = new List<string> { s.Fs.Name };
+        if (s.Label != null) parts.Add(Tr.F("jmenovka „{0}“", s.Label));
+        if (s.UsedBytes is long used) parts.Add(Tr.F("obsazeno {0:N0} KB", used / 1024));
+        return "\n\n" + Tr.F("Na disketě teď je: {0}.", string.Join(", ", parts));
+    }
 
     private void Error(string text)
     {

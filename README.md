@@ -18,6 +18,18 @@ Try it without hardware: `DisketteToolkit.exe --demo` (simulated drives).
 
 See also: [Privacy](#privacy) · [Code signing policy](#code-signing-policy)
 
+## What's new in 0.9.1
+
+Fixes, mainly safety on damaged disks and a clearer window:
+- Greaseweazle never silently overwrites unreadable sectors with zeros: the "keep data" write test refuses, the
+  file-system repair asks and says whether data would be lost
+- Greaseweazle: density from the measured data rate, a damaged last track no longer halves the backup, flux backup
+  to `.hfe` works, 32-bit gw.exe on Windows 7, Akai S1000/S3000 formats
+- Rescue refuses to mix a different disk into an unfinished rescue image; images are saved via a temporary file
+- The fdrawcmd.sys installer's signature is verified by Windows
+- The result of every operation is shown under the map in colour; bad and weak sectors are marked with symbols,
+  not only colour; keyboard shortcuts; grouped drive diagnostics; "repair now" after a surface test
+
 ## What's new in 0.9
 
 - **Drive diagnostics** (Greaseweazle, internal drive + fdrawcmd.sys): drive speed with wobble and a live gauge

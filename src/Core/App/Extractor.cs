@@ -28,7 +28,7 @@ public static class Extractor
             }
             return files;
         }
-        var fat = Fat12Volume.TryOpen(img.Data, out string? err) ?? throw new Drives.OperationException(err ?? Tr.T("Image nemá čitelný souborový systém."));
+        var fat = Fat12Volume.TryOpen(img.Data, out string? err) ?? throw new Drives.OperationException(err ?? Tr.T("Obraz nemá čitelný souborový systém."));
         foreach (var e in fat.ListAll())
         {
             string target = Path.Combine(folder, Path.Combine(e.Path.Split('\\').Select(SafeName).ToArray()));

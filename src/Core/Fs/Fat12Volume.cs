@@ -49,7 +49,7 @@ public sealed class Fat12Volume
     public static Fat12Volume? TryOpen(byte[] disk, out string? error)
     {
         error = null;
-        if (disk.Length < 512) { error = Tr.T("Image je příliš malý."); return null; }
+        if (disk.Length < 512) { error = Tr.T("Obraz je příliš malý."); return null; }
         var bs = new BootSector(disk);
         if (!bs.BpbLooksValid)
         {
@@ -57,7 +57,7 @@ public sealed class Fat12Volume
             return null;
         }
         var v = new Fat12Volume(disk, bs);
-        if (v._dataOffset >= disk.Length) { error = Tr.T("Souborový systém přesahuje velikost image."); return null; }
+        if (v._dataOffset >= disk.Length) { error = Tr.T("Souborový systém přesahuje velikost obrazu."); return null; }
         return v;
     }
 
@@ -71,6 +71,18 @@ public sealed class Fat12Volume
     }
 
     public bool IsClusterUsed(int cluster) => NextCluster(cluster) != 0;
+
+    /// <summary>
+    /// Může sektor nést data? Systémová oblast (boot, FAT, adresář) ano; v datové oblasti jen cluster,
+    /// který není volný ani označený jako vadný.
+    /// </summary>
+    public bool HoldsData(long lba)
+    {
+        long o = lba * 512;
+        if (o < _dataOffset) return true;
+        long c = (o - _dataOffset) / _clusterSize;
+        return c < _clusterCount && NextCluster((int)c + 2) is not (0 or 0xFF7);
+    }
 
     public int UsedClusters
     {
