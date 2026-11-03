@@ -1877,7 +1877,8 @@ internal static class Tests
     private static void T_Setup_SignatureMustBeValid()
     {
         // jen na Windows (WinVerifyTrust); podepsaný soubor = mscorlib.dll z .NET Framework
-        if (Environment.OSVersion.Platform != PlatformID.Win32NT) { Skip("jen Windows"); return; }
+        // na Linuxu není co ověřovat (to není chybějící nástroj, proto ne Skip — v CI by to bylo selhání)
+        if (Environment.OSVersion.Platform != PlatformID.Win32NT) return;
         string signed = typeof(object).Assembly.Location;
         string? who = AtariFloppy.Core.App.FdrawcmdSetup.Signer(signed);
         Assert(who != null && who.Contains("Microsoft"), "platný podpis: " + who);
