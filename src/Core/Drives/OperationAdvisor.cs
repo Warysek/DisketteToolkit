@@ -11,8 +11,8 @@ public sealed record OperationVerdict(string Operation, ProfileStatus Status, st
 /// <summary>Co jde s danou mechanikou a vloženou disketou dělat — a proč ne.</summary>
 public static class OperationAdvisor
 {
-    public static string Read => Tr.T("Záloha diskety do image");
-    public static string Write => Tr.T("Zápis image na disketu");
+    public static string Read => Tr.T("Záloha diskety do obrazu");
+    public static string Write => Tr.T("Zápis obrazu na disketu");
     public static string Format => Tr.T("Formátování");
     public static string Surface => Tr.T("Test povrchu");
     public static string FsCheck => Tr.T("Kontrola a oprava souborů");
@@ -40,8 +40,8 @@ public static class OperationAdvisor
 
         string media = d.Media switch
         {
-            InsertedMedia.DD => Tr.T("DD disketa: image 640 KB, 720 KB nebo jednostranný 360 KB."),
-            InsertedMedia.HD => Tr.T("HD disketa: image 1,44 MB."),
+            InsertedMedia.DD => Tr.T("DD disketa: obraz 640 KB, 720 KB nebo jednostranný 360 KB."),
+            InsertedMedia.HD => Tr.T("HD disketa: obraz 1,44 MB."),
             _ => "",
         };
 

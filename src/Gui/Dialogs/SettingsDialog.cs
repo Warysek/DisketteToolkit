@@ -41,7 +41,7 @@ internal sealed class SettingsDialog : DialogBase
         var flow = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.TopDown, WrapContents = false, AutoScroll = true };
 
         flow.Controls.Add(Heading(Tr.T("Interní mechanika (fdrawcmd.sys)")));
-        _stepOn.Text = Tr.T("Vlastní rychlost krokování hlavy (step rate), ms:");
+        _stepOn.Text = Tr.T("Vlastní rychlost krokování hlavy, ms:");
         _stepOn.Checked = settings.Drive.StepRateMs != null;
         _step.Value = settings.Drive.StepRateMs ?? 6;
         _step.Enabled = _stepOn.Checked;

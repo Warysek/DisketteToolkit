@@ -36,7 +36,7 @@ public static class ImageAnalysis
                 Verdict = Verdict.NotWritable,
                 Summary = loaded.Kind is ImageKind.Stx or ImageKind.Ipf or ImageKind.Scp or ImageKind.KryoFlux or ImageKind.Hfe
                     ? Tr.T("Formát zatím jen rozpoznaný — zápis bude možný po doplnění čtení tohoto formátu (neochráněné disky i na USB, chráněné jen přes Greaseweazle).")
-                    : Tr.T("Image se nepodařilo načíst."),
+                    : Tr.T("Obraz se nepodařilo načíst."),
             };
             if (loaded.NotLoadedReason != null) a.Notes.Add(loaded.NotLoadedReason);
             return a;
@@ -54,8 +54,8 @@ public static class ImageAnalysis
                     ? Tr.T("Lze zapsat na USB i interní mechaniku — potřebuješ HD disketu (1,44 MB).")
                     : Tr.T("Lze zapsat na USB i interní mechaniku (720 KB, DD nebo přelepená HD disketa)."),
             };
-            if (g.Sides == 1) a.Notes.Add(Tr.T("Jednostranný image: zapíše se na stranu 0 oboustranně naformátované diskety — Atari ho přečte i v jednostranné mechanice."));
-            if (g.Tracks < 80) a.Notes.Add(Tr.F("Image má jen {0} stop, zbytek diskety zůstane nevyužitý.", g.Tracks));
+            if (g.Sides == 1) a.Notes.Add(Tr.T("Jednostranný obraz: zapíše se na stranu 0 oboustranně naformátované diskety — Atari ho přečte i v jednostranné mechanice."));
+            if (g.Tracks < 80) a.Notes.Add(Tr.F("Obraz má jen {0} stop, zbytek diskety zůstane nevyužitý.", g.Tracks));
             var fsKind = FileSystemDetector.Detect(loaded.Image.Data).Kind;
             if (fsKind is FsKind.OwnLoader or FsKind.Unknown)
                 a.Notes.Add(Tr.T("Boot sektor nemá souborový systém (typicky hra/demo s vlastním zavaděčem). Pokud nejde o ochranu, zápis 1:1 bude fungovat."));

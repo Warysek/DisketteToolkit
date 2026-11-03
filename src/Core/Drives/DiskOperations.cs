@@ -56,16 +56,16 @@ public static class DiskOperations
         else if (sideMode == SideMode.Auto && bs != null && bs.BpbLooksValid && bs.Heads == 1 && bs.SectorsPerTrack == media.SectorsPerTrack)
         {
             sides = 1;
-            result.Notes.Add(Tr.T("Boot sektor udává jednostrannou disketu — čtu jen stranu 0 (image 360 KB)."));
+            result.Notes.Add(Tr.T("Boot sektor udává jednostrannou disketu — čtu jen stranu 0 (obraz 360 KB)."));
         }
         sides = Math.Min(sides, media.Sides);
 
         if (bs != null && bs.BpbLooksValid)
         {
             if (bs.SectorsPerTrack != media.SectorsPerTrack)
-                result.Warnings.Add(Tr.F("Boot sektor udává {0} sektorů na stopu, mechanika čte {1}. Disketa má nestandardní formát a image bude neúplný — takovou disketu přečte jen interní mechanika s fdrawcmd.sys nebo Greaseweazle.", bs.SectorsPerTrack, media.SectorsPerTrack));
+                result.Warnings.Add(Tr.F("Boot sektor udává {0} sektorů na stopu, mechanika čte {1}. Disketa má nestandardní formát a obraz bude neúplný — takovou disketu přečte jen interní mechanika s fdrawcmd.sys nebo Greaseweazle.", bs.SectorsPerTrack, media.SectorsPerTrack));
             else if (bs.TotalSectors > media.Tracks * sides * media.SectorsPerTrack)
-                result.Warnings.Add(Tr.F("Boot sektor udává {0} sektorů, ale mechanika přečte jen {1} stop. Disketa má stopy navíc (81+) a ty v image chybět budou.", bs.TotalSectors, media.Tracks));
+                result.Warnings.Add(Tr.F("Boot sektor udává {0} sektorů, ale mechanika přečte jen {1} stop. Disketa má stopy navíc (81+) a ty v obrazu chybět budou.", bs.TotalSectors, media.Tracks));
         }
         else if (bs != null)
         {
@@ -140,7 +140,7 @@ public static class DiskOperations
     {
         var g = img.Geometry;
         if (!dev.SupportsGeometry(g))
-            throw new OperationException(Tr.F("Image má formát {0} — ten tahle mechanika zapsat neumí. {1}", g, dev.GeometryLimits));
+            throw new OperationException(Tr.F("Obraz má formát {0} — ten tahle mechanika zapsat neumí. {1}", g, dev.GeometryLimits));
 
         dev.RefreshMedia();
         if (dev.MediaState == MediaState.NoDisk) throw new OperationException(Tr.T("V mechanice není disketa."));
@@ -161,11 +161,11 @@ public static class DiskOperations
 
             if (media.SectorsPerTrack != g.SectorsPerTrack)
                 throw new OperationException(
-                    Tr.F("Image má {0} sektorů na stopu, vložená disketa je naformátovaná na {1}. ", g.SectorsPerTrack, media.SectorsPerTrack) +
+                    Tr.F("Obraz má {0} sektorů na stopu, vložená disketa je naformátovaná na {1}. ", g.SectorsPerTrack, media.SectorsPerTrack) +
                     (g.IsHighDensity ? Tr.T("Vlož HD disketu (bez přelepeného otvoru).") : Tr.T("Vlož DD disketu nebo přelep otvor HD diskety")) +
                     Tr.T(", případně zapiš s formátováním."));
             if (media.Sides < g.Sides || media.Tracks < g.Tracks)
-                throw new OperationException(Tr.F("Disketa ({0}) je menší než image ({1}).", media, g));
+                throw new OperationException(Tr.F("Disketa ({0}) je menší než obraz ({1}).", media, g));
 
             int total = g.TrackCount * (verify ? 2 : 1), done = 0;
             for (int t = 0; t < g.Tracks; t++)

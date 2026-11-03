@@ -5,11 +5,11 @@
 
 # ---------------------------------------------------------------- image assessment
 Formát zatím jen rozpoznaný — zápis bude možný po doplnění čtení tohoto formátu (neochráněné disky i na USB, chráněné jen přes Greaseweazle). = Format recognised only — writing will be possible once reading of this format is added (unprotected disks via USB too, protected ones only via Greaseweazle).
-Image se nepodařilo načíst. = The image could not be loaded.
+Obraz se nepodařilo načíst. = The image could not be loaded.
 Lze zapsat na USB i interní mechaniku — potřebuješ HD disketu (1,44 MB). = Can be written with a USB or internal drive — you need an HD disk (1.44 MB).
 Lze zapsat na USB i interní mechaniku (720 KB, DD nebo přelepená HD disketa). = Can be written with a USB or internal drive (720 KB, DD disk or HD disk with the hole taped over).
-Jednostranný image: zapíše se na stranu 0 oboustranně naformátované diskety — Atari ho přečte i v jednostranné mechanice. = Single-sided image: it is written to side 0 of a double-sided disk — an Atari reads it even in a single-sided drive.
-Image má jen {0} stop, zbytek diskety zůstane nevyužitý. = The image has only {0} tracks, the rest of the disk stays unused.
+Jednostranný obraz: zapíše se na stranu 0 oboustranně naformátované diskety — Atari ho přečte i v jednostranné mechanice. = Single-sided image: it is written to side 0 of a double-sided disk — an Atari reads it even in a single-sided drive.
+Obraz má jen {0} stop, zbytek diskety zůstane nevyužitý. = The image has only {0} tracks, the rest of the disk stays unused.
 Boot sektor nemá souborový systém (typicky hra/demo s vlastním zavaděčem). Pokud nejde o ochranu, zápis 1:1 bude fungovat. = The boot sector has no file system (typically a game/demo with its own loader). Unless it is copy protected, a 1:1 write will work.
 Formát {0} standardní mechanika 1:1 nezapíše. Soubory ({1} KB) se ale vejdou na standardní 720 KB disketu — přebalení přijde v další verzi. = A standard drive cannot write format {0} 1:1. The files ({1} KB) would fit on a standard 720 KB disk — repacking will come in a later version.
 Formát {0} standardní mechanika nezapíše a obsah ({1} KB) se na 720 KB disketu nevejde. = A standard drive cannot write format {0} and the content ({1} KB) does not fit on a 720 KB disk.
@@ -36,9 +36,9 @@ Standardní 720 KB (80×2×9) = Standard 720 KB (80×2×9)
 Standardní 1,44 MB (80×2×18) = Standard 1.44 MB (80×2×18)
 10 sektorů, 81–83 stop (800–830 KB) = 10 sectors, 81–83 tracks (800–830 KB)
 11 sektorů na stopu = 11 sectors per track
-Nastavení step rate = Step rate setting
+Nastavení rychlosti krokování = Step rate setting
 Jednoduché ochrany (CRC, nestandardní sektory) = Simple protections (CRC, non-standard sectors)
-Weak bits, dlouhé stopy, časování = Weak bits, long tracks, timing
+Slabé bity, dlouhé stopy, časování = Weak bits, long tracks, timing
 Plný zápis STX / IPF / raw = Full STX / IPF / raw writing
 funguje = works
 hardware umí, program doplní později = hardware can, the program will add it later
@@ -58,18 +58,18 @@ Interní mechanika = Internal drive
 
 # ---------------------------------------------------------------- read / write / format
 Boot sektor nejde přečíst:  = The boot sector cannot be read:
-Boot sektor udává jednostrannou disketu — čtu jen stranu 0 (image 360 KB). = The boot sector says single-sided — reading side 0 only (360 KB image).
-Boot sektor udává {0} sektorů na stopu, mechanika čte {1}. Disketa má nestandardní formát a image bude neúplný — takovou disketu přečte jen interní mechanika s fdrawcmd.sys nebo Greaseweazle. = The boot sector says {0} sectors per track, the drive reads {1}. The disk has a non-standard format and the image will be incomplete — only an internal drive with fdrawcmd.sys or a Greaseweazle can read such a disk.
-Boot sektor udává {0} sektorů, ale mechanika přečte jen {1} stop. Disketa má stopy navíc (81+) a ty v image chybět budou. = The boot sector says {0} sectors, but the drive reads only {1} tracks. The disk has extra tracks (81+) and they will be missing from the image.
+Boot sektor udává jednostrannou disketu — čtu jen stranu 0 (obraz 360 KB). = The boot sector says single-sided — reading side 0 only (360 KB image).
+Boot sektor udává {0} sektorů na stopu, mechanika čte {1}. Disketa má nestandardní formát a obraz bude neúplný — takovou disketu přečte jen interní mechanika s fdrawcmd.sys nebo Greaseweazle. = The boot sector says {0} sectors per track, the drive reads {1}. The disk has a non-standard format and the image will be incomplete — only an internal drive with fdrawcmd.sys or a Greaseweazle can read such a disk.
+Boot sektor udává {0} sektorů, ale mechanika přečte jen {1} stop. Disketa má stopy navíc (81+) a ty v obrazu chybět budou. = The boot sector says {0} sectors, but the drive reads only {1} tracks. The disk has extra tracks (81+) and they will be missing from the image.
 Boot sektor nemá platný souborový systém (vlastní zavaděč hry/dema, nebo ochrana). Čtu celou disketu. = The boot sector has no valid file system (a game/demo loader, or copy protection). Reading the whole disk.
-Image má formát {0} — ten tahle mechanika zapsat neumí. {1} = The image has format {0} — this drive cannot write it. {1}
+Obraz má formát {0} — ten tahle mechanika zapsat neumí. {1} = The image has format {0} — this drive cannot write it. {1}
 Formátuji = Formatting
 Použij volbu formátování před zápisem (v menu „a“, v příkazu --format). = Enable “format before writing”.
-Image má {0} sektorů na stopu, vložená disketa je naformátovaná na {1}.  = The image has {0} sectors per track, the inserted disk is formatted with {1}.
+Obraz má {0} sektorů na stopu, vložená disketa je naformátovaná na {1}.  = The image has {0} sectors per track, the inserted disk is formatted with {1}.
 Vlož HD disketu (bez přelepeného otvoru). = Insert an HD disk (without the hole taped over).
 Vlož DD disketu nebo přelep otvor HD diskety = Insert a DD disk or tape over the hole of an HD disk
 , případně zapiš s formátováním. = , or write with formatting.
-Disketa ({0}) je menší než image ({1}). = The disk ({0}) is smaller than the image ({1}).
+Disketa ({0}) je menší než obraz ({1}). = The disk ({0}) is smaller than the image ({1}).
 nejde přečíst:  = cannot be read:
 zapsaná data nesouhlasí = written data does not match
 Formát {0} tahle mechanika neumí. {1} = This drive cannot do format {0}. {1}
@@ -142,8 +142,8 @@ gw vrátil {0} B, formát má {1} B. = gw returned {0} B, the format has {1} B.
 Standardní mechanika přes Windows umí jen 8, 9 nebo 18 sektorů po 512 B na stopu a nejvýš 80 stop. = A standard drive via Windows can only do 8, 9 or 18 sectors of 512 B per track and at most 80 tracks.
 
 # ---------------------------------------------------------------- operations advice
-Záloha diskety do image = Back up disk to image
-Zápis image na disketu = Write image to disk
+Záloha diskety do obrazu = Back up disk to image
+Zápis obrazu na disketu = Write image to disk
 Formátování = Formatting
 Test povrchu = Surface test
 Kontrola a oprava souborů = File system check and repair
@@ -153,8 +153,8 @@ Obrazy .ST, .MSA, .ADF, .IMG, .D81 … i toky .SCP, .HFE a .IPF (IPF potřebuje 
 Všechny formáty z přehledu včetně Amigy a Atari 800–900 KB. = All formats from the overview, including Amiga and Atari 800–900 KB.
 Čtecí test s mapou sektorů; zápisový test přepíše disketu stejným obsahem (s ověřením). = Read test with sector map; the write test rewrites the disk with the same content (verified).
 Kontrola a oprava FAT12; ostatní systémy rozpozná. = FAT12 check and repair; other systems are recognised.
-DD disketa: image 640 KB, 720 KB nebo jednostranný 360 KB. = DD disk: 640 KB, 720 KB or single-sided 360 KB images.
-HD disketa: image 1,44 MB. = HD disk: 1.44 MB images.
+DD disketa: obraz 640 KB, 720 KB nebo jednostranný 360 KB. = DD disk: 640 KB, 720 KB or single-sided 360 KB images.
+HD disketa: obraz 1,44 MB. = HD disk: 1.44 MB images.
 Disketa je čitelná ({0}) — záloha funguje u jakéhokoli systému (Atari, PC, Mac HFS, MSX, CP/M, Linux…). = The disk is readable ({0}) — backup works for any system (Atari, PC, Mac HFS, MSX, CP/M, Linux…).
 Nabídka formátů se řídí vloženou disketou — viz přehled formátů. = The format list depends on the inserted disk — see the format overview.
 Čtecí test nic nemění; zápisový test s obnovou nebo destruktivní. = The read test changes nothing; write test either data-preserving or destructive.
@@ -228,9 +228,9 @@ ext2 builder umí jen diskety (jedna skupina bloků). = The ext2 builder only ha
 HFS potřebuje aspoň 800 KB. = HFS needs at least 800 KB.
 
 # ---------------------------------------------------------------- FAT check and repair
-Image je příliš malý. = The image is too small.
+Obraz je příliš malý. = The image is too small.
 Boot sektor neobsahuje platné údaje o souborovém systému (disketa může být chráněná, nestandardní nebo nenaformátovaná). = The boot sector has no valid file system data (the disk may be protected, non-standard or unformatted).
-Souborový systém přesahuje velikost image. = The file system is larger than the image.
+Souborový systém přesahuje velikost obrazu. = The file system is larger than the image.
 Boot sektor neobsahuje platný popis FAT (BPB) — disketa nemá souborový systém FAT, nebo je boot sektor poškozený. = The boot sector has no valid FAT description (BPB) — the disk has no FAT file system, or the boot sector is damaged.
 Boot sektor udává {0} sektorů, disketa/obraz jich má jen {1}. Konec souborového systému chybí. = The boot sector says {0} sectors, the disk/image has only {1}. The end of the file system is missing.
 Souborový systém nemá žádné datové clustery — BPB je nesmyslný. = The file system has no data clusters — the BPB is nonsense.
@@ -286,7 +286,7 @@ Obraz je příliš malý. = The image is too small.
 prázdná / nenaformátovaná = empty / unformatted
 Celá disketa obsahuje stejný bajt (0x = The whole disk contains the same byte (0x
 ) — nic na ní není. = ) — there is nothing on it.
-Commodore Amiga (AmigaOS/Workbench), 880 KB DD nebo 1,76 MB HD. OFS je původní systém z AmigaOS 1.x, FFS rychlejší od AmigaOS 2.0. Diskety se v PC ani USB mechanice nedají přečíst (celá stopa je jeden blok) — jen image .ADF nebo Greaseweazle. = Commodore Amiga (AmigaOS/Workbench), 880 KB DD or 1.76 MB HD. OFS is the original system of AmigaOS 1.x, FFS is faster, from AmigaOS 2.0. These disks cannot be read in a PC or USB drive (a whole track is one block) — only as an .ADF image or with a Greaseweazle.
+Commodore Amiga (AmigaOS/Workbench), 880 KB DD nebo 1,76 MB HD. OFS je původní systém z AmigaOS 1.x, FFS rychlejší od AmigaOS 2.0. Diskety se v PC ani USB mechanice nedají přečíst (celá stopa je jeden blok) — jen obraz .ADF nebo Greaseweazle. = Commodore Amiga (AmigaOS/Workbench), 880 KB DD or 1.76 MB HD. OFS is the original system of AmigaOS 1.x, FFS is faster, from AmigaOS 2.0. These disks cannot be read in a PC or USB drive (a whole track is one block) — only as an .ADF image or with a Greaseweazle.
 jméno svazku „{0}“ = volume name “{0}”
 Sinclair QL (1984) s disketovým rozhraním (Trump Card, Miracle, Gold Card). QL5A \= 720 KB, QL5B \= 1,44 MB. = Sinclair QL (1984) with a disk interface (Trump Card, Miracle, Gold Card). QL5A \= 720 KB, QL5B \= 1.44 MB.
 Amstrad PCW 8256/8512/9512/9256 — textové editory s LocoScriptem a CP/M Plus. 3,5" 720 KB diskety používají PCW 9512+ a 9256; stejný popis disku má i Amstrad CPC a ZX Spectrum +3 (ty ale na 3" disketách). = Amstrad PCW 8256/8512/9512/9256 — word processors with LocoScript and CP/M Plus. 3.5" 720 KB disks are used by the PCW 9512+ and 9256; the Amstrad CPC and ZX Spectrum +3 use the same disk description (but on 3" disks).
@@ -509,7 +509,7 @@ Používám fdrawcmd.sys — {0}; disketa: {1} = Using fdrawcmd.sys — {0}; dis
 Rychlost krokování jde nastavit jen přes fdrawcmd.sys nebo Greaseweazle — ignoruji ji. = The step rate can only be set via fdrawcmd.sys or Greaseweazle — ignoring it.
 Formát {0} tahle mechanika nezvládne. {1} = This drive cannot handle the format {0}. {1}
 Nestandardní formáty zapíše interní mechanika s ovladačem fdrawcmd.sys nebo Greaseweazle. = Non-standard formats can be written by an internal drive with the fdrawcmd.sys driver or by Greaseweazle.
-Image nemá čitelný souborový systém. = The image has no readable file system.
+Obraz nemá čitelný souborový systém. = The image has no readable file system.
 Opravu na této disketě neudělám: poškozená je systémová oblast (boot / FAT / adresář). Zápis na slábnoucí místa by mohl zničit i to, co se ještě dá přečíst. Ulož obraz, oprav ho a zapiš na jinou, dobrou disketu. = I will not repair this disk: the system area (boot / FAT / directory) is damaged. Writing to weakening spots could destroy what can still be read. Save an image, repair it and write it to another, good disk.
 Oprava by musela zapisovat na vadné/slabé sektory — neudělám ji na disketě. Oprav raději obraz a zapiš ho na jinou disketu. = The repair would have to write to bad/weak sectors — I will not do it on the disk. Repair an image instead and write it to another disk.
 -opraveno = -repaired
@@ -583,7 +583,7 @@ Kam rozbalit soubory z obrazu = Where to extract the files from the image
 Rozbaleno souborů: {0} → {1} = Files extracted: {0} → {1}
 Nastavení = Settings
 Interní mechanika (fdrawcmd.sys) = Internal drive (fdrawcmd.sys)
-Vlastní rychlost krokování hlavy (step rate), ms: = Custom head step rate, ms:
+Vlastní rychlost krokování hlavy, ms: = Custom head step rate, ms:
 Atari má standardně 3 ms; starší nebo opotřebené mechaniky potřebují 6 ms. Funguje jen s fdrawcmd.sys a Greaseweazle — USB disketovka si rychlost řídí sama. = The Atari uses 3 ms by default; older or worn drives need 6 ms. Works only with fdrawcmd.sys and Greaseweazle — a USB drive controls its own step rate.
 Vždy použít fdrawcmd.sys (i pro standardní diskety) = Always use fdrawcmd.sys (even for standard disks)
 Program gw.exe (prázdné \= najít automaticky): = gw.exe program (empty \= find automatically):
@@ -721,7 +721,7 @@ Kontrola a oprava obrazu = Check and repair image
 FAT12 — oprava do kopie = FAT12 — repair into a copy
 Převést formát… = Convert format…
 Nový prázdný obraz… = New blank image…
-Atari, PC, MSX, Mac, Amiga, Linux… = Atari, PC, MSX, Mac, Amiga, Linux…
+Atari, PC, Amiga, Mac a další = Atari, PC, Amiga, Mac and more
 Formáty všech systémů = Formats of all systems
 O programu = About
 Připraveno. = Ready.
@@ -739,7 +739,7 @@ Greaseweazle hustotu diskety nepozná — vlož správnou (DD / HD). = Greasewea
 chybí = missing
 Co jde s disketou dělat = What you can do with the disk
 Co umí mechanika = What the drive can do
-Tip: po instalaci ovladače fdrawcmd.sys (simonowen.com/fdrawcmd) půjdou i nestandardní formáty (10/11 sektorů, 82 stop, step rate). = Tip: after installing the fdrawcmd.sys driver (simonowen.com/fdrawcmd), non-standard formats work too (10/11 sectors, 82 tracks, step rate).
+Tip: po instalaci ovladače fdrawcmd.sys (simonowen.com/fdrawcmd) půjdou i nestandardní formáty (10/11 sektorů, 82 stop, rychlost krokování). = Tip: after installing the fdrawcmd.sys driver (simonowen.com/fdrawcmd), non-standard formats work too (10/11 sectors, 82 tracks, step rate).
 USB disketovka zvládá jen standardní formáty PC (720 KB, 1,44 MB). Rozšířené formáty Atari, Amigu a ochrany zvládne interní mechanika s fdrawcmd.sys nebo Greaseweazle. = A USB floppy drive only handles standard PC formats (720 KB, 1.44 MB). Extended Atari formats, the Amiga and protections need an internal drive with fdrawcmd.sys or Greaseweazle.
 není vybraná mechanika = no drive selected
 formát pozná sám; i tok .SCP / .HFE = detects the format itself; also .SCP / .HFE flux
@@ -850,13 +850,9 @@ fdrawcmd.sys je nainstalovaný a běží (verze {0}). = fdrawcmd.sys is installe
 Ovladač zatím neodpovídá. Zkus restartovat počítač. = The driver does not respond yet. Try restarting the computer.
 Když to nepomůže: ovladač je z roku 2010 a Windows 11 ho může blokovat funkcí Integrita paměti. Start → Zabezpečení Windows → Zabezpečení zařízení → Podrobnosti izolace jádra → Integrita paměti: Vypnuto, pak restart. = If that does not help: the driver is from 2010 and Windows 11 may block it with Memory integrity. Start → Windows Security → Device security → Core isolation details → Memory integrity: Off, then restart.
 Stáhnout Greaseweazle Host Tools = Download Greaseweazle Host Tools
-Aktualizace Greaseweazle = Greaseweazle updates
 gw.exe z GitHubu, pár MB — jedním kliknutím = gw.exe from GitHub, a few MB — one click
-gw.exe z GitHubu, firmware v zařízení = gw.exe from GitHub, device firmware
 Nainstalovat ovladač fdrawcmd.sys = Install the fdrawcmd.sys driver
-ze simonowen.com — odemkne 10/11 sektorů, 82 stop, step rate = from simonowen.com — unlocks 10/11 sectors, 82 tracks, step rate
-Stáhnout nejnovější Host Tools (gw.exe) = Download the latest Host Tools (gw.exe)
-Aktualizovat firmware v Greaseweazle = Update Greaseweazle firmware
+ze simonowen.com — odemkne 10/11 sektorů, 82 stop, rychlost krokování = from simonowen.com — unlocks 10/11 sectors, 82 tracks, step rate
 Instalace doplňků funguje i v ukázkovém režimu — stahuje a instaluje doopravdy. = Installing add-ons works in demo mode too — it really downloads and installs.
 Greaseweazle jsem nenašel. Je připojený k USB? = Greaseweazle not found. Is it connected to USB?
 
@@ -920,7 +916,7 @@ Stahuji FreeDOS z oficiálního repozitáře (jen poprvé, pak se použije ulož
 Stahuji FreeDOS… = Downloading FreeDOS…
 Spouštěcí disketa je hotová. = The boot disk is ready.
 Spouštěcí disketa… = Boot disk…
-FreeDOS, MS-DOS, Amiga, Atari, RawWrite = FreeDOS, MS-DOS, Amiga, Atari, RawWrite
+FreeDOS, MS-DOS, Amiga… = FreeDOS, MS-DOS, Amiga…
 obraz → disketa (jako RawWrite), s kontrolou = image → disk (like RawWrite), with verification
 Všechna data na disketě {0} budou přepsána spouštěcí disketou. Pokračovat? = All data on the disk in {0} will be overwritten with the boot disk. Continue?
 Disketa má vadná místa — spouštěcí disketu zapiš raději na jinou. = The disk has bad spots — better write the boot disk to another one.
@@ -987,7 +983,7 @@ Disketa je stejná jako předchozí — nejspíš nebyla vyměněná. Soubor {0}
 Uloženo disket: {0}. Vlož další disketu a klikni na Ano — uloží se jako {1}.\n\nNe \= konec hromadné zálohy. = Disks saved: {0}. Insert the next disk and click Yes — it will be saved as {1}.\n\nNo \= finish the batch backup.
 Hromadná záloha skončila. Uložených disket: {0}, složka {1}. = Batch backup finished. Disks saved: {0}, folder {1}.
 Hromadná záloha… = Batch backup…
-víc disket za sebou, soubory se očíslují = several disks in a row, files are numbered
+víc disket, soubory se očíslují = several disks, numbered files
 Hromadná záloha — název prvního obrazu, formát vyber v „Uložit jako typ“ (další se očíslují) = Batch backup — name of the first image, choose the format in “Save as type” (the next ones are numbered)
 Počkej, až doběhne aktuální operace. = Wait until the current operation finishes.
 Přetažený soubor: {0} = Dropped file: {0}
@@ -1114,7 +1110,7 @@ Stopa.strana: počet × velikost, pořadí sektorů na stopě, poloha prvního s
 Všechny stopy mají běžné rozložení. = All tracks have a normal layout.
 Nestandardních stop: {0}. Může jít o ochranu proti kopírování nebo poškození — takovou disketu zálohuj jako magnetický tok (.scp) přes Greaseweazle. = Non-standard tracks: {0}. This can be copy protection or damage — back such a disk up as magnetic flux (.scp) with a Greaseweazle.
 Diagnostika mechaniky… = Drive diagnostics…
-otáčky, čidla, hlava, čištění, stopy = speed, sensors, head, cleaning, tracks
+otáčky, čidla, hlava, čištění = speed, sensors, head, cleaning
 nic — stopa je prázdná nebo smazaná = nothing — the track is empty or erased
 MFM, dvojitá hustota (DD) — PC, Atari ST, Amiga, MSX… = MFM, double density (DD) — PC, Atari ST, Amiga, MSX…
 MFM, vysoká hustota (HD) = MFM, high density (HD)
@@ -1252,7 +1248,7 @@ Chybí ještě {0} sektorů (z {1}). Obraz je uložený: {2} = {0} sectors still
 {0} z nich je v obrazu poskládaných hlasováním — nejpravděpodobnější obsah, ale neověřený. = {0} of them are assembled by voting in the image — the most likely content, but not verified.
 Vlož disketu do jiné mechaniky (nebo vyčisti hlavu) a spusť Záchranu znovu se stejným souborem — přečtou se jen chybějící sektory. = Put the disk into another drive (or clean the head) and run the rescue again with the same file — only the missing sectors will be read.
 Záchrana vadné diskety… = Rescue a bad disk…
-opakované čtení, pokračování v jiné mechanice = repeated reading, continue in another drive
+znovu čte vadná místa = re-reads the bad spots
 zachrana = rescue
 Převádím {0}: stopa {1}, strana {2} = Decoding {0}: track {1}, side {2}
 V toku jsem nenašel sektory PC / Atari (MFM, 512 bajtů). Jiné formáty (Amiga, Mac, Commodore) převede jen gw. = No PC / Atari sectors (MFM, 512 bytes) found in the flux. Other formats (Amiga, Mac, Commodore) can only be converted by gw.
@@ -1308,3 +1304,17 @@ Zápis jsem nezačal: USB mezi počítačem a Greaseweazle nestíhá (test propu
 V mechanice je jiná disketa, než jakou obraz zachraňuje (boot sektor nesouhlasí). Vlož původní disketu, nebo zachraňuj do nového souboru. = The drive holds a different disk than the one this image is rescuing (the boot sector does not match). Insert the original disk, or rescue into a new file.
 Zápisový test neudělám: {0} sektorů nejde přečíst a Greaseweazle by je přepsal nulami. Zkus nejdřív Záchranu vadné diskety. = Write test not done: {0} sectors cannot be read and the Greaseweazle would overwrite them with zeros. Try Rescue a bad disk first.
 Opravu na disketu nezapíšu: {0} sektorů nejde přečíst a Greaseweazle přepisuje celou disketu, takže by je přepsal nulami. Ulož obraz, oprav ho a zapiš na jinou disketu. = The repair will not be written to the disk: {0} sectors cannot be read and the Greaseweazle rewrites the whole disk, so it would overwrite them with zeros. Save an image, repair it and write it to another disk.
+
+
+# ---------------------------------------------------------------- UI polish (výsledek operace, mapa, diagnostika)
+Hardware neumí = Hardware cannot do
+Disketa teď vypadá prázdná. = The disk looks empty now.
+obsazeno {0:N0} KB = {0:N0} KB used
+Na disketě teď je: {0}. = The disk now holds: {0}.
+podrobnosti ve výpisu níže = details in the log below
+Souborový systém má chyby, které umím opravit (jsou ve výpisu). Opravit je teď?\n\nDisketu nebudu číst znovu. Před zápisem uložím zálohu a ukážu, co přesně se změní. = The file system has errors I can repair (see the log). Repair them now?\n\nThe disk will not be read again. Before writing I save a backup and show exactly what changes.
+jen interní mechanika s fdrawcmd.sys = internal drive with fdrawcmd.sys only
+jen Greaseweazle; soubor .scp otevřeš přes Otevřít obraz… = Greaseweazle only; open a .scp file via Open image…
+Otáčky = Speed
+Hlava a čidla = Head and sensors
+Čtení stop = Reading tracks

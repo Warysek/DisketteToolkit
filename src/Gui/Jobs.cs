@@ -752,46 +752,53 @@ internal sealed class Jobs
     {
         if (d.Kind == DriveKind.Greaseweazle) { GwCheck(d, mode, repair, backupPath); return; }
         Title(Tr.F("Test povrchu a kontrola — {0}", d.Id));
-        using var dev = _h.Factory.OpenForRead(d, write: mode != WriteTestMode.None || repair);
-        var backup = new BackupState { Path = backupPath };
-        var r = SurfaceTest.Run(dev, mode, P, Ct, beforeWrite: res =>
+        bool writable = mode != WriteTestMode.None || repair;
+        var dev = _h.Factory.OpenForRead(d, write: writable);
+        try
         {
-            if (EnsureBackup(res.Contents, d, backup, Tr.T("Kam uložit zálohu diskety před zápisovým testem")) == null)
-                throw new OperationCanceledException();
-        });
-        if (mode == WriteTestMode.None && backup.Path != null) EnsureBackup(r.Contents, d, backup, "");
-        ShowSurface(r.Map, r.Warnings);
-        RecordRead(d, r.Contents, r.Map);
-        if (mode != WriteTestMode.None)
-            ShowGrade(MediaChecks.Grade(r.Map.Geometry.TotalSectors, r.Map.Count(SectorStatus.Weak), r.Map.Count(SectorStatus.Bad) + r.Map.Count(SectorStatus.WriteFailed)));
-        if (r.RestoreFailures.Count > 0) Err(Tr.F("Na {0} sektorů se nepodařilo vrátit původní data — jsou v záloze {1}.", r.RestoreFailures.Count, backup.Path));
-
-        if (mode == WriteTestMode.Destructive)
-        {
-            var (fresh, style, marked, sys) = Repair.RebuildAfterDestructive(r);
-            var result = new OperationResult();
-            DiskOperations.WriteSectorList(dev, fresh.Data, Enumerable.Range(0, sys).Select(i => (long)i).ToList(), result, P, Ct);
-            Report(result);
-            if (!result.Success) { Err(Tr.T("Nový souborový systém se nepodařilo zapsat — disketa není použitelná, naformátuj ji znovu.")); return; }
-            Ok(Tr.T("Disketa je znovu naformátovaná.") + (marked > 0 ? " " + Tr.F("Vadných clusterů označeno ve FAT: {0}.", marked) : ""));
-            return;
-        }
-        CheckFileSystem(r.Contents, r.Map, repair, plan =>
-        {
-            if (EnsureBackup(r.Contents, d, backup, Tr.T("Kam uložit zálohu diskety před opravou")) == null)
+            var backup = new BackupState { Path = backupPath };
+            var r = SurfaceTest.Run(dev, mode, P, Ct, beforeWrite: res =>
             {
-                Warn(Tr.T("Bez zálohy opravu nezapíšu."));
+                if (EnsureBackup(res.Contents, d, backup, Tr.T("Kam uložit zálohu diskety před zápisovým testem")) == null)
+                    throw new OperationCanceledException();
+            });
+            if (mode == WriteTestMode.None && backup.Path != null) EnsureBackup(r.Contents, d, backup, "");
+            ShowSurface(r.Map, r.Warnings);
+            RecordRead(d, r.Contents, r.Map);
+            if (mode != WriteTestMode.None)
+                ShowGrade(MediaChecks.Grade(r.Map.Geometry.TotalSectors, r.Map.Count(SectorStatus.Weak), r.Map.Count(SectorStatus.Bad) + r.Map.Count(SectorStatus.WriteFailed)));
+            if (r.RestoreFailures.Count > 0) Err(Tr.F("Na {0} sektorů se nepodařilo vrátit původní data — jsou v záloze {1}.", r.RestoreFailures.Count, backup.Path));
+
+            if (mode == WriteTestMode.Destructive)
+            {
+                var (fresh, style, marked, sys) = Repair.RebuildAfterDestructive(r);
+                var result = new OperationResult();
+                DiskOperations.WriteSectorList(dev, fresh.Data, Enumerable.Range(0, sys).Select(i => (long)i).ToList(), result, P, Ct);
+                Report(result);
+                if (!result.Success) { Err(Tr.T("Nový souborový systém se nepodařilo zapsat — disketa není použitelná, naformátuj ji znovu.")); return; }
+                Ok(Tr.T("Disketa je znovu naformátovaná.") + (marked > 0 ? " " + Tr.F("Vadných clusterů označeno ve FAT: {0}.", marked) : ""));
                 return;
             }
-            if (!_h.Confirm(Tr.T("Zapsat opravu na disketu?") + "\n\n" + string.Join("\n", plan.Actions.Take(12).Select(a => "• " + a)))) return;
-            var result = new OperationResult();
-            DiskOperations.WriteSectorList(dev, plan.Repaired, plan.ChangedSectors, result, P, Ct);
-            Report(result);
-            if (!result.Success) { Err(Tr.F("Některé sektory se nepodařilo zapsat. Původní stav je v {0} — zapiš ho na jinou disketu.", backup.Path)); return; }
-            var after = FatDoctor.Check(plan.Repaired, r.Map);
-            if (!after.HasRepairable) Ok(Tr.T("Oprava zapsaná a ověřená. Souborový systém je v pořádku."));
-            else Warn(Tr.T("Oprava zapsaná, ale kontrola pořád něco hlásí — spusť kontrolu znovu."));
-        }, () => EnsureBackup(r.Contents, d, backup, Tr.T("Kam uložit obsah diskety (pro opravu obrazu)")));
+            CheckFileSystem(r.Contents, r.Map, repair, plan =>
+            {
+                if (EnsureBackup(r.Contents, d, backup, Tr.T("Kam uložit zálohu diskety před opravou")) == null)
+                {
+                    Warn(Tr.T("Bez zálohy opravu nezapíšu."));
+                    return;
+                }
+                if (!_h.Confirm(Tr.T("Zapsat opravu na disketu?") + "\n\n" + string.Join("\n", plan.Actions.Take(12).Select(a => "• " + a)))) return;
+                // oprava nabídnutá až po testu: mechanika je otevřená jen pro čtení — otevřít ji znovu pro zápis
+                if (!writable) { dev.Dispose(); dev = _h.Factory.OpenForRead(d, write: true); writable = true; }
+                var result = new OperationResult();
+                DiskOperations.WriteSectorList(dev, plan.Repaired, plan.ChangedSectors, result, P, Ct);
+                Report(result);
+                if (!result.Success) { Err(Tr.F("Některé sektory se nepodařilo zapsat. Původní stav je v {0} — zapiš ho na jinou disketu.", backup.Path)); return; }
+                var after = FatDoctor.Check(plan.Repaired, r.Map);
+                if (!after.HasRepairable) Ok(Tr.T("Oprava zapsaná a ověřená. Souborový systém je v pořádku."));
+                else Warn(Tr.T("Oprava zapsaná, ale kontrola pořád něco hlásí — spusť kontrolu znovu."));
+            }, () => EnsureBackup(r.Contents, d, backup, Tr.T("Kam uložit obsah diskety (pro opravu obrazu)")));
+        }
+        finally { dev.Dispose(); }
     }
 
     private void GwCheck(DetectedDrive d, WriteTestMode mode, bool repair, string? backupPath)
@@ -866,7 +873,12 @@ internal sealed class Jobs
         var report = FatDoctor.Check(contents.Data, map);
         ShowReport(report);
         if (!report.HasRepairable) return;
-        if (!repair) { Dim(Tr.T("Opravit: spusť kontrolu znovu se zaškrtnutou opravou.")); return; }
+        // oprava nebyla zaškrtnutá — nabídneme ji hned, z už přečteného obsahu (disketa se nečte znovu)
+        if (!repair && !_h.Confirm(Tr.T("Souborový systém má chyby, které umím opravit (jsou ve výpisu). Opravit je teď?\n\nDisketu nebudu číst znovu. Před zápisem uložím zálohu a ukážu, co přesně se změní.")))
+        {
+            Dim(Tr.T("Opravit: spusť kontrolu znovu se zaškrtnutou opravou."));
+            return;
+        }
 
         Title(Tr.T("Oprava"));
         var plan = Repair.PlanDisk(contents, map, report);

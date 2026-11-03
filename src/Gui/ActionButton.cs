@@ -76,7 +76,8 @@ internal sealed class ActionButton : Control
         var sflags = TextFormatFlags.NoPrefix | TextFormatFlags.WordBreak | TextFormatFlags.EndEllipsis | TextFormatFlags.TextBoxControl;
         int sh = sub.Length > 0 ? Math.Min(TextRenderer.MeasureText(g, sub, small, new Size(w, 0), sflags).Height, Height - th - (int)(10 * dpi)) : 0;
         int y = (Height - th - sh) / 2;
-        TextRenderer.DrawText(g, Text, Font, new Rectangle(x, y, w, th), dim ? Theme.TextDim : Theme.Text, flags);
+        // nevratná akce má i název v barvě nebezpečí, ať nevypadá jako běžná
+        TextRenderer.DrawText(g, Text, Font, new Rectangle(x, y, w, th), dim ? Theme.TextDim : Danger ? Theme.Danger : Theme.Text, flags);
         if (sh > 0)
             TextRenderer.DrawText(g, sub, small, new Rectangle(x, y + th, w, sh), Blocked ? Theme.Warn : Theme.TextDim, sflags);
     }
