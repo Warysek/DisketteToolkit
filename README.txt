@@ -37,7 +37,7 @@ Supported drives
 Add-ons are downloaded by the program itself (internet needed):
   Greaseweazle: select it as the drive → "Download Greaseweazle Host Tools"
     (latest gw.exe from GitHub incl. CAPSImg.dll, into the program folder),
-    later "Greaseweazle updates" → update gw.exe or the device firmware.
+    later Settings → Greaseweazle → update gw.exe or the device firmware.
   Internal drive: "Install the fdrawcmd.sys driver" downloads the author's signed
     FdInstall.exe from simonowen.com, checks the signature and runs it.
     The driver dates from 2010; Windows 11 Memory integrity may block it.

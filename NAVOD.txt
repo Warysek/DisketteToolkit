@@ -248,9 +248,9 @@ Nemusíš nic hledat ani rozbalovat ručně:
  • Greaseweazle: vyber ho nahoře v „Mechanika“ → vpravo tlačítko
    „Stáhnout Greaseweazle Host Tools“. Program stáhne nejnovější gw.exe z GitHubu
    (i s CAPSImg.dll pro zápis .IPF) do složky „greaseweazle“ vedle programu.
-   Když už gw.exe máš, tlačítko se jmenuje „Aktualizace Greaseweazle“ a nabídne:
-     – Stáhnout nejnovější Host Tools (gw.exe)
-     – Aktualizovat firmware v Greaseweazle (doporučeno hned po koupi)
+   Když už gw.exe máš, aktualizace najdeš v Nastavení → Greaseweazle:
+     – Aktualizovat gw.exe z GitHubu…
+     – Aktualizovat firmware v Greaseweazle… (doporučeno hned po koupi)
  • Interní mechanika bez ovladače: vpravo tlačítko „Nainstalovat ovladač fdrawcmd.sys“.
    Stáhne autorův podepsaný instalátor FdInstall.exe ze simonowen.com, ověří podpis
    a spustí ho — v jeho okně potvrď instalaci. Pak případně restartuj počítač.
