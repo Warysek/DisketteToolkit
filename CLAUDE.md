@@ -87,7 +87,9 @@ Requested by users (Old Computer Club, Facebook):
 9. **D81 file listing** — 1581 images already read/write as raw images; add a CBM DOS directory reader so the
    image window shows the files (like FAT / AmigaDOS).
 10. **SuperCard Pro hardware** — only if a tester with an SCP board is available (a user offered on Facebook);
-    the program already handles .scp files, the board needs its own USB protocol.
+    the program already handles .scp files, the board needs its own USB protocol. Deferred on purpose (insider
+    note, 2026-11-08): the board is rare, its documentation contradicts itself, and other software writes .scp
+    files that do not follow it (see 54).
 
 From UnifiedFloppyTool and DiskImageTool (github.com/Axel051171/UnifiedFloppyTool, github.com/Digitoxin1/DiskImageTool):
 11. **Open images inside .zip** — downloaded games usually come zipped; open/write the image without unpacking.
@@ -188,6 +190,40 @@ Own ideas (not seen in any researched tool), agreed with Wary 2026-10-16:
     `FluxRescue.DropoutShare`) and compute the shift instead of trying blindly; write + verify per track. HD tracks
     have little slack (~500 B) — smaller gap3 needed; DD has more. Prototype and test on real disks first.
 
+From an insider note on floppy controllers (Wary, 2026-11-08): KryoFlux streams are the archival mainstream,
+.scp files from other tools often break the spec, Greaseweazle is the most widespread and open board, and timing
+on internal drives with fdrawcmd.sys is guesswork, so that path stays for reading and diagnostics (no new
+timing-sensitive writing tricks there). Applesauce (closed, needs an account) and Pauline (formats not settled)
+are out of scope.
+53. **Open KryoFlux stream sets** — a folder of `trackNN.S.raw` files (one per track and side) as a flux source
+    for flux rescue, the histogram and conversion to an image. `gw convert` lists `.raw` (KryoFlux stream) among its
+    formats, so the first step can be gw converting to .scp; an own reader later. Careful: index and flux blocks are
+    interleaved in the stream in no fixed order, so the parser must place index marks by stream position.
+54. **Tolerant .scp reading** — accept .scp files that bend the spec (wrong header flags, odd track offsets, a
+    revolution count that does not match the data, missing checksum) and report each oddity in the log as
+    "non-standard file: …" instead of failing or silently reading garbage. Collect sample files from users first.
+55. **Talk to Greaseweazle directly** (long term) — the USB serial protocol is open and simple, so the program
+    could drive the board without gw.exe (no Python bundle, faster start, live progress). Only after the gw.exe
+    path is proven on real hardware; keep gw.exe as the fallback.
+56. **"Report for forum" button** (agreed with Wary 2026-11-08) — copies a plain-text summary to the clipboard:
+    program version, Windows version, drives found, gw.exe version and firmware, the last job's outcome and the
+    end of the log. Replace the user's home folder in paths with `%USERPROFILE%`; no e-mail, no PC name. Goal:
+    testers send hardware feedback with one paste (Facebook, forums, GitHub Discussions).
+
+Next release 0.10 (chosen by Wary 2026-11-08: groups A + B + D of the "next version" options, plus 56).
+One PR per step, in this order; no hardware risk except where noted:
+1. **Backup with a record** — 4 one-click quick backup, 16 archive log next to each backup, 12 checksums
+   (MD5 / SHA-1 / SHA-256 in the log and the image window; TOSEC matching later), 45 "(INCOMPLETE)" in the
+   name of a cancelled or failed backup, 3 `gw …` command in the log. Quick backup reads a real disk: test on
+   hardware.
+2. **Images from the internet and Gotek** — 11 open images inside .zip, 38 DMS import (Amiga), 34 Gotek USB
+   stick wizard (no drive needed).
+3. **Editing images** — 6 add / delete files in the image window (FAT first via `Fat12Writer`, backup copy of
+   the image before any change; .adf later), 32 undelete + "save everything readable to a folder" (FAT),
+   13 check a whole folder of images.
+4. **56 Report for forum** button.
+Outside the code: GitHub Discussions enabled 2026-11-08 (point README / NAVOD to it once 0.10 ships).
+
 Order of work (proposed to Wary 2026-10-13; groups = one release each, by importance x ease):
 1. **Drive diagnostics** — 20 RPM, 22 head service + sensors, 17 head cleaning, 23 drive profiles.
    DONE in 0.9 (waiting for real-hardware feedback), plus first parts of 21 (repeated track read with a
@@ -221,7 +257,8 @@ Order of work (proposed to Wary 2026-10-13; groups = one release each, by import
    42 disk library builds on it (maybe its own release).
 3. **Reading bad disks** (after Greaseweazle feedback) — 1 second pass, 15 combine reads, 21 dirty head vs
    damaged disk, 26 error reasons in the map. Plus 52 repair format via Greaseweazle.
-4. **Greaseweazle flux first** — 5 flux then image, 2 format detection, outputs/replay from 40.
+4. **Greaseweazle flux first** — 5 flux then image, 2 format detection, outputs/replay from 40,
+   53 KryoFlux streams, 54 tolerant .scp. 55 direct Greaseweazle access much later.
 5. **Gotek stick wizard** — 34.
 6. **Understanding a disk** — 27 track layout (fdrawcmd scan already used), 33 file map + sector viewer,
    31 + 41 compare images / verify a disk against an image (move earlier if testers ask), 44 wrong-format warning.
