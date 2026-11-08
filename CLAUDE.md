@@ -205,6 +205,24 @@ are out of scope.
 55. **Talk to Greaseweazle directly** (long term) — the USB serial protocol is open and simple, so the program
     could drive the board without gw.exe (no Python bundle, faster start, live progress). Only after the gw.exe
     path is proven on real hardware; keep gw.exe as the fallback.
+56. **"Report for forum" button** (agreed with Wary 2026-11-08) — copies a plain-text summary to the clipboard:
+    program version, Windows version, drives found, gw.exe version and firmware, the last job's outcome and the
+    end of the log. Replace the user's home folder in paths with `%USERPROFILE%`; no e-mail, no PC name. Goal:
+    testers send hardware feedback with one paste (Facebook, forums, GitHub Discussions).
+
+Next release 0.10 (chosen by Wary 2026-11-08: groups A + B + D of the "next version" options, plus 56).
+One PR per step, in this order; no hardware risk except where noted:
+1. **Backup with a record** — 4 one-click quick backup, 16 archive log next to each backup, 12 checksums
+   (MD5 / SHA-1 / SHA-256 in the log and the image window; TOSEC matching later), 45 "(INCOMPLETE)" in the
+   name of a cancelled or failed backup, 3 `gw …` command in the log. Quick backup reads a real disk: test on
+   hardware.
+2. **Images from the internet and Gotek** — 11 open images inside .zip, 38 DMS import (Amiga), 34 Gotek USB
+   stick wizard (no drive needed).
+3. **Editing images** — 6 add / delete files in the image window (FAT first via `Fat12Writer`, backup copy of
+   the image before any change; .adf later), 32 undelete + "save everything readable to a folder" (FAT),
+   13 check a whole folder of images.
+4. **56 Report for forum** button.
+Outside the code: GitHub Discussions enabled 2026-11-08 (point README / NAVOD to it once 0.10 ships).
 
 Order of work (proposed to Wary 2026-10-13; groups = one release each, by importance x ease):
 1. **Drive diagnostics** — 20 RPM, 22 head service + sensors, 17 head cleaning, 23 drive profiles.
