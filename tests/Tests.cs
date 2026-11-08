@@ -1092,6 +1092,21 @@ internal static class Tests
         }
     }
 
+    private static void T_Fdraw_RecalibrateFromBeyondTrack79()
+    {
+        // Recalibrate udělá jen 79 kroků: z 83. stopy musí jít povel dvakrát (datasheet SMSC 37C78, Intel 82077).
+        var img = DiskFormatter.CreateBlank(new DiskGeometry(84, 2, 9), FormatStyle.Atari, "HRA", new Random(4));
+        var fdc = FakeFdc.WithImage(img);
+        var dev = new AtariFloppy.Core.Drives.Fdraw.FdrawDevice(fdc, "A:");
+        Eq(84, dev.MediaGeometry!.Tracks, "84 stop rozpoznáno");
+        Eq(0, fdc.Cyl, "po rozpoznání je hlava na stopě 0");
+        dev.MoveHead(83);
+        dev.MoveHead(0);
+        Eq(0, fdc.Cyl, "servisní návrat z 83. stopy");
+        var back = DiskOperations.ReadDisk(dev, SideMode.Auto, new OperationResult());
+        Assert(back.Data.SequenceEqual(img.Data), "data 84 stop");
+    }
+
     private static void T_Fdraw_HdDmfAndAcorn()
     {
         var dmf = DiskFormatter.CreateBlank(new DiskGeometry(80, 2, 21), FormatStyle.Pc, null, new Random(2));

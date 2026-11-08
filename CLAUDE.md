@@ -83,7 +83,12 @@ Requested by users (Old Computer Club, Facebook):
 7. **D64 (Commodore 1541) via Greaseweazle** — gw reads and writes D64 (GCR) and D71; add GwFormat + profile.
    Needs a 5.25" drive on the Greaseweazle.
 8. **5.25" drives via Greaseweazle** (and internal drive with fdrawcmd.sys): 360 KB / 1.2 MB, 40-track disks in
-   80-track drives (double step). Test on real hardware first.
+   80-track drives (double step). Test on real hardware first. Notes (FDC sources, 2026-11-09): a DD disk in a
+   360 rpm 1.2 MB drive needs 300 kbit/s — `FdrawDevice.FormatCylinder` always formats DD at 250 kbit/s, so 9
+   sectors would not fit; tell the drive type by the revolution time (166 ms vs 200 ms, `IFdc.TrackTimeUs`).
+   Ask for the C/H the scan found, not the physical cylinder (`WinFdc.RwParams`; the controller reports "wrong
+   cylinder" otherwise). Recognise a 40-track disk read without double step (every other track empty) and say
+   so instead of reporting half the disk as bad.
 9. **D81 file listing** — 1581 images already read/write as raw images; add a CBM DOS directory reader so the
    image window shows the files (like FAT / AmigaDOS).
 10. **SuperCard Pro hardware** — only if a tester with an SCP board is available (a user offered on Facebook);
@@ -98,12 +103,16 @@ From UnifiedFloppyTool and DiskImageTool (github.com/Axel051171/UnifiedFloppyToo
 13. **Check a whole folder of images** — FAT/structure check of many images at once, list the ones with problems.
 14. **Investigate Windows changes to Atari disks** — verify whether Windows 10/11 still rewrites the boot sector
     (OEM name / serial) or directory entries on FAT12 floppies; if so, warn and offer to undo (an executable
-    Atari boot sector has a checksum that such a change breaks). Verify first, then decide.
+    Atari boot sector has a checksum that such a change breaks). Verify first, then decide. The digipres.org
+    Floppy Guide adds: Windows can create "System Volume Information" on a floppy, and USB drives reportedly
+    ignore the write-protect tab (unverified) — after a backup check whether such a folder appeared.
 From the "Copy That Floppy!" preservation guide, libdsk and fdformat-ng:
 15. **Combine several reads into one image** — read a bad disk several times (other settings / another drive) and
     take the good sectors from each read; extends item 1.
 16. **Archive log next to each backup** — a small .txt beside the image: date, drive, controller, settings,
-    retries, bad sectors, checksums.
+    retries, bad sectors, checksums. Also (Code4Lib article 11986, digipres.org): write-protect tab state,
+    checksum computed right after the read, keep an image with bad sectors and list where they are, optional
+    per-sector status as CSV (like FluxEngine `--decoder.write_csv_to`).
 17. **Head cleaning** — offer `gw clean` (Greaseweazle) with a cleaning disk; useful for drives after years in storage.
 18. **Extended DSK (Amstrad CPC / PCW / ZX Spectrum +3)** — read/write the EDSK/CPCEMU `.dsk` format (header
     "MV - CPC" / "EXTENDED CPC DSK"; today `.dsk` is treated as a raw MSX image) and list CP/M files.
@@ -133,6 +142,9 @@ Understanding and rescuing disks:
 27. **Track layout listing** — per track: sector IDs (C/H/R/N), order, deleted marks, duplicates, gaps; warn
     "non-standard track, probably copy protection — back up as flux (.scp)"; Amiga "non-DOS disk" label instead
     of "bad disk"; text export/print (AnaDisk, ProCopy ANALYZE, SAMdisk scan, CPCDiskXP). fdrawcmd / Greaseweazle.
+    Deleted marks: Read Data with SK=0 reads such a sector and then ends normally without reading on (SMSC
+    FDC37C78 datasheet, table 22); `WinFdc.Read` now turns a short transfer into an error so the caller reads
+    sector by sector. Next step: read them with READ DELETED DATA and report "deleted mark", not "bad".
 28. **Weak-sector rebuild by statistics** — read a bad sector many times (up to hundreds), vote each byte/bit and
     check the CRC (SpinRite DynaStat). fdrawcmd returns sector data even with a CRC error; Greaseweazle can use
     many revolutions. Extends items 1 and 15. Large and uncertain — prototype first.
@@ -206,9 +218,36 @@ are out of scope.
     could drive the board without gw.exe (no Python bundle, faster start, live progress). Only after the gw.exe
     path is proven on real hardware; keep gw.exe as the fallback.
 56. **"Report for forum" button** (agreed with Wary 2026-11-08) — copies a plain-text summary to the clipboard:
-    program version, Windows version, drives found, gw.exe version and firmware, the last job's outcome and the
+    program version, Windows version, drives found, the controller type and data rates (`IFdc.Description`,
+    e.g. "Intel 82077AA, rychlosti 250K/300K/500K/1M" — decides whether 11 sectors work), gw.exe version and
+    firmware, the last job's outcome and the
     end of the log. Replace the user's home folder in paths with `%USERPROFILE%`; no e-mail, no PC name. Goal:
     testers send hardware feedback with one paste (Facebook, forums, GitHub Discussions).
+
+From FDC programming sources and archivists' guides (read 2026-11-09: OSDev wiki "Floppy Disk Controller" via
+archive.org, ardent-tool.com "Programming Floppy Disk Controllers", SMSC FDC37C78 datasheet, Code4Lib Journal
+article 11986, iPRES 2024 guide "Reading obscure floppy disk formats", digipres.org "The Floppy Guide"). Most of
+the register-level material is handled by fdrawcmd.sys. Facts worth keeping: Recalibrate issues at most 79–80
+step pulses, so heads beyond track 79 need a second one (`FdrawDevice.Seek` does that since 2026-11-09); the OSDev
+gap values for 21 sectors are swapped against Linux — `FdrawDevice.Gap3` follows Linux, do not "fix" it from OSDev.
+57. **Rescue sectors with a damaged header via Read Track** — the controller's Read A Track reads every data field
+    from the index on and keeps going over ID/data CRC errors (FDC37C78 datasheet), so it can return data of
+    sectors that Read Data cannot find. fdrawcmd.sys has a read-track IOCTL. Add to "Rescue a bad disk";
+    prototype and test on a real damaged disk first. Group 3.
+58. **Gentle start for a suspicious disk** — digipres.org: test a few middle tracks first, tracks 0–1 hold the
+    directory. Optional "careful" mode: read a middle track before touching track 0 and stop at once when errors
+    grow (with 46). Group 3.
+59. **Better "no index pulses" hint** — today: "is a disk inserted? otherwise faulty sensor or motor". Add the
+    common causes from digipres.org: ribbon cable reversed (red stripe = pin 1; the drive LED then stays lit),
+    and for Greaseweazle a charge-only USB cable (the drive looks dead). Tiny, group 1.
+60. **Reference disks** — remember one or more known-good disks per user ("this is my test disk"); when such a
+    disk reads worse than before, suggest cleaning the head. Several disks, because they wear too (iPRES guide).
+    Extends 21 and 50.
+61. **NAVOD chapter "Before reading an old disk"** — look at both sides through the window; mould or stains =
+    do not insert (mould residue damages the head and later disks); stop at once when the drive squeals; clean
+    the head after a suspicious disk; clean even a "working" second-hand drive; nudge the head before the first
+    power-up; a blank disk in the drive for transport. Then README.txt and the French LISEZ-MOI.txt too.
+Not read yet, possible next sources: Fluxfox (browser flux viewer), RecoveryWhiskers.
 
 Next release 0.10 (chosen by Wary 2026-11-08: groups A + B + D of the "next version" options, plus 56).
 One PR per step, in this order; no hardware risk except where noted:

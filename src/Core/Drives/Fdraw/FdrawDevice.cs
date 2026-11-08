@@ -61,8 +61,18 @@ public sealed class FdrawDevice : ISectorDevice
     /// <summary>Přesun hlavy (vždy skutečně, ne podle zapamatované polohy) — pro diagnostiku a servis.</summary>
     public void MoveHead(int cyl)
     {
-        _fdc.Seek(cyl);
+        Seek(cyl);
         _currentCyl = cyl;
+    }
+
+    /// <summary>
+    /// Přesun hlavy. Návrat na stopu 0 (recalibrate) udělá podle datasheetů řadičů (Intel 82077, SMSC 37C78)
+    /// nejvýš 79–80 kroků, takže z 81.–84. stopy hlava napoprvé nedojede a řadič ohlásí chybu — pak ještě jednou.
+    /// </summary>
+    private void Seek(int cyl)
+    {
+        try { _fdc.Seek(cyl); }
+        catch (SectorIOException) when (cyl == 0) { _fdc.Seek(0); }
     }
 
     // ------------------------------------------------------------------ rozpoznání diskety
@@ -150,7 +160,7 @@ public sealed class FdrawDevice : ISectorDevice
     private void SeekTo(int cyl)
     {
         if (cyl == _currentCyl) return;
-        _fdc.Seek(cyl);
+        Seek(cyl);
         _currentCyl = cyl;
     }
 

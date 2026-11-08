@@ -60,9 +60,18 @@ internal sealed class FakeFdc : IFdc
     /// <summary>Opotřebená mechanika: při přejezdu ven o víc než 20 stop ztratí krok.</summary>
     public bool LosesStepsOutward;
 
+    /// <summary>Recalibrate udělá nejvýš tolik kroků (datasheety 82077 / 37C78: 79), pak ohlásí chybu.</summary>
+    public int RecalibrateSteps = 79;
+
     public void Seek(int cylinder)
     {
         if (cylinder >= PhysicalTracks) throw new SectorIOException("hlava nedojela", 0);
+        if (cylinder == 0 && Cyl > RecalibrateSteps)
+        {
+            Cyl -= RecalibrateSteps;
+            Seeks++;
+            throw new SectorIOException("stopa 0 nenalezena po 79 krocích", 0);
+        }
         Cyl = LosesStepsOutward && cylinder > 0 && Cyl - cylinder > 20 ? cylinder + 1 : cylinder;
         Seeks++;
     }

@@ -131,8 +131,14 @@ public sealed class WinFdc : IFdc
     public byte[] Read(int cyl, int head, int firstSector, int sizeCode, int count)
     {
         var buf = new byte[count * (128 << sizeCode)];
-        if (!Ioctl(IOCTL_FDCMD_READ_DATA, RwParams(cyl, head, firstSector, sizeCode, count), buf))
+        var p = RwParams(cyl, head, firstSector, sizeCode, count);
+        if (!Native.DeviceIoControl(_h, IOCTL_FDCMD_READ_DATA, p, p.Length, buf, buf.Length, out int got, IntPtr.Zero))
             throw Error(Marshal.GetLastWin32Error());
+        // Sektor se značkou „smazáno“ řadič přečte, ale pak skončí BEZ chyby a další sektory už nečte
+        // (datasheet SMSC 37C78, tab. 22). Zbytek bufferu by zůstal nulový — radši chyba, volající pak čte
+        // po sektorech. Když ovladač počet bajtů nevrací (0), kontrola se neuplatní.
+        if (got > 0 && got < buf.Length)
+            throw new SectorIOException(Tr.F("řadič přenesl jen {0} z {1} B — na stopě je nejspíš sektor se značkou „smazáno“ (ochrana proti kopírování)", got, buf.Length));
         return buf;
     }
 
