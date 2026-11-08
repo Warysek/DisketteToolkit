@@ -108,6 +108,7 @@ Intel 82078 (44 vývodů) = Intel 82078 (44-pin)
 Intel 82078 (64 vývodů) = Intel 82078 (64-pin)
 neznámý typ = unknown type
 řadič odmítl rychlost  = the controller refused data rate
+řadič přenesl jen {0} z {1} B — na stopě je nejspíš sektor se značkou „smazáno“ (ochrana proti kopírování) = the controller transferred only {0} of {1} B — the track probably has a sector with a "deleted" mark (copy protection)
 Mechanika není připravená — je vložená disketa? = The drive is not ready — is a disk inserted?
 
 # ---------------------------------------------------------------- format profiles (evaluation)
