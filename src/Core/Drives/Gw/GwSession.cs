@@ -101,10 +101,11 @@ public sealed class GwFormat
     };
 
     /// <summary>gw formát pro obraz z disku — podle obsahu (Amiga) nebo geometrie.</summary>
-    public static GwFormat ForImage(DiskImage img)
+    /// <param name="amiga">Obraz je z .adf / .dms — Amiga i bez AmigaDOS (hra s vlastním zavaděčem), ne Atari s 11 sektory.</param>
+    public static GwFormat ForImage(DiskImage img, bool amiga = false)
     {
         var g = img.Geometry;
-        if (Fs.FileSystemDetector.Detect(img.Data).Kind == Fs.FsKind.Amiga) return Amiga(g.SectorsPerTrack >= 22);
+        if (amiga || Fs.FileSystemDetector.Detect(img.Data).Kind == Fs.FsKind.Amiga) return Amiga(g.SectorsPerTrack >= 22);
         return ForGeometry(g);
     }
 }

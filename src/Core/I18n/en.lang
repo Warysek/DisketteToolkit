@@ -1472,3 +1472,17 @@ Do schránky se zprávu nepodařilo vložit. Označ text níže (Ctrl+A) a zkop�
 Jméno uživatele a počítače jsou ve zprávě nahrazené zástupnými slovy, domovská složka je %USERPROFILE%. = User and computer names are replaced with placeholders, the home folder is shown as %USERPROFILE%.
 Kopírovat znovu = Copy again
 Zprávu pro fórum se nepodařilo sestavit: = Could not build the report for forum:
+# ---------------------------------------------------------------- 0.10: DMS (Amiga)
+.DMS (Disk Masher — zabalený obraz Amigy) = .DMS (Disk Masher — packed Amiga image)
+Soubor není archiv DMS. = The file is not a DMS archive.
+Archiv DMS má poškozenou hlavičku. = The DMS archive has a damaged header.
+Archiv DMS je zašifrovaný heslem — to rozbalit neumím. Rozbal ho programem DMS na Amize (nebo xDMS s heslem) a otevři vzniklý .adf. = The DMS archive is encrypted with a password — that I cannot unpack. Unpack it with DMS on an Amiga (or xDMS with the password) and open the resulting .adf.
+Archiv DMS je poškozený — žádnou stopu nejde rozbalit. = The DMS archive is damaged — no track can be unpacked.
+V archivu DMS nejsou žádné stopy diskety. = The DMS archive contains no disk tracks.
+Stopy {0} se z archivu DMS nepodařilo rozbalit (poškozená data) — v obrazu jsou místo nich nuly. = Tracks {0} could not be unpacked from the DMS archive (damaged data) — the image has zeros in their place.
+Archiv DMS je useknutý nebo poškozený (neúplně stažený?) — stopy za tím místem chybí. = The DMS archive is cut short or damaged (incomplete download?) — the tracks after that point are missing.
+V archivu DMS nejsou stopy {0} — v obrazu jsou místo nich nuly. = Tracks {0} are not in the DMS archive — the image has zeros in their place.
+Pozor = Warning
+Text v archivu = Text in the archive
+{0} — obraz není celý = {0} — the image is not complete
+převedeno z {0} na .ADF (Gotek {0} nečte) = converted from {0} to .ADF (Gotek cannot read {0})

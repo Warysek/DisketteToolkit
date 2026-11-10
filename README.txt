@@ -61,12 +61,16 @@ Drag an image file from Explorer onto the window to open it.
 Images inside a .zip (as games are usually downloaded) open directly in Open image...,
 Check and repair image, Convert format... and Write image to disk; when the archive holds
 several disks, the program asks which one.
+Amiga .DMS archives (Disk Masher) open like .adf: Open image..., Convert format... to .ADF,
+Write image to disk (Greaseweazle only) and Gotek USB stick (converted to .ADF). A damaged
+archive loads with a warning listing the missing tracks; password-protected DMS is not supported.
 
 Gotek USB stick ("Gotek USB stick..." button, FlashFloppy firmware): copies images to a USB
 stick as DSKA0000_name.st, DSKA0001_... (the number is the slot on the Gotek display, new
-images go after the ones already there), converts .MSA and .DIM to .ST, writes FF.CFG for PC
-(interface = ibmpc), MSX (host = msx) or a 3-digit display (nav-mode = indexed), describes odd
-geometries in IMG.CFG and saves slot-list.txt with all slots on the stick.
+images go after the ones already there), converts .MSA and .DIM to .ST and .DMS to .ADF,
+writes FF.CFG for PC (interface = ibmpc), MSX (host = msx) or a 3-digit display
+(nav-mode = indexed), describes odd geometries in IMG.CFG and saves slot-list.txt with all
+slots on the stick.
 
 Editing images (FAT12 - Atari, PC, MSX; .st, .msa, .dim, .img): in the Open image... window
 use "Add files..." or drag files and folders from Explorer; "Delete" removes the selected
