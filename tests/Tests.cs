@@ -2241,4 +2241,36 @@ internal static class Tests
         Eq(P("hra-003.st"), AtariFloppy.Core.App.Backups.FirstBatchPath(P("hra.st")), "existující se přeskočí");
         Eq(P("hra-003.st"), AtariFloppy.Core.App.Backups.NextBatchPath(P("hra-001.st")), "další volný");
     }
+
+    // ------------------------------------------------------------------ záznam o záloze a neúplné zálohy
+
+    private static void T_Backup_RecordAndIncomplete()
+    {
+        string dir = Path.Combine(_tmp, "record");
+        Directory.CreateDirectory(dir);
+        void Save(string p) => File.WriteAllText(p, "abc");
+
+        string path = Path.Combine(dir, "disk.st");
+        var rec = new AtariFloppy.Core.App.BackupRecord { Drive = "A: — test", Method = "sim", Format = "720 KB" };
+        var s = AtariFloppy.Core.App.Backups.Finish(path, rec, Save);
+        Eq(path, s.Path, "úplná záloha zůstane pod zvoleným názvem");
+        Eq("900150983cd24fb0d6963f7d28e17f72", s.Sums.Md5, "MD5 souboru");
+        Eq("a9993e364706816aba3e25717850c26c9cd0d89d", s.Sums.Sha1, "SHA-1 souboru");
+        Eq("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", s.Sums.Sha256, "SHA-256 souboru");
+        Eq(path + ".log.txt", s.LogPath, "záznam leží vedle obrazu");
+        string log = File.ReadAllText(s.LogPath!);
+        Assert(log.Contains("disk.st") && log.Contains("A: — test") && log.Contains(s.Sums.Md5) && log.Contains(s.Sums.Sha256),
+               "záznam obsahuje název obrazu, mechaniku a součty:\n" + log);
+
+        var bad = new AtariFloppy.Core.App.BackupRecord { Drive = "A:", Method = "sim", Format = "720 KB" };
+        bad.Missing.Add("stopa 3, strana 0, sektor 4: CRC");
+        string game = Path.Combine(dir, "game.st");
+        string tag = AtariFloppy.Core.App.Backups.IncompleteTag;
+        var s2 = AtariFloppy.Core.App.Backups.Finish(game, bad, Save);
+        Assert(!File.Exists(game), "neúplná záloha nesmí vzniknout pod běžným názvem");
+        Eq(Path.Combine(dir, $"game ({tag}).st"), s2.Path, "neúplná záloha má v názvu značku");
+        Assert(File.ReadAllText(s2.LogPath!).Contains("stopa 3, strana 0, sektor 4"), "záznam vypíše nepřečtené sektory");
+        var s3 = AtariFloppy.Core.App.Backups.Finish(game, bad, Save);
+        Eq(Path.Combine(dir, $"game ({tag} 2).st"), s3.Path, "druhá neúplná záloha nepřepíše první");
+    }
 }

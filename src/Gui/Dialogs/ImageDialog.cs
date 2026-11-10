@@ -37,10 +37,26 @@ internal sealed class ImageDialog : DialogBase
             row.Controls.Add(new Label { Text = value, AutoSize = true, MaximumSize = new Size(540, 0), ForeColor = color ?? Theme.Text, Margin = new Padding(0, 2, 0, 0) });
             top.Controls.Add(row);
         }
+        // kontrolní součet jde označit a zkopírovat (porovnání s jinou zálohou nebo se seznamem TOSEC)
+        void CopyLine(string name, string value)
+        {
+            var row = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 0, 0, 1) };
+            row.Controls.Add(new Label { Text = name, Width = 170, ForeColor = Theme.TextDim, Margin = new Padding(0, 2, 6, 0) });
+            row.Controls.Add(new TextBox { Text = value, ReadOnly = true, BorderStyle = BorderStyle.None, Width = 540, BackColor = Theme.Panel, ForeColor = Theme.Text, Margin = new Padding(0, 3, 0, 0) });
+            top.Controls.Add(row);
+        }
 
         top.Controls.Add(Heading(Path.GetFileName(path)));
         Line(Tr.T("Typ souboru"), ImageFile.Describe(loaded.Kind));
         Line(Tr.T("Velikost souboru"), Tr.F("{0:N0} B", loaded.FileSize));
+        try
+        {
+            var sums = Checksums.Of(path);
+            CopyLine("MD5", sums.Md5);
+            CopyLine("SHA-1", sums.Sha1);
+            CopyLine("SHA-256", sums.Sha256);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
 
         var list = new ListView { View = View.Details, FullRowSelect = true, Dock = DockStyle.Fill, HeaderStyle = ColumnHeaderStyle.Nonclickable };
         list.Columns.Add(Tr.T("Soubor"), 380);
