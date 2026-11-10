@@ -159,9 +159,13 @@ public static class Gotek
                 {
                     var img = loaded.Image;
                     bool raw = loaded.Kind is ImageKind.St or ImageKind.RawImg or ImageKind.Adf;
+                    bool amiga = loaded.IsAmiga || FileSystemDetector.Detect(img.Data).Kind == FsKind.Amiga;
                     data = raw ? File.ReadAllBytes(path) : StFormat.Save(img);
-                    if (!raw) note = Tr.F("převedeno z {0} na .ST (Gotek {0} nečte)", ext.ToUpperInvariant());
-                    if (FileSystemDetector.Detect(img.Data).Kind == FsKind.Amiga) outExt = ".adf";
+                    if (!raw) note = amiga ? Tr.F("převedeno z {0} na .ADF (Gotek {0} nečte)", ext.ToUpperInvariant())
+                                           : Tr.F("převedeno z {0} na .ST (Gotek {0} nečte)", ext.ToUpperInvariant());
+                    if (loaded.Warnings.Count > 0) note += "; " + string.Join(" ", loaded.Warnings);
+                    hdAdf |= amiga && img.Geometry.SectorsPerTrack >= 22;
+                    if (amiga) outExt = ".adf";
                     else
                     {
                         outExt = ext is ".st" or ".msa" or ".dim" ? ".st" : ".img";

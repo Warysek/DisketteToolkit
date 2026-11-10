@@ -204,6 +204,12 @@ internal static class Program
 
         var img = loaded.Image;
         Ui.Field("Geometrie", img.Geometry.ToString());
+        foreach (var w in loaded.Warnings) Ui.Warn("  " + w);
+        if (loaded.Text != null)
+        {
+            Ui.Field("Text v archivu", "");
+            foreach (var l in loaded.Text.Split('\n')) Ui.Dim("  " + l);
+        }
 
         var fs = FileSystemDetector.Detect(img.Data);
         Ui.Field("Systém", fs.Name + (fs.Details != null ? " — " + fs.Details : ""), ConsoleColor.White);

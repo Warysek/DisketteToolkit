@@ -108,10 +108,16 @@ Obrazy ze .zip a flashka pro Gotek
    obrazu, Převést formát… i Zapsat obraz na disketu. Program obraz rozbalí do dočasné složky (po
    dni se sama smaže); když je v archivu víc disket, zeptá se, kterou chceš. Opravená kopie se uloží
    do složky s archivem, archiv sám se nemění.
+ • Amiga .DMS (Disk Masher — tak se šíří většina her a dem pro Amigu) jde otevřít stejně jako .adf:
+   Otevřít obraz… (soubory a text přibalený v archivu), Převést formát… na .ADF, Zapsat obraz na
+   disketu (jen Greaseweazle), Flashka pro Gotek… (převede se na .ADF) i Kontrola složky obrazů.
+   Poškozený archiv se načte s upozorněním, které stopy chybí (v obrazu jsou místo nich nuly).
+   Archiv chráněný heslem rozbalit neumím.
  • Flashka pro Gotek… (OBRAZY DISKET): vyber obrazy (ze .zip se vezmou všechny diskety), flashku
    a počítač. Obrazy se zkopírují jako DSKA0000_nazev.st, DSKA0001_… — číslo je pozice na displeji
    Goteku, nové obrazy jdou za ty, které už na flashce jsou. Program přitom:
-     – převede .MSA a .DIM na .ST (Gotek je nečte); .SCP, .STX a .IPF vynechá a napíše proč,
+     – převede .MSA a .DIM na .ST a .DMS na .ADF (Gotek je nečte); .SCP, .STX a .IPF vynechá
+       a napíše proč,
      – zapíše FF.CFG: pro PC „interface = ibmpc“, pro MSX „host = msx“, pro Gotek s třímístným
        displejem (zaškrtávátko) „nav-mode = indexed“; Atari ST a Amiga nastavení nepotřebují.
        FF.CFG, který už na flashce je, nepřepíše — jen napíše, co do něj patří,

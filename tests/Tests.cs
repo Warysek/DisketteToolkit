@@ -2572,4 +2572,124 @@ internal static class Tests
         Assert(r.Contains("PC %COMPUTERNAME%, user %USERNAME%, <e-mail>"), "zástupná slova:\n" + r);
         Assert(lines.Contains("line 23") && !lines.Contains("line 22"), "jen posledních 40 řádků výpisu");
     }
+
+    // ------------------------------------------------------------------ DMS (Amiga)
+
+    /// <summary>CRC-16/ARC jako v xDMS (nezávisle na kódu programu).</summary>
+    private static int Crc16Arc(byte[] d, int offset, int count)
+    {
+        int crc = 0;
+        for (int i = offset; i < offset + count; i++)
+        {
+            crc ^= d[i];
+            for (int k = 0; k < 8; k++) crc = (crc & 1) != 0 ? (crc >> 1) ^ 0xA001 : crc >> 1;
+        }
+        return crc;
+    }
+
+    private static void Be16(byte[] b, int o, int v) { b[o] = (byte)(v >> 8); b[o + 1] = (byte)v; }
+
+    /// <summary>Stopa DMS: bez komprese, nebo jen RLE (0x90 počet hodnota). breakData = poškodit data až po spočtení CRC.</summary>
+    private static byte[] DmsTrack(int number, byte[] data, bool rle, bool breakData = false)
+    {
+        var p = new List<byte>();
+        if (!rle) p.AddRange(data);
+        else
+            for (int i = 0; i < data.Length;)
+            {
+                int n = 1;
+                while (i + n < data.Length && data[i + n] == data[i] && n < 0xFFFF) n++;
+                if (n >= 4)
+                {
+                    if (n < 255) p.AddRange(new byte[] { 0x90, (byte)n, data[i] });
+                    else p.AddRange(new byte[] { 0x90, 0xFF, data[i], (byte)(n >> 8), (byte)n });
+                    i += n;
+                }
+                else
+                {
+                    if (data[i] == 0x90) p.AddRange(new byte[] { 0x90, 0 });
+                    else p.Add(data[i]);
+                    i++;
+                }
+            }
+        var packed = p.ToArray();
+        var h = new byte[20];
+        h[0] = (byte)'T'; h[1] = (byte)'R';
+        Be16(h, 2, number); Be16(h, 6, packed.Length); Be16(h, 8, packed.Length); Be16(h, 10, data.Length);
+        h[13] = (byte)(rle ? 1 : 0);
+        Be16(h, 14, data.Sum(x => x) & 0xFFFF);
+        Be16(h, 16, Crc16Arc(packed, 0, packed.Length));
+        Be16(h, 18, Crc16Arc(h, 0, 18));
+        if (breakData) packed[packed.Length / 2] ^= 0xFF;
+        return h.Concat(packed).ToArray();
+    }
+
+    private static byte[] DmsFile(int info, IEnumerable<byte[]> tracks)
+    {
+        var h = new byte[56];
+        h[0] = (byte)'D'; h[1] = (byte)'M'; h[2] = (byte)'S'; h[3] = (byte)'!';
+        Be16(h, 10, info); Be16(h, 18, 79); Be16(h, 50, 1); Be16(h, 52, 1);
+        Be16(h, 54, Crc16Arc(h, 4, 50));
+        return h.Concat(tracks.SelectMany(t => t)).ToArray();
+    }
+
+    private static void T_Dms_SyntheticArchive()
+    {
+        var disk = Bytes(901120, 38);
+        Array.Clear(disk, 5000, 3000);                 // dlouhá řada nul (RLE s 16bitovým počtem)
+        for (int i = 20000; i < 20010; i++) disk[i] = 0x90;
+        disk[30000] = 0x90;                            // osamělý znak 0x90
+        byte[] Cyl(int c) => disk.Skip(c * 11264).Take(11264).ToArray();
+        string path = Path.Combine(_tmp, "synt.dms");
+
+        var tracks = new List<byte[]> { DmsTrack(0xFFFF, System.Text.Encoding.ASCII.GetBytes("\u001b[1mHello\u001b[0m Amiga\r\n\r\n"), false) };
+        for (int c = 0; c < 80; c++) tracks.Add(DmsTrack(c, Cyl(c), rle: c % 2 == 0));
+        tracks.Add(DmsTrack(80, System.Text.Encoding.ASCII.GetBytes("FILE_ID.DIZ text\n"), true));
+        File.WriteAllBytes(path, DmsFile(0x0108, tracks));
+        var l = ImageFile.Load(path);
+        Eq(ImageKind.Dms, l.Kind, "typ souboru");
+        Assert(l.Image != null && l.Image.Data.SequenceEqual(disk), "rozbalený obraz = původní disketa: " + l.NotLoadedReason);
+        Eq(new DiskGeometry(80, 2, 11), l.Image!.Geometry, "geometrie ADF");
+        Eq(0, l.Warnings.Count, "bez varování: " + string.Join(" | ", l.Warnings));
+        Eq("Hello Amiga\n\nFILE_ID.DIZ text", l.Text, "banner bez barev a FILE_ID.DIZ");
+        Eq("amiga.amigados", AtariFloppy.Core.Drives.Gw.GwFormat.ForImage(l.Image, l.IsAmiga).Name, "zápis přes Greaseweazle jako Amiga i bez AmigaDOS");
+
+        // poškozená stopa 5, useknutý soubor uprostřed stopy 70
+        var bad = Enumerable.Range(0, 70).Select(c => DmsTrack(c, Cyl(c), c % 2 == 0, breakData: c == 5)).ToList();
+        bad.Add(DmsTrack(70, Cyl(70), false).Take(40).ToArray());
+        File.WriteAllBytes(path, DmsFile(0, bad));
+        l = ImageFile.Load(path);
+        Assert(l.Image != null, "poškozený archiv se načte: " + l.NotLoadedReason);
+        Eq(3, l.Warnings.Count, "vadná stopa, useknutý soubor, chybějící stopy: " + string.Join(" | ", l.Warnings));
+        Assert(l.Warnings[0].Contains("5") && l.Warnings[2].Contains("70–79"), "čísla stop ve varování: " + string.Join(" | ", l.Warnings));
+        Assert(l.Image!.Data.Skip(5 * 11264).Take(11264).All(b => b == 0), "vadná stopa = nuly");
+        Assert(l.Image.Data.Skip(6 * 11264).Take(11264).SequenceEqual(Cyl(6)), "stopa za vadnou je v pořádku");
+        Eq(ImageCheckStatus.Problems, FolderCheck.CheckImage(path, "synt.dms").Status, "kontrola složky hlásí neúplný obraz");
+
+        File.WriteAllBytes(path, DmsFile(2, new[] { DmsTrack(0, Cyl(0), false) }));
+        l = ImageFile.Load(path);
+        Assert(l.Image == null && l.NotLoadedReason != null, "archiv s heslem se nenačte, ale řekne proč");
+    }
+
+    /// <summary>
+    /// Skutečné archivy (volně šiřitelné hry z IF Archive, komprese HEAVY1 a HEAVY2) proti výsledku xDMS.
+    /// Složka se vzorky v proměnné DTK_DMS_SAMPLES; na GitHubu je stáhne build.yml.
+    /// </summary>
+    private static void T_Dms_RealSamples()
+    {
+        string? dir = Environment.GetEnvironmentVariable("DTK_DMS_SAMPLES");
+        if (dir == null || !Directory.Exists(dir)) Skip("chybí vzorky DMS (proměnná DTK_DMS_SAMPLES)");
+        foreach (var (file, sha) in new[]
+                 {
+                     ("GoldenFleece.dms", "53a971729fa34e42708a94ceb79a6ce76ab311e5f2aec060135b4b287891b505"),
+                     ("Gory_Story.dms", "67261c08ea5e4deb17c2e33fdd09c6a947480c193b0a24a2dc4dcf8a8b0bc803"),
+                 })
+        {
+            var l = ImageFile.Load(Path.Combine(dir!, file));
+            Assert(l.Image != null, file + ": " + l.NotLoadedReason);
+            Eq(0, l.Warnings.Count, file + " bez varování: " + string.Join(" | ", l.Warnings));
+            using var sha256 = System.Security.Cryptography.SHA256.Create();
+            Eq(sha, BitConverter.ToString(sha256.ComputeHash(l.Image!.Data)).Replace("-", "").ToLowerInvariant(), file + " = výsledek xDMS");
+        }
+    }
 }

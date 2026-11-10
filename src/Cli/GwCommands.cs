@@ -93,7 +93,7 @@ internal static class GwCommands
         var img = loaded.Image;
         var fmt = profileId != null
             ? GwFormat.ForProfile(FormatProfiles.Find(profileId) ?? throw new ArgumentException($"Neznámý formát „{profileId}“.")) ?? throw new OperationException("Tento formát přes Greaseweazle nepodporuji.")
-            : GwFormat.ForImage(img);
+            : GwFormat.ForImage(img, loaded.IsAmiga);
         Ui.Field("Obraz", img.Geometry.ToString());
         Ui.Field("Formát zápisu", fmt.ToString());
         Ui.Field("Kontrola po zápisu", verify ? "ano (Greaseweazle každou stopu přečte zpět)" : "ne");

@@ -403,6 +403,9 @@ internal sealed class Jobs
         var loaded = ImageFile.Load(path);
         var img = loaded.Image ?? throw new OperationException(loaded.NotLoadedReason ?? Tr.T("Obraz nejde načíst."));
         Title(Tr.F("Zápis {0} na {1}", Path.GetFileName(path), d.Id));
+        LoadWarnings(loaded);
+        if (loaded.IsAmiga)
+            throw new OperationException(Tr.T("Amiga disketu umí zapsat jen Greaseweazle — PC ani USB mechanika neumí celostopý zápis Amigy. Ulož ji jako obraz .ADF (Gotek, emulátor)."));
         WriteImageData(d, img, format, verify);
     }
 
@@ -435,6 +438,12 @@ internal sealed class Jobs
         return result.Success;
     }
 
+    /// <summary>Obraz se načetl jen zčásti (poškozený DMS…) — patří do výpisu.</summary>
+    private void LoadWarnings(LoadedImage loaded)
+    {
+        foreach (var w in loaded.Warnings) Warn(w);
+    }
+
     private void GwWrite(DetectedDrive d, string path, bool verify)
     {
         var gw = _h.Factory.OpenGw(d, Ct);
@@ -447,7 +456,8 @@ internal sealed class Jobs
         }
         var loaded = ImageFile.Load(path);
         var img = loaded.Image ?? throw new OperationException(loaded.NotLoadedReason ?? Tr.T("Obraz nejde načíst."));
-        var fmt = GwFormat.ForImage(img);
+        LoadWarnings(loaded);
+        var fmt = GwFormat.ForImage(img, loaded.IsAmiga);
         Info(Tr.F("Formát zápisu: {0}", fmt));
         var w = gw.Write(img, fmt, verify, P, Ct);
         Ok(Tr.F("Zapsáno stop: {0}", w.Written.Count) + (verify ? Tr.T(", ověřeno.") : "."));
@@ -969,6 +979,7 @@ internal sealed class Jobs
         var loaded = ImageFile.Load(path);
         Title(Tr.F("Kontrola obrazu: {0}", Path.GetFileName(path)));
         var img = loaded.Image ?? throw new OperationException(loaded.NotLoadedReason ?? Tr.T("Obraz nejde načíst."));
+        LoadWarnings(loaded);
         Info(Tr.F("Geometrie: {0}", img.Geometry));
         var fs = FileSystemDetector.Detect(img.Data);
         Info(fs.Name + (fs.Details != null ? " — " + fs.Details : ""));

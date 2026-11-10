@@ -89,6 +89,8 @@ public static class FolderCheck
         var img = loaded.Image;
         var fs = FileSystemDetector.Detect(img.Data);
         string what = $"{img.Geometry}, {fs.Name}";
+        if (loaded.Warnings.Count > 0)
+            return new ImageCheck(name, ImageCheckStatus.Problems, Tr.F("{0} — obraz není celý", what), loaded.Warnings.ToList());
         if (fs.CanCheck)
         {
             var rep = FatDoctor.Check(img.Data);
