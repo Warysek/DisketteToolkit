@@ -261,7 +261,9 @@ One PR per step, in this order; no hardware risk except where noted:
    the image before any change; .adf later), 32 undelete + "save everything readable to a folder" (FAT),
    13 check a whole folder of images.
 4. **56 Report for forum** button.
-Outside the code: GitHub Discussions enabled 2026-11-08 (point README / NAVOD to it once 0.10 ships).
+Status 2026-11-10: steps 1–3 done (PRs #28 → #29 → #30, stacked; release PR on top). Wary chose to release 0.10
+after step 3: step 4 (56) moves to the next release; 38 DMS waits for a sample .dms file.
+Outside the code: GitHub Discussions enabled 2026-11-08; README / NAVOD link to it since 0.10.
 
 Order of work (proposed to Wary 2026-10-13; groups = one release each, by importance x ease):
 1. **Drive diagnostics** — 20 RPM, 22 head service + sensors, 17 head cleaning, 23 drive profiles.

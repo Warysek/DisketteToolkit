@@ -1,4 +1,4 @@
-Diskette Toolkit 0.9.1
+Diskette Toolkit 0.10
 ====================
 
 Read, write, format and test floppy disks and disk images for the Atari ST and many
@@ -8,6 +8,7 @@ Atari program FastCopy. No installation needed — only .NET Framework 4.8, whic
 part of Windows 10 and 11.
 
 Project page, downloads and bug reports: https://github.com/Warysek/DisketteToolkit
+Questions, ideas and test results: https://github.com/Warysek/DisketteToolkit/discussions
 Support development (voluntary donation): https://ko-fi.com/wary
 
 Files in the ZIP:

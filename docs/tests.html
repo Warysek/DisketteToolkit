@@ -116,7 +116,7 @@ kbd{font:inherit;font-size:13px;background:var(--chip);border-radius:4px;padding
 
 <script id="saved" type="application/json">null</script>
 <script>
-const VERSION = "0.9.1";
+const VERSION = "0.10.0";
 const SRC = "<!doctype html>\n" + document.documentElement.outerHTML;
 
 const UI = {
@@ -150,6 +150,115 @@ const UI = {
 
 // [id, important, hardware (one status row each), CZ title, CZ how, CZ expected, EN title, EN how, EN expected]
 const NEW = [
+ {id:"n1", cs:"Záloha se záznamem", en:"Backup with a record", needCs:"zdravá disketa a disketa s vadným místem (ne cenný originál), libovolná mechanika", needEn:"a healthy disk and a disk with a bad spot (not a precious original), any drive", items:[
+  ["quick",1,["usb","fd","gw"],"Rychlá záloha","Vlož disketu a klikni na <kbd>Rychlá záloha</kbd> (pod <kbd>Záloha do obrazu</kbd>).","Žádné okno na uložení: obraz je rovnou ve složce záloh (Nastavení), v názvu mechanika, datum a čas; přípona .st / .img / .adf podle diskety.",
+   "Quick backup","Insert a disk and click <kbd>Quick backup</kbd> (below <kbd>Back up to image</kbd>).","No save dialog: the image goes straight to the backup folder (Settings), named after the drive, date and time; extension .st / .img / .adf depending on the disk."],
+  ["log",1,["usb","fd","gw"],"Záznam vedle zálohy","Po záloze otevři ve složce soubor <kbd>jméno.st.log.txt</kbd>.","Datum, mechanika, čím se četlo, formát, nepřečtené sektory a součty MD5 / SHA-1 / SHA-256. Stejné součty jsou šedě ve výpisu.",
+   "Record next to the backup","After the backup open <kbd>name.st.log.txt</kbd> in the folder.","Date, drive, how it was read, format, unread sectors and MD5 / SHA-1 / SHA-256 checksums. The same checksums are in the log in grey."],
+  ["incompl",1,["usb","fd","gw"],"Neúplná záloha","Záloha diskety s nečitelným místem.","Soubor má v názvu „(NEUPLNA)“ a výpis to oranžově oznámí; v záznamu jsou nepřečtené sektory.",
+   "Incomplete backup","Back up a disk with an unreadable spot.","The file name contains “(INCOMPLETE)” and the log says so in orange; the record lists the unread sectors."],
+  ["cancel",0,["usb","fd","gw"],"Přerušená záloha","Spusť zálohu a v půlce klikni na <kbd>Přerušit</kbd>.","Pod normálním názvem nic nevznikne. (Tok .scp z Greaseweazle zůstane s „(NEUPLNA)“ v názvu.)",
+   "Cancelled backup","Start a backup and click <kbd>Stop</kbd> halfway.","Nothing is saved under the normal name. (A Greaseweazle .scp flux file is kept with “(INCOMPLETE)” in its name.)"],
+  ["gwcmd",0,["gw"],"Příkazy gw ve výpisu","Záloha přes Greaseweazle.","Ve výpisu šedé řádky „gw read …“ s celým příkazem.",
+   "gw commands in the log","Back up via Greaseweazle.","Grey lines “gw read …” with the full command in the log."],
+  ["sums",0,null,"Součty v okně obrazu","<kbd>Otevřít obraz…</kbd> → libovolný obraz.","Řádky MD5, SHA-1 a SHA-256; jdou označit a zkopírovat (Ctrl+C) a sedí se záznamem zálohy.",
+   "Checksums in the image window","<kbd>Open image…</kbd> → any image.","MD5, SHA-1 and SHA-256 lines; they can be selected and copied (Ctrl+C) and match the backup record."],
+  ["batch",0,["usb","fd","gw"],"Hromadná záloha","<kbd>Hromadná záloha…</kbd> dvou tří disket.","Ke každému obrazu vznikne záznam .log.txt.",
+   "Batch backup","<kbd>Batch backup…</kbd> of two or three disks.","Each image gets a .log.txt record."]]},
+ {id:"n2", cs:"Obrazy ze .zip a Gotek", en:"Images from .zip and Gotek", needCs:"pár her stažených jako .zip (s jednou i s víc disketami), USB flashka FAT32, Gotek s FlashFloppy (když ho máš)", needEn:"a few games downloaded as .zip (one disk and several disks), a FAT32 USB stick, a Gotek with FlashFloppy (if you have one)", items:[
+  ["zipopen",1,null,"Otevřít .zip","<kbd>Otevřít obraz…</kbd> → .zip s jednou disketou, pak .zip s víc disketami. Zkus i přetáhnout .zip do okna.","Okno obrazu se otevře rovnou; u víc disket se program zeptá, kterou. Ve výpisu „Obraz … z archivu …“.",
+   "Open a .zip","<kbd>Open image…</kbd> → a .zip with one disk, then a .zip with several disks. Also drag a .zip onto the window.","The image window opens directly; with several disks the program asks which one. The log says “Image … from archive …”."],
+  ["zipwrite",1,["usb","fd","gw"],"Zapsat obraz ze .zip","<kbd>Zapsat obraz na disketu</kbd> → vyber .zip.","Zapíše se jako rozbalený obraz; disketa v počítači funguje.",
+   "Write an image from a .zip","<kbd>Write image to disk</kbd> → pick a .zip.","Written like an unpacked image; the disk works in the computer."],
+  ["zipconv",0,null,"Převést a zkontrolovat .zip","<kbd>Převést formát…</kbd> a <kbd>Kontrola a oprava obrazu</kbd> s .zip.","Převedený obraz a opravená kopie míří do složky s archivem; archiv se nezmění.",
+   "Convert and check a .zip","<kbd>Convert format…</kbd> and <kbd>Check and repair image</kbd> with a .zip.","The converted image and the repaired copy go to the archive's folder; the archive does not change."],
+  ["gotek",1,null,"Flashka pro Gotek","Zapoj flashku → <kbd>Flashka pro Gotek…</kbd> → přidej pár .st, .msa a .zip → Atari ST / STE → <kbd>Zkopírovat na flashku</kbd>.","Na flashce DSKA0000_….st, DSKA0001_…, .msa převedené na .st a seznam-pozic.txt. Ve výpisu, co se zkopírovalo, a připomínka bezpečně odebrat flashku.",
+   "Gotek USB stick","Plug in a stick → <kbd>Gotek USB stick…</kbd> → add a few .st, .msa and .zip files → Atari ST / STE → <kbd>Copy to USB stick</kbd>.","On the stick DSKA0000_….st, DSKA0001_…, .msa converted to .st and slot-list.txt. The log lists what was copied and reminds you to remove the stick safely."],
+  ["gotekreal",1,null,"Na skutečném Goteku","Flashku zapoj do Goteku a projdi pozice.","Čísla na displeji sedí se seznamem pozic; převedená .msa naběhne. <b>Napiš model Goteku a verzi FlashFloppy.</b>",
+   "On a real Gotek","Plug the stick into the Gotek and go through the slots.","The numbers on the display match the slot list; a converted .msa boots. <b>Write the Gotek model and the FlashFloppy version.</b>"],
+  ["gotekmore",0,null,"Další kopírování a PC","Zkopíruj na stejnou flashku další obrazy; jednou zvol PC.","Nové obrazy pokračují za posledním číslem. U PC vznikne FF.CFG s „interface = ibmpc“; existující FF.CFG se nepřepíše (výpis řekne, co do něj patří).",
+   "More copies and PC","Copy more images to the same stick; once choose PC.","New images continue after the last number. For PC an FF.CFG with “interface = ibmpc” is created; an existing FF.CFG is not overwritten (the log says what belongs in it)."]]},
+ {id:"n3", cs:"Úpravy obrazů", en:"Editing images", needCs:"kopie obrazu Atari .st nebo .msa (ne jediný originál), Hatari nebo Atari", needEn:"a copy of an Atari .st or .msa image (not your only original), Hatari or an Atari", items:[
+  ["add",1,null,"Přidat soubory","<kbd>Otevřít obraz…</kbd> → <kbd>Přidat soubory…</kbd>; pak přetáhni z Průzkumníku do okna soubor i celou složku.","Soubory jsou hned v seznamu (jména 8.3), vedle obrazu vznikne „jméno (před úpravou).st“. Obraz jde přečíst v Hatari / na Atari a soubory spustit.",
+   "Add files","<kbd>Open image…</kbd> → <kbd>Add files…</kbd>; then drag a file and a whole folder from Explorer onto the window.","The files are in the list at once (8.3 names), “name (before edit).st” appears next to the image. The image reads in Hatari / on the Atari and the files run."],
+  ["replace",0,null,"Soubor, který už v obrazu je","Přidej podruhé stejný soubor.","Zeptá se, jestli ho nahradit: Ano = přepíše, Ne = přeskočí, Zrušit = nic.",
+   "A file that is already there","Add the same file again.","Asks whether to replace it: Yes = replaces, No = skips, Cancel = nothing."],
+  ["full",0,null,"Plná disketa","Přidej soubor větší než volné místo.","Hláška o nedostatku místa a „Obraz zůstal beze změny.“",
+   "Full disk","Add a file larger than the free space.","A message about missing space and “The image was not changed.”"],
+  ["del",1,null,"Smazat a zachránit","Vyber soubor → <kbd>Smazat</kbd>; pak <kbd>Zachránit soubory…</kbd>.","Smazaný soubor je v seznamu šedě („smazaný — jde zachránit“); v nové složce je v _smazane a obsah sedí. Je tam i _zachrana.txt.",
+   "Delete and rescue","Select a file → <kbd>Delete</kbd>; then <kbd>Rescue files…</kbd>.","The deleted file is grey in the list (“deleted — can be rescued”); in the new folder it is in _deleted with the right content. There is also _rescue.txt."],
+  ["undel",0,null,"Smazané soubory na staré disketě","Otevři zálohu staré diskety, na které se mazalo.","V seznamu šedé smazané soubory; Zachránit soubory… je uloží. <b>Napiš, jestli se obnovené soubory daly otevřít.</b>",
+   "Deleted files on an old disk","Open a backup of an old disk where files were deleted.","Grey deleted files in the list; Rescue files… saves them. <b>Write whether the recovered files open.</b>"],
+  ["resc",0,["usb","fd","gw"],"Soubory z vadné diskety","Obraz ze Záchrany vadné diskety (vedle něj .rescue.txt) → <kbd>Zachránit soubory…</kbd>.","_zachrana.txt jmenuje soubory, ve kterých jsou nečitelné sektory.",
+   "Files from a bad disk","An image from Rescue a bad disk (with .rescue.txt next to it) → <kbd>Rescue files…</kbd>.","_rescue.txt names the files that contain unreadable sectors."],
+  ["folder",1,null,"Kontrola složky obrazů","<kbd>Kontrola složky obrazů…</kbd> → složka s tvými obrazy (i s .zip a podsložkami).","Ve výpisu každý obraz: zeleně v pořádku, oranžově s problémy, červeně nejde načíst; na konci souhrn. Nic se nezmění.",
+   "Check a folder of images","<kbd>Check a folder of images…</kbd> → a folder with your images (with .zip files and subfolders).","Each image in the log: green OK, orange with problems, red cannot be loaded; a summary at the end. Nothing is changed."]]}
+];
+
+const ALL = [
+ {id:"a1", cs:"Spuštění a okno", en:"Start and window", needCs:"Windows 10/11, ZIP s programem", needEn:"Windows 10/11, the program ZIP", items:[
+  ["unzip",1,null,"Rozbalení a spuštění","Pravým na ZIP → Vlastnosti → <kbd>Odblokovat</kbd>, rozbal, poklepej na <kbd>DisketteToolkit.exe</kbd>.","Windows se zeptá na oprávnění správce; okno se otevře bez chyby.",
+   "Unzip and start","Right-click the ZIP → Properties → <kbd>Unblock</kbd>, unzip, double-click <kbd>DisketteToolkit.exe</kbd>.","Windows asks for administrator rights; the window opens without errors."],
+  ["size",0,null,"Velikost okna","Zmenši okno za roh, zavři a znovu spusť.","Okno se vejde na obrazovku, texty se nepřekrývají, velikost si pamatuje.",
+   "Window size","Shrink the window by its corner, close and start again.","The window fits the screen, texts do not overlap, the size is remembered."],
+  ["lang",0,null,"Jazyk CZ / EN","Přepni jazyk vpravo nahoře a zpět.","Celé okno se přepne hned, po restartu zůstane.",
+   "Language CZ / EN","Switch the language in the top right corner and back.","The whole window switches at once and stays after a restart."],
+  ["drag",0,null,"Přetažení obrazu","Přetáhni soubor .st / .msa z Průzkumníku do okna.","Otevře se okno s obsahem obrazu.",
+   "Drag and drop an image","Drag a .st / .msa file from Explorer onto the window.","A window with the image contents opens."],
+  ["log",0,null,"Výpis — pravé tlačítko","Pravým do výpisu → Kopírovat / Uložit do souboru / Vymazat.","Všechno funguje.",
+   "Log — right click","Right-click the log → Copy / Save to file / Clear.","Everything works."]]},
+ {id:"a2", hw:"usb", cs:"USB disketovka", en:"USB floppy drive", needCs:"USB disketovka, testovací diskety DD i HD", needEn:"USB floppy drive, test disks DD and HD", items:[
+  ["det",1,null,"Rozpoznání mechaniky a diskety","Připoj mechaniku, vlož Atari disketu, <kbd>⟳ Obnovit</kbd>.","Vlevo: mechanika, disketa, souborový systém, volné místo; „Standardní 720 KB: ano“.",
+   "Drive and disk detection","Connect the drive, insert an Atari disk, <kbd>⟳ Refresh</kbd>.","Left panel: drive, disk, file system, free space; “Standard 720 KB: yes”."],
+  ["read",1,null,"Záloha do obrazu","<kbd>Záloha do obrazu</kbd> → ulož .st.","Mapa se barví, soubor má 737 280 B a jde otevřít.",
+   "Backup to image","<kbd>Back up to image</kbd> → save .st.","The map is coloured, the file has 737,280 bytes and opens."],
+  ["batch",0,null,"Hromadná záloha","<kbd>Hromadná záloha…</kbd> → hra-001.st → další disketa → Ano; jednou Ano bez výměny; nakonec Ne.","Vzniknou hra-001, hra-002…; nevyměněnou disketu pozná.",
+   "Batch backup","<kbd>Batch backup…</kbd> → game-001.st → next disk → Yes; once Yes without swapping; finally No.","game-001, game-002… are created; an unswapped disk is detected."],
+  ["write",1,null,"Zapsat obraz na disketu","<kbd>Zapsat obraz na disketu</kbd> → .st → potvrď.","Zápis a ověření v mapě; disketa funguje v Atari / PC.",
+   "Write image to disk","<kbd>Write image to disk</kbd> → .st → confirm.","Writing and verifying in the map; the disk works in the Atari / PC."],
+  ["fmt",1,null,"Formátovat","<kbd>Formátovat…</kbd> → Atari ST 720 KB; pak PC 1,44 MB na HD disketu.","Proběhne; disketu přečte cílový počítač / Průzkumník.",
+   "Format","<kbd>Format…</kbd> → Atari ST 720 KB; then PC 1.44 MB on an HD disk.","Completes; the target computer / Explorer reads the disk."],
+  ["test",1,null,"Test povrchu","<kbd>Test povrchu a kontrola</kbd> → jen čtení.","Mapa zelená / žlutá / červená, souhrn, kontrola FAT.",
+   "Surface test","<kbd>Surface test and check</kbd> → read only.","Map green / yellow / red, summary, FAT check."],
+  ["cancel",0,null,"Přerušit","Během zálohy klikni <kbd>Přerušit</kbd>.","Zastaví se do pár sekund, program jde dál používat.",
+   "Cancel","Press <kbd>Cancel</kbd> during a backup.","Stops within seconds, the program keeps working."]]},
+ {id:"a3", hw:"fd", cs:"Interní mechanika + fdrawcmd.sys", en:"Internal drive + fdrawcmd.sys", needCs:"PC s řadičem na desce, interní 3,5\" mechanika", needEn:"PC with an on-board controller, internal 3.5\" drive", items:[
+  ["inst",1,null,"Instalace fdrawcmd.sys","Vyber interní mechaniku → <kbd>Nainstalovat ovladač fdrawcmd.sys</kbd>.","Instalace proběhne; v Nastavení „fdrawcmd.sys je nainstalovaný“. Na Win 11 s Integritou paměti napiš přesnou hlášku.",
+   "Installing fdrawcmd.sys","Select the internal drive → <kbd>Install the fdrawcmd.sys driver</kbd>.","Installs; Settings show “fdrawcmd.sys is installed”. On Win 11 with Memory integrity write the exact message."],
+  ["ext",1,null,"Atari 800–900 KB","Záloha Atari diskety s 10/11 sektory a 82 stopami; formát Atari 10 sektorů.","Ve výpisu „Používám fdrawcmd.sys“, obraz má správnou velikost, Atari disketu přečte.",
+   "Atari 800–900 KB","Back up an Atari disk with 10/11 sectors and 82 tracks; format Atari 10 sectors.","The log says “Using fdrawcmd.sys”, the image has the right size, the Atari reads the disk."],
+  ["write",0,null,"Zápis nestandardního obrazu","Zapiš .st s 10 sektory.","Hra na Atari naběhne.",
+   "Writing a non-standard image","Write a 10-sector .st.","The game starts on the Atari."],
+  ["step",0,null,"Step rate","Nastavení → step rate 3 ms a 6 ms → záloha.","Obojí funguje.",
+   "Step rate","Settings → step rate 3 ms and 6 ms → backup.","Both work."],
+  ["repair",0,null,"Opravný formát (experimentální)","Disketa s vadným místem → Formátovat… → zaškrtni <kbd>Opravný formát</kbd>.","Méně nebo žádné vadné sektory; disketu přečte Atari i Windows.",
+   "Repair format (experimental)","Disk with a bad spot → Format… → tick <kbd>Repair format</kbd>.","Fewer or no bad sectors; Atari and Windows read the disk."]]},
+ {id:"a4", hw:"gw", cs:"Greaseweazle", en:"Greaseweazle", needCs:"Greaseweazle + 3,5\" mechanika, internet", needEn:"Greaseweazle + 3.5\" drive, internet", items:[
+  ["dl",1,null,"Stažení gw.exe","Vyber Greaseweazle → <kbd>Stáhnout Greaseweazle Host Tools</kbd>.","gw.exe se stáhne vedle programu; vlevo cesta ke gw.exe.",
+   "Downloading gw.exe","Select the Greaseweazle → <kbd>Download Greaseweazle Host Tools</kbd>.","gw.exe is downloaded next to the program; the left panel shows its path."],
+  ["fw",0,null,"Aktualizace firmwaru","<kbd>Nastavení</kbd> → <kbd>Aktualizovat firmware v Greaseweazle…</kbd>","Průběh ve výpisu, na konci verze; GW funguje dál.",
+   "Firmware update","<kbd>Settings</kbd> → <kbd>Update Greaseweazle firmware…</kbd>","Progress in the log, version at the end; the GW still works."],
+  ["read",1,null,"Záloha (Atari / PC / Amiga)","Záloha do obrazu z Atari, PC a Amiga diskety.","Formát pozná sám, obraz jde otevřít (Hatari / WinUAE).",
+   "Backup (Atari / PC / Amiga)","Back up an Atari, PC and Amiga disk.","The format is detected, the image opens (Hatari / WinUAE)."],
+  ["flux",1,null,"Záloha toku .scp","Originální hra → Záloha → ulož jako .scp.","Vznikne .scp (několik MB).",
+   "Flux backup .scp","Original game → Backup → save as .scp.","A .scp file (several MB) is created."],
+  ["write",1,null,"Zápis obrazu / .ipf / .scp","Zapiš .st, .adf a případně .ipf.","Diskety fungují ve skutečném stroji.",
+   "Writing an image / .ipf / .scp","Write a .st, .adf and maybe an .ipf.","The disks work in the real machine."],
+  ["erase",0,null,"Magneticky smazat","<kbd>Magneticky smazat</kbd> → potvrď.","Disketa je nenaformátovaná.",
+   "Magnetic erase","<kbd>Magnetic erase</kbd> → confirm.","The disk is unformatted."]]},
+ {id:"a5", cs:"Obrazy a spouštěcí diskety", en:"Images and boot disks", needCs:"pár obrazů .st / .msa / .img / .adf", needEn:"a few .st / .msa / .img / .adf images", items:[
+  ["open",1,null,"Otevřít obraz","<kbd>Otevřít obraz…</kbd> → .st s hrou; vytáhni soubor.","Formát, souborový systém, seznam souborů; vytažený soubor jde otevřít.",
+   "Open image","<kbd>Open image…</kbd> → a .st game; extract a file.","Format, file system, file list; the extracted file opens."],
+  ["conv",0,null,"Převést formát","<kbd>Převést formát…</kbd> → .msa na .st a zpět.","Převedený soubor jde otevřít, obsah stejný.",
+   "Convert format","<kbd>Convert format…</kbd> → .msa to .st and back.","The converted file opens, same content."],
+  ["chk",0,null,"Kontrola a oprava obrazu","<kbd>Kontrola a oprava obrazu</kbd> → obraz s chybou.","Oprava se uloží do kopie, originál beze změny.",
+   "Check and repair image","<kbd>Check and repair image</kbd> → an image with an error.","The repair goes to a copy, the original is unchanged."],
+  ["new",0,null,"Nový prázdný obraz","<kbd>Nový prázdný obraz…</kbd> → Atari, PC, Amiga.","Obraz vznikne a jde otevřít v emulátoru.",
+   "New blank image","<kbd>New blank image…</kbd> → Atari, PC, Amiga.","The image is created and opens in an emulator."],
+  ["boot",0,null,"Spouštěcí disketa","<kbd>Spouštěcí disketa…</kbd> → FreeDOS (nebo Atari AUTO).","PC z diskety naběhne do A:\\&gt; (Atari spustí program z AUTO).",
+   "Boot disk","<kbd>Boot disk…</kbd> → FreeDOS (or Atari AUTO).","The PC boots to A:\\&gt; (the Atari starts the AUTO program)."],
+  ["crash",0,null,"Kdyby něco spadlo","—","Okno s hláškou a soubor DisketteToolkit-chyba.txt v %TEMP% — přilož ho.",
+   "If anything crashes","—","A message window and DisketteToolkit-chyba.txt in %TEMP% — attach it."]]},
  {id:"f1", cs:"Opravy ve verzi 0.9.1", en:"Fixes in version 0.9.1", needCs:"disketa s vadnými sektory (ne cenný originál), Greaseweazle a/nebo USB disketovka", needEn:"a disk with bad sectors (not a precious original), Greaseweazle and/or USB drive", items:[
   ["res",1,["usb","fd","gw"],"Výsledek pod mapou","<kbd>Záloha do obrazu</kbd> diskety s vadnými sektory, pak zdravé diskety.","Vadná: řádek pod mapou červeně „✗ Vadné sektory…“ / „✗ Sektorů …“ a červený pruh; v mapě křížky (nečitelné) a tečky (slabé). Zdravá: zeleně „✓ Uloženo…“.",
    "Result under the map","<kbd>Back up to image</kbd> of a disk with bad sectors, then of a healthy disk.","Bad disk: the line under the map is red (“✗ Bad sectors…” / “✗ Sectors …”) with a red bar; crosses (unreadable) and dots (weak) in the map. Healthy disk: green “✓ Saved…”."],
@@ -243,72 +352,6 @@ const NEW = [
    "Assembling from bad reads (experimental)","Rescue on an internal drive with fdrawcmd.sys with <kbd>Assemble content from bad reads</kbd> ticked, 30 attempts.","Either “Assembled by voting…” (sectors yellow in the map, the tooltip shows uncertain bits) or “Nothing could be assembled from bad reads”. <b>Above all write which of the two appeared</b> — it tells us whether the driver returns data on an error."],
   ["decay",0,["fd","gw"],"Poplach při rozpadu diskety","Jen pokud máš starou disketu se skvrnami nebo plísní (riskuješ hlavu!): Opakované čtení jedné stopy, 20×.","Když chyb s každým čtením přibývá, program čtení sám zastaví s velkým upozorněním.",
    "Alarm for a disintegrating disk","Only if you have an old disk with spots or mould (it risks the head!): Repeated read of one track, 20×.","If errors grow with every read, the program stops by itself with a big warning."]]}
-];
-
-const ALL = [
- {id:"a1", cs:"Spuštění a okno", en:"Start and window", needCs:"Windows 10/11, ZIP s programem", needEn:"Windows 10/11, the program ZIP", items:[
-  ["unzip",1,null,"Rozbalení a spuštění","Pravým na ZIP → Vlastnosti → <kbd>Odblokovat</kbd>, rozbal, poklepej na <kbd>DisketteToolkit.exe</kbd>.","Windows se zeptá na oprávnění správce; okno se otevře bez chyby.",
-   "Unzip and start","Right-click the ZIP → Properties → <kbd>Unblock</kbd>, unzip, double-click <kbd>DisketteToolkit.exe</kbd>.","Windows asks for administrator rights; the window opens without errors."],
-  ["size",0,null,"Velikost okna","Zmenši okno za roh, zavři a znovu spusť.","Okno se vejde na obrazovku, texty se nepřekrývají, velikost si pamatuje.",
-   "Window size","Shrink the window by its corner, close and start again.","The window fits the screen, texts do not overlap, the size is remembered."],
-  ["lang",0,null,"Jazyk CZ / EN","Přepni jazyk vpravo nahoře a zpět.","Celé okno se přepne hned, po restartu zůstane.",
-   "Language CZ / EN","Switch the language in the top right corner and back.","The whole window switches at once and stays after a restart."],
-  ["drag",0,null,"Přetažení obrazu","Přetáhni soubor .st / .msa z Průzkumníku do okna.","Otevře se okno s obsahem obrazu.",
-   "Drag and drop an image","Drag a .st / .msa file from Explorer onto the window.","A window with the image contents opens."],
-  ["log",0,null,"Výpis — pravé tlačítko","Pravým do výpisu → Kopírovat / Uložit do souboru / Vymazat.","Všechno funguje.",
-   "Log — right click","Right-click the log → Copy / Save to file / Clear.","Everything works."]]},
- {id:"a2", hw:"usb", cs:"USB disketovka", en:"USB floppy drive", needCs:"USB disketovka, testovací diskety DD i HD", needEn:"USB floppy drive, test disks DD and HD", items:[
-  ["det",1,null,"Rozpoznání mechaniky a diskety","Připoj mechaniku, vlož Atari disketu, <kbd>⟳ Obnovit</kbd>.","Vlevo: mechanika, disketa, souborový systém, volné místo; „Standardní 720 KB: ano“.",
-   "Drive and disk detection","Connect the drive, insert an Atari disk, <kbd>⟳ Refresh</kbd>.","Left panel: drive, disk, file system, free space; “Standard 720 KB: yes”."],
-  ["read",1,null,"Záloha do obrazu","<kbd>Záloha do obrazu</kbd> → ulož .st.","Mapa se barví, soubor má 737 280 B a jde otevřít.",
-   "Backup to image","<kbd>Back up to image</kbd> → save .st.","The map is coloured, the file has 737,280 bytes and opens."],
-  ["batch",0,null,"Hromadná záloha","<kbd>Hromadná záloha…</kbd> → hra-001.st → další disketa → Ano; jednou Ano bez výměny; nakonec Ne.","Vzniknou hra-001, hra-002…; nevyměněnou disketu pozná.",
-   "Batch backup","<kbd>Batch backup…</kbd> → game-001.st → next disk → Yes; once Yes without swapping; finally No.","game-001, game-002… are created; an unswapped disk is detected."],
-  ["write",1,null,"Zapsat obraz na disketu","<kbd>Zapsat obraz na disketu</kbd> → .st → potvrď.","Zápis a ověření v mapě; disketa funguje v Atari / PC.",
-   "Write image to disk","<kbd>Write image to disk</kbd> → .st → confirm.","Writing and verifying in the map; the disk works in the Atari / PC."],
-  ["fmt",1,null,"Formátovat","<kbd>Formátovat…</kbd> → Atari ST 720 KB; pak PC 1,44 MB na HD disketu.","Proběhne; disketu přečte cílový počítač / Průzkumník.",
-   "Format","<kbd>Format…</kbd> → Atari ST 720 KB; then PC 1.44 MB on an HD disk.","Completes; the target computer / Explorer reads the disk."],
-  ["test",1,null,"Test povrchu","<kbd>Test povrchu a kontrola</kbd> → jen čtení.","Mapa zelená / žlutá / červená, souhrn, kontrola FAT.",
-   "Surface test","<kbd>Surface test and check</kbd> → read only.","Map green / yellow / red, summary, FAT check."],
-  ["cancel",0,null,"Přerušit","Během zálohy klikni <kbd>Přerušit</kbd>.","Zastaví se do pár sekund, program jde dál používat.",
-   "Cancel","Press <kbd>Cancel</kbd> during a backup.","Stops within seconds, the program keeps working."]]},
- {id:"a3", hw:"fd", cs:"Interní mechanika + fdrawcmd.sys", en:"Internal drive + fdrawcmd.sys", needCs:"PC s řadičem na desce, interní 3,5\" mechanika", needEn:"PC with an on-board controller, internal 3.5\" drive", items:[
-  ["inst",1,null,"Instalace fdrawcmd.sys","Vyber interní mechaniku → <kbd>Nainstalovat ovladač fdrawcmd.sys</kbd>.","Instalace proběhne; v Nastavení „fdrawcmd.sys je nainstalovaný“. Na Win 11 s Integritou paměti napiš přesnou hlášku.",
-   "Installing fdrawcmd.sys","Select the internal drive → <kbd>Install the fdrawcmd.sys driver</kbd>.","Installs; Settings show “fdrawcmd.sys is installed”. On Win 11 with Memory integrity write the exact message."],
-  ["ext",1,null,"Atari 800–900 KB","Záloha Atari diskety s 10/11 sektory a 82 stopami; formát Atari 10 sektorů.","Ve výpisu „Používám fdrawcmd.sys“, obraz má správnou velikost, Atari disketu přečte.",
-   "Atari 800–900 KB","Back up an Atari disk with 10/11 sectors and 82 tracks; format Atari 10 sectors.","The log says “Using fdrawcmd.sys”, the image has the right size, the Atari reads the disk."],
-  ["write",0,null,"Zápis nestandardního obrazu","Zapiš .st s 10 sektory.","Hra na Atari naběhne.",
-   "Writing a non-standard image","Write a 10-sector .st.","The game starts on the Atari."],
-  ["step",0,null,"Step rate","Nastavení → step rate 3 ms a 6 ms → záloha.","Obojí funguje.",
-   "Step rate","Settings → step rate 3 ms and 6 ms → backup.","Both work."],
-  ["repair",0,null,"Opravný formát (experimentální)","Disketa s vadným místem → Formátovat… → zaškrtni <kbd>Opravný formát</kbd>.","Méně nebo žádné vadné sektory; disketu přečte Atari i Windows.",
-   "Repair format (experimental)","Disk with a bad spot → Format… → tick <kbd>Repair format</kbd>.","Fewer or no bad sectors; Atari and Windows read the disk."]]},
- {id:"a4", hw:"gw", cs:"Greaseweazle", en:"Greaseweazle", needCs:"Greaseweazle + 3,5\" mechanika, internet", needEn:"Greaseweazle + 3.5\" drive, internet", items:[
-  ["dl",1,null,"Stažení gw.exe","Vyber Greaseweazle → <kbd>Stáhnout Greaseweazle Host Tools</kbd>.","gw.exe se stáhne vedle programu; vlevo cesta ke gw.exe.",
-   "Downloading gw.exe","Select the Greaseweazle → <kbd>Download Greaseweazle Host Tools</kbd>.","gw.exe is downloaded next to the program; the left panel shows its path."],
-  ["fw",0,null,"Aktualizace firmwaru","<kbd>Nastavení</kbd> → <kbd>Aktualizovat firmware v Greaseweazle…</kbd>","Průběh ve výpisu, na konci verze; GW funguje dál.",
-   "Firmware update","<kbd>Settings</kbd> → <kbd>Update Greaseweazle firmware…</kbd>","Progress in the log, version at the end; the GW still works."],
-  ["read",1,null,"Záloha (Atari / PC / Amiga)","Záloha do obrazu z Atari, PC a Amiga diskety.","Formát pozná sám, obraz jde otevřít (Hatari / WinUAE).",
-   "Backup (Atari / PC / Amiga)","Back up an Atari, PC and Amiga disk.","The format is detected, the image opens (Hatari / WinUAE)."],
-  ["flux",1,null,"Záloha toku .scp","Originální hra → Záloha → ulož jako .scp.","Vznikne .scp (několik MB).",
-   "Flux backup .scp","Original game → Backup → save as .scp.","A .scp file (several MB) is created."],
-  ["write",1,null,"Zápis obrazu / .ipf / .scp","Zapiš .st, .adf a případně .ipf.","Diskety fungují ve skutečném stroji.",
-   "Writing an image / .ipf / .scp","Write a .st, .adf and maybe an .ipf.","The disks work in the real machine."],
-  ["erase",0,null,"Magneticky smazat","<kbd>Magneticky smazat</kbd> → potvrď.","Disketa je nenaformátovaná.",
-   "Magnetic erase","<kbd>Magnetic erase</kbd> → confirm.","The disk is unformatted."]]},
- {id:"a5", cs:"Obrazy a spouštěcí diskety", en:"Images and boot disks", needCs:"pár obrazů .st / .msa / .img / .adf", needEn:"a few .st / .msa / .img / .adf images", items:[
-  ["open",1,null,"Otevřít obraz","<kbd>Otevřít obraz…</kbd> → .st s hrou; vytáhni soubor.","Formát, souborový systém, seznam souborů; vytažený soubor jde otevřít.",
-   "Open image","<kbd>Open image…</kbd> → a .st game; extract a file.","Format, file system, file list; the extracted file opens."],
-  ["conv",0,null,"Převést formát","<kbd>Převést formát…</kbd> → .msa na .st a zpět.","Převedený soubor jde otevřít, obsah stejný.",
-   "Convert format","<kbd>Convert format…</kbd> → .msa to .st and back.","The converted file opens, same content."],
-  ["chk",0,null,"Kontrola a oprava obrazu","<kbd>Kontrola a oprava obrazu</kbd> → obraz s chybou.","Oprava se uloží do kopie, originál beze změny.",
-   "Check and repair image","<kbd>Check and repair image</kbd> → an image with an error.","The repair goes to a copy, the original is unchanged."],
-  ["new",0,null,"Nový prázdný obraz","<kbd>Nový prázdný obraz…</kbd> → Atari, PC, Amiga.","Obraz vznikne a jde otevřít v emulátoru.",
-   "New blank image","<kbd>New blank image…</kbd> → Atari, PC, Amiga.","The image is created and opens in an emulator."],
-  ["boot",0,null,"Spouštěcí disketa","<kbd>Spouštěcí disketa…</kbd> → FreeDOS (nebo Atari AUTO).","PC z diskety naběhne do A:\\&gt; (Atari spustí program z AUTO).",
-   "Boot disk","<kbd>Boot disk…</kbd> → FreeDOS (or Atari AUTO).","The PC boots to A:\\&gt; (the Atari starts the AUTO program)."],
-  ["crash",0,null,"Kdyby něco spadlo","—","Okno s hláškou a soubor DisketteToolkit-chyba.txt v %TEMP% — přilož ho.",
-   "If anything crashes","—","A message window and DisketteToolkit-chyba.txt in %TEMP% — attach it."]]}
 ];
 
 const KEY = "dtk-tests-" + VERSION;
