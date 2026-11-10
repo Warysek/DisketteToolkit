@@ -53,7 +53,7 @@ internal sealed class MainForm : Form, IJobHost
     private readonly Label _secDisk = new(), _secImages = new(), _secHelp = new();
     private readonly ActionButton _aRead = new(), _aWrite = new(), _aFormat = new(), _aTest = new(), _aErase = new(), _aSetup = new(), _aBoot = new(), _aBatch = new(), _aDiag = new(), _aRescue = new(), _aQuick = new(), _iGotek = new();
     private readonly ActionButton _iOpen = new(), _iCheck = new(), _iConvert = new(), _iNew = new(), _iFolder = new();
-    private readonly ActionButton _hFormats = new(), _hAbout = new(), _hDonate = new();
+    private readonly ActionButton _hFormats = new(), _hAbout = new(), _hReport = new(), _hDonate = new();
     private readonly ToolTip _tips = new();
 
     private List<DetectedDrive> _drives = new();
@@ -278,6 +278,7 @@ internal sealed class MainForm : Form, IJobHost
         Section(_secHelp);
         Add(_hFormats, "☰", (_, _) => { using var f = new FormatsDialog(); f.ShowDialog(this); }, 44);
         Add(_hAbout, "ⓘ", (_, _) => ShowAbout(), 44);
+        Add(_hReport, "✉", (_, _) => DoForumReport(), minor);
         Add(_hDonate, "♥", (_, _) => OpenLink(Program.DonateUrl), minor);
         _tips.SetToolTip(_iOpen, "Ctrl+O");
     }
@@ -441,6 +442,8 @@ internal sealed class MainForm : Form, IJobHost
         _iGotek.Subtitle = Tr.T("obrazy na USB flashku, číslované pozice");
         _hFormats.Text = Tr.T("Formáty všech systémů");
         _hAbout.Text = Tr.T("O programu");
+        _hReport.Text = Tr.T("Zpráva pro fórum");
+        _hReport.Subtitle = Tr.T("shrnutí do schránky");
         _hDonate.Text = Tr.T("Podpořit vývoj");
         _hDonate.Subtitle = Tr.T("dobrovolný příspěvek přes Ko-fi");
         UpdateActionButtons();
@@ -1142,6 +1145,31 @@ internal sealed class MainForm : Form, IJobHost
             Tr.T("O programu"), MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
+    /// <summary>
+    /// Zpráva pro fórum: verze, Windows, mechaniky s řadičem a gw, poslední výsledek a konec výpisu do schránky.
+    /// Dotaz na řadič a „gw info“ běží na pozadí; tlačítko je mezitím vypnuté (během úloh je vypnuté vždy).
+    /// </summary>
+    private void DoForumReport()
+    {
+        var drives = _drives.ToList();
+        string? outcome = _outcomeShown ? _status.Text : null;
+        string log = _log.Text;
+        string? gwPath = _settings.Drive.GwPath;
+        _hReport.Enabled = false;
+        UseWaitCursor = true;
+        Task.Run(() => ForumReport.Create(drives, _demo ? DemoDrives.ReportInfo() : ForumReport.Probe(drives, gwPath), outcome, log))
+            .ContinueWith(t =>
+            {
+                UseWaitCursor = false;
+                _hReport.Enabled = !_busy;
+                if (t.Exception != null) { Log(Tr.T("Zprávu pro fórum se nepodařilo sestavit: ") + t.Exception.GetBaseException().Message, LogKind.Error); return; }
+                bool copied = true;
+                try { Clipboard.SetText(t.Result); } catch (Exception) { copied = false; }
+                using var f = new ForumReportDialog(t.Result, copied, OpenLink);
+                f.ShowDialog(this);
+            }, TaskScheduler.FromCurrentSynchronizationContext());
+    }
+
     /// <summary>Otevře odkaz v prohlížeči. Přes explorer.exe, aby prohlížeč neběžel s právy správce jako program.</summary>
     private void OpenLink(string url)
     {
@@ -1445,6 +1473,7 @@ internal sealed class MainForm : Form, IJobHost
             case "testdialog" when d != null: BeginInvoke(new Action(() => { using var f = new TestDialog(d, _settings.BackupFolder); f.ShowDialog(this); })); break;
             case "settings": BeginInvoke(new Action(() => { using var f = new SettingsDialog(_settings, _drives); f.ShowDialog(this); })); break;
             case "formats": BeginInvoke(new Action(() => new FormatsDialog().ShowDialog(this))); break;
+            case "forumreport": BeginInvoke(new Action(DoForumReport)); break;
             case "format820" when _drives.Count > 1:
                 _driveBox.SelectedIndex = 1;
                 var b = Selected!;
