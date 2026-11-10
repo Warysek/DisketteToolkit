@@ -18,6 +18,25 @@ Try it without hardware: `DisketteToolkit.exe --demo` (simulated drives).
 
 See also: [Privacy](#privacy) · [Code signing policy](#code-signing-policy)
 
+## What's new in 0.10
+
+- **Backup with a record**: every backup writes `<image>.log.txt` next to the image (date, drive, how it was read,
+  every unread sector and why, MD5 / SHA-1 / SHA-256); an incomplete backup gets `(INCOMPLETE)` in its file name and
+  is never saved under the normal name; one-click *Quick backup* into the backup folder; `gw …` commands in the log
+- **Images from the internet**: open images inside `.zip` without unpacking; Amiga `.dms` (Disk Masher) opens like
+  `.adf`, with the text in the archive and a warning about damaged tracks
+- **Gotek USB stick…**: copies images as `DSKA0000_name.st`…, converts .MSA/.DIM to .ST and .DMS to .ADF, writes
+  `FF.CFG` / `IMG.CFG` where needed and a printable slot list (FlashFloppy)
+- **Editing images** (FAT12: .st, .msa, .dim, .img): add files by drag and drop, delete files, recover deleted files,
+  *Rescue files…* saves everything readable into a folder, *Check a folder of images…* checks many images at once
+- **Report for forum**: one button copies your setup (program and Windows version, drives, controller,
+  Greaseweazle firmware, last result and log) to the clipboard, without your user or PC name
+
+![Image window — files, checksums, a deleted file that can be rescued](docs/screenshot-image.png)
+
+Verified in simulation and automatic tests. **Not verified on real hardware yet**: quick backup, the forum report's
+controller and Greaseweazle lines, a `.dms` written with Greaseweazle and booted on an Amiga, sticks on a real Gotek.
+
 ## What's new in 0.9.1
 
 Fixes, mainly safety on damaged disks and a clearer window:
@@ -67,9 +86,11 @@ The program downloads gw.exe and fdrawcmd.sys itself when you need them.
 ## Features
 
 - Backup to image (.ST, .MSA, .IMG, .DIM, .ADF, flux .SCP/.HFE) and write images back with verification
+- Backup record next to every image with MD5 / SHA-1 / SHA-256; incomplete backups are named "(INCOMPLETE)"; quick backup
 - Format profiles for Atari, PC, MSX, Mac HFS, Amiga CrossDOS, Amstrad PCW, MINIX, ext2
 - Batch backup: a box of disks one after another into numbered images (disk-001.st, disk-002.st…)
-- Drag an image file onto the window to open it
+- Drag an image file onto the window to open it; images inside .zip and Amiga .dms open directly
+- Gotek USB stick wizard (FlashFloppy): numbered images, format conversion, FF.CFG / IMG.CFG, slot list
 - Drive diagnostics (internal drive + fdrawcmd.sys, Greaseweazle): speed with wobble and a live gauge for adjusting, sensor check, head moves and cleaning, repeated track read (dirty head vs. damaged disk), track layout listing (fdrawcmd.sys), warm-up and step accuracy tests, flux histogram and USB bandwidth test (Greaseweazle)
 - Rescue a bad disk: many retries per unreadable sector, continue in another drive (only the missing sectors are read), advice whether another drive can still help, experimental bit voting from bad reads (fdrawcmd.sys); rescue sectors from saved Greaseweazle flux (.scp) with an own MFM decoder, combining captures from several drives
 - Error reason for every failed sector in the map, read history that tells a faulty drive from a faulty disk, disk grade (A/B/C) after a write test
@@ -77,7 +98,9 @@ The program downloads gw.exe and fdrawcmd.sys itself when you need them.
 - Experimental repair format (internal drive + fdrawcmd.sys): a defect on a track is covered by an extra sector instead of being marked bad in the FAT
 - FAT12 check and safe repair (backup first, only changed sectors written, repairs of images go to a copy)
 - Boot disks: FreeDOS, MS-DOS from your own Windows (`diskcopy.dll`), Amiga bootblock, Atari AUTO folder, RawWrite
-- Image tools: open and extract files, check/repair, convert, create blank images
+- Image tools: open and extract files, add and delete files (FAT12), recover deleted files, save everything readable
+  into a folder, check/repair, check a whole folder of images, convert, create blank images
+- *Report for forum*: a plain-text summary of your setup for bug reports, with personal data removed
 - Czech and English UI; add a language with a `xx.lang` file (Settings → *Create a template for a new language*)
 - Command line: `dtk.exe` (Czech only for now)
 
@@ -88,8 +111,9 @@ Every change goes through a pull request that I review and test before it is mer
 
 ## Feedback
 
-Bug reports and ideas are welcome in [Issues](../../issues). Please include the program version, Windows version,
-drive type and the log (right-click the log → *Save log to file…*).
+Bug reports and ideas are welcome in [Issues](../../issues) or [Discussions](../../discussions). The
+*Report for forum* button copies the program version, Windows version, drives and the end of the log to the
+clipboard — paste it into your report.
 
 ## Support
 
