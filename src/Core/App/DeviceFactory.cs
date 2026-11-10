@@ -64,6 +64,7 @@ public sealed class DeviceFactory
     {
         var tool = FindGwTool(drive) ?? throw new OperationException(Tr.T("Chybí program gw.exe. ") + GwTool.DownloadHint);
         drive.GwToolPath ??= tool.Path;
+        tool.OnCommand = c => Log?.Invoke(c);
         var session = new GwSession(tool, drive.Port, Settings.GwDrive);
         if (Settings.StepRateMs != null)
         {

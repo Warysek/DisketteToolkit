@@ -76,7 +76,7 @@ public static class Repair
     }
 }
 
-public static class Backups
+public static partial class Backups
 {
     /// <summary>Uloží zálohu diskety (zaloha-A-20260929-120000.st) do složky (null = aktuální složka).</summary>
     public static string Save(DiskImage img, string driveTag, string? folder = null)
@@ -90,11 +90,14 @@ public static class Backups
     /// <summary>Navržený název zálohy: zaloha-A-20260929-120000.st (Amiga .adf).</summary>
     public static string SuggestPath(DiskImage? img, string driveTag, string? folder = null)
     {
-        string ext = img != null && FileSystemDetector.Detect(img.Data).Kind == FsKind.Amiga ? ".adf"
-                   : img == null || img.Geometry.BytesPerSector == 512 ? ".st" : ".img";
-        string name = Tr.T("zaloha") + $"-{driveTag}-{DateTime.Now:yyyyMMdd-HHmmss}{ext}";
+        string name = Tr.T("zaloha") + $"-{driveTag}-{DateTime.Now:yyyyMMdd-HHmmss}{Extension(img)}";
         return Path.GetFullPath(Path.Combine(folder ?? Directory.GetCurrentDirectory(), name));
     }
+
+    /// <summary>Přípona zálohy podle obsahu: Amiga .adf, sektory po 512 B .st, jinak .img.</summary>
+    public static string Extension(DiskImage? img) =>
+        img != null && FileSystemDetector.Detect(img.Data).Kind == FsKind.Amiga ? ".adf"
+        : img == null || img.Geometry.BytesPerSector == 512 ? ".st" : ".img";
 
     public static string DriveTag(DetectedDrive d) => d.Letter ?? "GW";
 

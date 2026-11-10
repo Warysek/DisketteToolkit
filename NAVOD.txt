@@ -86,6 +86,22 @@ Co vyzkoušet v 0.6 (Sony USB-FDU):
   (velikost písma, oříznuté texty) — okno jsem ladil bez skutečných Windows.
 
 
+NOVÉ VE VERZI 0.10 (rozpracováno)
+---------------------------------
+Záloha se záznamem
+ • Rychlá záloha: tlačítko „Rychlá záloha“ pod „Záloha do obrazu“. Žádné okno na uložení — disketa
+   se uloží rovnou do složky záloh (Nastavení) jako zaloha-A-20261110-143000.st; formát (.st, .adf,
+   .img) si program vybere podle diskety.
+ • Ke každé záloze (i hromadné a rychlé) vznikne vedle obrazu textový záznam, např.
+   disketa.st.log.txt: datum, mechanika, čím se četlo, formát, které sektory se nepřečetly, a kontrolní
+   součty MD5, SHA-1 a SHA-256 spočítané hned po uložení. Součty jsou i ve výpisu a v okně
+   Otevřít obraz… (jdou označit a zkopírovat).
+ • Neúplná záloha se nikdy neuloží pod normálním názvem: když se některé sektory nepřečtou, soubor
+   dostane do názvu „(NEUPLNA)“, např. disketa (NEUPLNA).st. Přerušená záloha se neuloží vůbec;
+   přerušené čtení toku (.scp) přes Greaseweazle se přejmenuje stejně.
+ • Greaseweazle: do výpisu se šedě píše každý příkaz gw, který program spouští.
+
+
 NOVÉ VE VERZI 0.9.1 — OPRAVY
 ----------------------------
 Ochrana dat

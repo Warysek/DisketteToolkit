@@ -18,6 +18,9 @@ public sealed class GwTool
     public string Path { get; }
     private GwTool(string path) { Path = path; }
 
+    /// <summary>Dostane každý spouštěný příkaz („gw read --drive A …“) — okno ho vypíše, ať je vidět, co běží.</summary>
+    public Action<string>? OnCommand { get; set; }
+
     public static string DownloadHint => Tr.T("Diskette Toolkit ho umí stáhnout sám: v okně tlačítko „Stáhnout Greaseweazle Host Tools“, v příkazové řádce dtk install gw. Ručně: github.com/keirf/greaseweazle/releases, rozbalit do složky „greaseweazle“ vedle programu.");
 
     /// <summary>Kde gw hledáme: vedle programu, ve složce greaseweazle*, v proměnné AFLOPPY_GW a v PATH.</summary>
@@ -64,7 +67,9 @@ public sealed class GwTool
     /// <summary>Spustí gw s parametry, řádky výstupu posílá průběžně; při zrušení gw ukončí.</summary>
     public int Run(IEnumerable<string> args, Action<string> onLine, CancellationToken ct = default, string? workDir = null)
     {
-        var psi = new ProcessStartInfo(Path, string.Join(" ", args.Select(Quote)))
+        string cmdLine = string.Join(" ", args.Select(Quote));
+        OnCommand?.Invoke("gw " + cmdLine);
+        var psi = new ProcessStartInfo(Path, cmdLine)
         {
             UseShellExecute = false,
             RedirectStandardOutput = true,

@@ -52,6 +52,11 @@ Boot disks ("Boot disk..." button, or dtk boot ...):
 
 Batch backup ("Batch backup..." button): back up a box of disks one after another into
 numbered images (disk-001.st, disk-002.st, ...); a disk that wasn't swapped is detected.
+Quick backup ("Quick backup" button): no save dialog, the disk goes straight into the
+backup folder (Settings) with a name from the drive and the time.
+Every backup gets a record next to the image (disk.st.log.txt): date, drive, how it was
+read, format, sectors that could not be read, and MD5 / SHA-1 / SHA-256 checksums. A backup
+with unreadable sectors is saved as "disk (INCOMPLETE).st", never under the normal name.
 Drag an image file from Explorer onto the window to open it.
 
 Drive diagnostics ("Drive diagnostics..." button; internal drive with fdrawcmd.sys or

@@ -51,7 +51,7 @@ internal sealed class MainForm : Form, IJobHost
     private readonly Panel _right = new();
     private readonly FlowLayoutPanel _actions = new();
     private readonly Label _secDisk = new(), _secImages = new(), _secHelp = new();
-    private readonly ActionButton _aRead = new(), _aWrite = new(), _aFormat = new(), _aTest = new(), _aErase = new(), _aSetup = new(), _aBoot = new(), _aBatch = new(), _aDiag = new(), _aRescue = new();
+    private readonly ActionButton _aRead = new(), _aWrite = new(), _aFormat = new(), _aTest = new(), _aErase = new(), _aSetup = new(), _aBoot = new(), _aBatch = new(), _aDiag = new(), _aRescue = new(), _aQuick = new();
     private readonly ActionButton _iOpen = new(), _iCheck = new(), _iConvert = new(), _iNew = new();
     private readonly ActionButton _hFormats = new(), _hAbout = new(), _hDonate = new();
     private readonly ToolTip _tips = new();
@@ -258,6 +258,7 @@ internal sealed class MainForm : Form, IJobHost
         Section(_secDisk);
         Add(_aSetup, "✚", (_, _) => DoSetup(), minor);
         Add(_aRead, "⭳", (_, _) => DoRead(), main);
+        Add(_aQuick, "⤓", (_, _) => DoQuickBackup(), minor);
         Add(_aBatch, "⇊", (_, _) => DoRead(batch: true), minor);
         Add(_aRescue, "⛑", (_, _) => DoRescue(), minor);
         Add(_aWrite, "⭱", (_, _) => DoWrite(null), main);
@@ -413,6 +414,7 @@ internal sealed class MainForm : Form, IJobHost
         _secHelp.Text = Tr.T("PŘEHLED A NÁPOVĚDA").ToUpperInvariant();
 
         _aRead.Text = Tr.T("Záloha do obrazu");
+        _aQuick.Text = Tr.T("Rychlá záloha");
         _aBatch.Text = Tr.T("Hromadná záloha…");
         _aRescue.Text = Tr.T("Záchrana vadné diskety…");
         _aWrite.Text = Tr.T("Zapsat obraz na disketu");
@@ -643,6 +645,8 @@ internal sealed class MainForm : Form, IJobHost
             _tips.SetToolTip(b, string.Join("\n", new[] { d == null ? "" : v?.Reason ?? "", key }.Where(x => x.Length > 0)));
         }
         Set(_aRead, Op(OperationAdvisor.Read), d?.Kind == DriveKind.Greaseweazle ? Tr.T("formát pozná sám; i tok .SCP / .HFE") : Tr.T("disketa → .ST / .MSA / .IMG"));
+        Set(_aQuick, Op(OperationAdvisor.Read), Tr.T("jedním klikem do složky záloh"));
+        if (d != null && !_aQuick.Blocked) _tips.SetToolTip(_aQuick, Tr.F("Bez ptaní uloží disketu do složky záloh: {0}", _settings.BackupFolder));
         Set(_aBatch, Op(OperationAdvisor.Read), Tr.T("víc disket, soubory se očíslují"));
         Set(_aRescue, Op(OperationAdvisor.Read), Tr.T("znovu čte vadná místa"));
         Set(_aWrite, Op(OperationAdvisor.Write), Tr.T("obraz → disketa (jako RawWrite), s kontrolou"));
@@ -710,6 +714,14 @@ internal sealed class MainForm : Form, IJobHost
         Remember(dlg.FileName);
         if (batch) RunJob(j => j.BatchRead(d, dlg.FileName));
         else RunJob(j => j.ReadDisk(d, dlg.FileName, SideMode.Auto));
+    }
+
+    /// <summary>Rychlá záloha: žádné okno na uložení — rovnou do složky záloh s názvem podle mechaniky a času.</summary>
+    private void DoQuickBackup()
+    {
+        if (!CheckReady(_aQuick)) return;
+        var d = Selected!;
+        RunJob(j => j.QuickBackup(d));
     }
 
     private void DoRescue()

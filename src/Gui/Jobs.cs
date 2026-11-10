@@ -59,18 +59,49 @@ internal sealed class Jobs
 
     // ================================================================ čtení
 
-    public void ReadDisk(DetectedDrive d, string output, SideMode sides)
+    /// <summary>Záloha diskety do obrazu; vrátí, kam se opravdu uložila (neúplná záloha dostane jiný název).</summary>
+    /// <param name="autoExtension">Příponu vybrat podle přečtené diskety (rychlá záloha: .st / .adf / .img).</param>
+    public string ReadDisk(DetectedDrive d, string output, SideMode sides, bool autoExtension = false)
     {
-        if (d.Kind == DriveKind.Greaseweazle) { GwRead(d, output); return; }
+        if (d.Kind == DriveKind.Greaseweazle) return GwRead(d, output, autoExtension);
         Title(Tr.F("Záloha diskety z {0} do {1}", d.Id, Path.GetFileName(output)));
         using var dev = _h.Factory.OpenForRead(d, write: false);
         var result = new OperationResult();
         var img = DiskOperations.ReadDisk(dev, sides, result, P, Ct);
-        ImageFile.Save(img, output);
+        if (autoExtension) output = Path.ChangeExtension(output, Backups.Extension(img));
         Report(result);
         RecordRead(d, img, result.BadSectors.Count, result.BadSectors.Count(b => b.Side == 0), result.BadSectors.Count(b => b.Side == 1),
                    !result.BadSectors.Any(b => b.Track == 0 && b.Side == 0 && b.Sector == 1));
-        Ok(Tr.F("Uloženo: {0} ({1})", output, img.Geometry));
+        var rec = new BackupRecord
+        {
+            Drive = DriveText(d),
+            Method = (dev is FdrawDevice f ? Tr.F("fdrawcmd.sys, řadič {0}", f.Controller) : Tr.T("ovladač Windows"))
+                     + Tr.F(", až {0} pokusy na stopu i na sektor", DiskOperations.Retries),
+            Format = img.Geometry.ToString(),
+        };
+        rec.Missing.AddRange(result.BadSectors.Select(b => b.ToString()));
+        return SaveBackup(output, rec, p => ImageFile.Save(img, p), img.Geometry.ToString());
+    }
+
+    /// <summary>Rychlá záloha: bez ptaní do složky záloh, název z mechaniky a času, přípona podle diskety.</summary>
+    public string QuickBackup(DetectedDrive d) =>
+        ReadDisk(d, Backups.SuggestPath(null, Backups.DriveTag(d), _h.Settings.BackupFolder), SideMode.Auto, autoExtension: true);
+
+    private static string DriveText(DetectedDrive d) => $"{d.Id} — {d.Name} ({d.KindText})";
+
+    /// <summary>Uloží zálohu se záznamem a součty (<see cref="Backups.Finish"/>) a vypíše, jak dopadla.</summary>
+    private string SaveBackup(string output, BackupRecord rec, Action<string> save, string what)
+    {
+        var s = Backups.Finish(output, rec, save);
+        if (rec.Complete) Ok(Tr.F("Uloženo: {0} ({1})", s.Path, what));
+        else Warn(Tr.F("Záloha je NEÚPLNÁ: {0} sektorů se nepřečetlo a na jejich místě v obrazu nejsou původní data. Proto je uložená pod názvem s „{1}“: {2}",
+                       rec.Missing.Count, Backups.IncompleteTag, s.Path));
+        Dim("MD5 " + s.Sums.Md5);
+        Dim("SHA-1 " + s.Sums.Sha1);
+        Dim("SHA-256 " + s.Sums.Sha256);
+        if (s.LogPath != null) Dim(Tr.F("Záznam o záloze: {0}", Path.GetFileName(s.LogPath)));
+        else Warn(Tr.F("Záznam o záloze ({0}) se nepodařilo uložit.", Path.GetFileName(BackupRecord.LogPath(s.Path))));
+        return s.Path;
     }
 
     /// <summary>
@@ -87,12 +118,13 @@ internal sealed class Jobs
             Ct.ThrowIfCancellationRequested();
             try
             {
-                ReadDisk(d, path, SideMode.Auto);
-                string? hash = DeviceFactory.IsFlux(path) ? null : Sha256(path);
+                string file = ReadDisk(d, path, SideMode.Auto);
+                string? hash = DeviceFactory.IsFlux(file) ? null : Sha256(file);
                 if (hash != null && hash == lastHash)
                 {
-                    File.Delete(path);
-                    Warn(Tr.F("Disketa je stejná jako předchozí — nejspíš nebyla vyměněná. Soubor {0} jsem proto smazal.", Path.GetFileName(path)));
+                    File.Delete(file);
+                    File.Delete(BackupRecord.LogPath(file));
+                    Warn(Tr.F("Disketa je stejná jako předchozí — nejspíš nebyla vyměněná. Soubor {0} jsem proto smazal.", Path.GetFileName(file)));
                 }
                 else
                 {
@@ -306,26 +338,51 @@ internal sealed class Jobs
         return BitConverter.ToString(sha.ComputeHash(f));
     }
 
-    private void GwRead(DetectedDrive d, string output)
+    private string GwRead(DetectedDrive d, string output, bool autoExtension)
     {
         var gw = _h.Factory.OpenGw(d, Ct);
         Title(Tr.F("Čtení diskety přes {0} do {1}", d.Name, Path.GetFileName(output)));
+        string method = Tr.F("Greaseweazle (gw.exe: {0})", d.GwToolPath ?? "gw");
         if (DeviceFactory.IsFlux(output))
         {
-            int tracks = _h.Settings.Drive.FluxTracks ?? 82;
-            Info(Tr.F("Záloha jako magnetický tok, {0} stop, {1} otáčky na stopu — uchová i kopírovací ochrany.", tracks, _h.Settings.Drive.Revs));
-            gw.ReadFlux(Path.GetFullPath(output), _h.Settings.Drive.Revs, tracks, P, Ct);
-            Ok(Tr.F("Uloženo: {0} ({1} KB)", output, new FileInfo(output).Length / 1024));
+            int tracks = _h.Settings.Drive.FluxTracks ?? 82, revs = _h.Settings.Drive.Revs;
+            Info(Tr.F("Záloha jako magnetický tok, {0} stop, {1} otáčky na stopu — uchová i kopírovací ochrany.", tracks, revs));
+            string full = Path.GetFullPath(output);
+            DateTime? before = File.Exists(full) ? File.GetLastWriteTimeUtc(full) : null;
+            try { gw.ReadFlux(full, revs, tracks, P, Ct); }
+            catch
+            {
+                // přerušené čtení: rozpracovaný soubor nesmí zůstat pod běžným názvem
+                if (File.Exists(full) && File.GetLastWriteTimeUtc(full) != before)
+                {
+                    string inc = Backups.IncompletePath(full);
+                    File.Move(full, inc);
+                    Warn(Tr.F("Čtení toku se nedokončilo — rozpracovaný soubor jsem přejmenoval na {0}.", Path.GetFileName(inc)));
+                }
+                throw;
+            }
+            var frec = new BackupRecord { Drive = DriveText(d), Method = method, Format = Tr.F("magnetický tok, {0} stop, {1} otáčky na stopu", tracks, revs) };
+            string saved = SaveBackup(full, frec, _ => { }, Tr.F("{0} KB", new FileInfo(full).Length / 1024));
             LogGwRpm(gw);
-            return;
+            return saved;
         }
         var fmt = GwProbe(gw, null);
         var r = gw.Read(fmt, P, Ct);
         ShowSurface(r.Map, r.Warnings);
         LogGwRpm(gw);
         RecordRead(d, r.Image, r.Map);
-        ImageFile.Save(r.Image, output);
-        Ok(Tr.F("Uloženo: {0} ({1})", output, fmt));
+        if (autoExtension) output = Path.ChangeExtension(output, Backups.Extension(r.Image));
+        var rec = new BackupRecord { Drive = DriveText(d), Method = method + Tr.F(", až {0} pokusy na stopu", gw.Retries), Format = fmt.ToString() };
+        for (long l = 0; l < r.Map.Geometry.TotalSectors; l++)
+        {
+            if (r.Map[l] is SectorStatus.Ok or SectorStatus.Weak) continue;
+            var (t, s, n) = r.Map.Chs(l);
+            rec.Missing.Add(Tr.F("stopa {0}, strana {1}, sektor {2}: {3}", t, s, n,
+                                 r.Map.Reasons.TryGetValue(l, out var why) ? why : Tr.T("Greaseweazle nepotvrdil, že se přečetl")));
+        }
+        int weak = r.Map.Count(SectorStatus.Weak);
+        if (weak > 0) rec.Notes.Add(Tr.F("{0} sektorů se přečetlo až na opakovaný pokus — disketa tam slábne.", weak));
+        return SaveBackup(output, rec, p => ImageFile.Save(r.Image, p), fmt.ToString());
     }
 
     private GwFormat GwProbe(GwSession gw, FormatProfile? profile)
