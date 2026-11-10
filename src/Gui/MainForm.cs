@@ -433,7 +433,7 @@ internal sealed class MainForm : Form, IJobHost
         _iCheck.Text = Tr.T("Kontrola a oprava obrazu");
         _iCheck.Subtitle = Tr.T("FAT12 — oprava do kopie");
         _iFolder.Text = Tr.T("Kontrola složky obrazů…");
-        _iFolder.Subtitle = Tr.T("všechny obrazy najednou, i v .zip");
+        _iFolder.Subtitle = Tr.T("všechny obrazy najednou");
         _iConvert.Text = Tr.T("Převést formát…");
         _iConvert.Subtitle = "ST ⇄ MSA ⇄ IMG ⇄ DIM";
         _iNew.Text = Tr.T("Nový prázdný obraz…");

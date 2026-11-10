@@ -1451,7 +1451,7 @@ Ve složce nejsou žádné obrazy disket. = There are no disk images in the fold
 Zkontrolováno obrazů: {0} — v pořádku {1}, s problémy {2}, nejde načíst {3}, nezkontrolováno {4}. = Images checked: {0} — OK {1}, with problems {2}, unreadable {3}, not checked {4}.
 Obraz s problémy oprav přes Kontrola a oprava obrazu — opravená kopie vznikne vedle něj, původní zůstane. = Repair an image with problems via Check and repair image — the repaired copy is created next to it, the original stays.
 Kontrola složky obrazů… = Check a folder of images…
-všechny obrazy najednou, i v .zip = all images at once, also inside .zip
+všechny obrazy najednou = all images at once
 Složka s obrazy disket (prohledají se i podsložky a archivy .zip) = Folder with disk images (subfolders and .zip archives are searched too)
 # ---------------------------------------------------------------- 0.10: report for forum
 Zpráva pro fórum = Report for forum

@@ -1,10 +1,11 @@
-Diskette Toolkit 0.9.1
+Diskette Toolkit 0.10
 ======================
 
 Diskety a obrazy disket pro Atari ST a další 3,5" systémy ve Windows 10 / 11.
 Nic se neinstaluje, stačí .NET Framework 4.8, který je součástí Windows 10 a 11.
 
 Stránka projektu, stažení a hlášení chyb: https://github.com/Warysek/DisketteToolkit
+Dotazy, nápady a výsledky testů: https://github.com/Warysek/DisketteToolkit/discussions
 Podpořit vývoj (dobrovolný příspěvek): https://ko-fi.com/wary
 
 V ZIPu je:
@@ -88,8 +89,8 @@ Co vyzkoušet v 0.6 (Sony USB-FDU):
   (velikost písma, oříznuté texty) — okno jsem ladil bez skutečných Windows.
 
 
-NOVÉ VE VERZI 0.10 (rozpracováno)
----------------------------------
+NOVÉ VE VERZI 0.10
+------------------
 Záloha se záznamem
  • Rychlá záloha: tlačítko „Rychlá záloha“ pod „Záloha do obrazu“. Žádné okno na uložení — disketa
    se uloží rovnou do složky záloh (Nastavení) jako zaloha-A-20261110-143000.st; formát (.st, .adf,

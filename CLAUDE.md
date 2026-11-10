@@ -312,7 +312,9 @@ One PR per step, in this order; no hardware risk except where noted:
    the image before any change; .adf later), 32 undelete + "save everything readable to a folder" (FAT),
    13 check a whole folder of images.
 4. **56 Report for forum** button.
-Outside the code: GitHub Discussions enabled 2026-11-08 (point README / NAVOD to it once 0.10 ships).
+Status 2026-11-10: steps 1–4 and 38 DMS done and squash-merged into main (PRs #28, #29, #30, #32, #33, release
+PR #31), all in 0.10. DMS tests use two public-domain games from the IF Archive (CI downloads them).
+Outside the code: GitHub Discussions enabled 2026-11-08; README / NAVOD link to it since 0.10.
 
 Order of work (proposed to Wary 2026-10-13; groups = one release each, by importance x ease):
 1. **Drive diagnostics** — 20 RPM, 22 head service + sensors, 17 head cleaning, 23 drive profiles.
@@ -356,7 +358,7 @@ Order of work (proposed to Wary 2026-10-13; groups = one release each, by import
    14 Windows changes investigation.
 8. **Copying and writing** — 35 more copies, 36 used sectors only, 25 smart write, 24 extra erase.
 9. **More platforms and formats** (when users ask / hardware available) — 9 D81 listing, 18 EDSK, 37 formats,
-   38 DMS, 7 D64, 8 5.25" drives.
+   7 D64, 8 5.25" drives (38 DMS done in 0.10).
 10. **SuperCard Pro** — 10, in parallel whenever the tester (Winnipeg, evening messages) is ready.
 11. **Experimental / low priority** — 30 flux histogram, 28 statistical rebuild, 29 move weak sector,
    19 skew, 39 2M.
