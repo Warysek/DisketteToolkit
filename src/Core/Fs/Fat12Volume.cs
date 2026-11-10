@@ -5,6 +5,17 @@ using AtariFloppy.Core.I18n;
 
 namespace AtariFloppy.Core.Fs;
 
+/// <summary>
+/// Smazaný soubor nebo složka. Clusters = odhad, kde data ležela (jako UnErase: od prvního clusteru volné clustery
+/// za sebou); null = první cluster už zabral jiný soubor, data jsou pryč. Contiguous = clustery šly přímo za sebou
+/// (soubor je nejspíš celý); jinak mohl být roztříštěný a obnovený obsah nemusí sedět.
+/// </summary>
+public sealed record DeletedEntry(string Path, bool IsDirectory, long Size, DateTime? Modified, int FirstCluster, List<int>? Clusters)
+{
+    public bool Recoverable => Clusters != null;
+    public bool Contiguous => Clusters == null || Clusters.Count == 0 || Clusters[Clusters.Count - 1] - Clusters[0] + 1 == Clusters.Count;
+}
+
 public sealed record FatEntry(
     string Path,
     string Name,
@@ -31,6 +42,8 @@ public sealed class Fat12Volume
     private readonly int _clusterCount;
 
     public BootSector BootSector => _bs;
+    /// <summary>První sektor datové oblasti; sektory před ním jsou boot, FAT a kořenový adresář.</summary>
+    public long DataStartLba => _dataOffset / 512;
     public int ClusterSize => _clusterSize;
     public int ClusterCount => _clusterCount;
 
@@ -153,6 +166,99 @@ public sealed class Fat12Volume
 
     public byte[] ReadFile(FatEntry entry) => ReadChain(entry.FirstCluster, entry.Size);
 
+    /// <summary>Clustery souboru podle FAT (nejvýš tolik, kolik velikost potřebuje; poškozený řetězec skončí dřív).</summary>
+    public List<int> Chain(int cluster, long size)
+    {
+        var list = new List<int>();
+        var seen = new HashSet<int>();
+        long need = (size + _clusterSize - 1) / _clusterSize;
+        while (cluster >= 2 && cluster < _clusterCount + 2 && list.Count < need && seen.Add(cluster))
+        {
+            list.Add(cluster);
+            cluster = NextCluster(cluster);
+        }
+        return list;
+    }
+
+    /// <summary>Sektory (LBA) clusteru.</summary>
+    public IEnumerable<long> ClusterSectors(int cluster)
+    {
+        long first = (_dataOffset + (long)(cluster - 2) * _clusterSize) / 512;
+        for (int k = 0; k < _clusterSize / 512; k++) yield return first + k;
+    }
+
+    /// <summary>Data z daných clusterů, oříznutá na velikost.</summary>
+    public byte[] ReadClusters(IList<int> clusters, long size)
+    {
+        var buf = new byte[Math.Max(0, Math.Min(size, (long)clusters.Count * _clusterSize))];
+        for (int i = 0; i < clusters.Count; i++)
+        {
+            int off = _dataOffset + (clusters[i] - 2) * _clusterSize;
+            int n = (int)Math.Min(_clusterSize, buf.Length - (long)i * _clusterSize);
+            if (n <= 0 || off + n > _disk.Length) break;
+            Buffer.BlockCopy(_disk, off, buf, i * _clusterSize, n);
+        }
+        return buf;
+    }
+
+    /// <summary>
+    /// Smazané soubory a složky (první bajt jména 0xE5) v celém stromu, i obsah smazaných složek, dokud jejich
+    /// první cluster nikdo nepřepsal. Smazanému jménu chybí první znak — nahradí ho „_“.
+    /// </summary>
+    public List<DeletedEntry> ListDeleted()
+    {
+        var result = new List<DeletedEntry>();
+        ScanDeleted(ReadRootDirectory(), "", false, result, new HashSet<int>(), 0);
+        return result;
+    }
+
+    private void ScanDeleted(byte[] dir, string parent, bool insideDeleted, List<DeletedEntry> result, HashSet<int> visited, int depth)
+    {
+        if (depth > 16) return;
+        for (int i = 0; i + 32 <= dir.Length; i += 32)
+        {
+            byte first = dir[i], attr = dir[i + 11];
+            if (first == 0x00) break;
+            if (attr == 0x0F || (attr & 0x08) != 0) continue;
+            bool deleted = first == 0xE5 || insideDeleted;
+            string name = DecodeName(dir, i);   // smazané jméno: 0xE5 se ukáže jako „_“
+            if (first == 0xE5 && name.Trim('_', ' ', '.').Length == 0) continue;   // prázdná smazaná položka
+            if (name == "." || name == "..") continue;
+            int cluster = dir[i + 26] | (dir[i + 27] << 8);
+            bool isDir = (attr & 0x10) != 0;
+            long size = isDir ? 0 : (uint)BitConverter.ToInt32(dir, i + 28);
+            string path = parent.Length == 0 ? name : parent + "\\" + name;
+
+            if (!deleted)
+            {
+                if (isDir && cluster >= 2 && visited.Add(cluster))
+                    ScanDeleted(ReadChain(cluster, -1), path, false, result, visited, depth + 1);
+                continue;
+            }
+            if (isDir)
+            {
+                bool intact = cluster >= 2 && cluster < _clusterCount + 2 && !IsClusterUsed(cluster) && visited.Add(cluster);
+                var block = intact ? ReadClusters(new[] { cluster }, _clusterSize) : Array.Empty<byte>();
+                bool looksLikeDir = block.Length >= 64 && block[0] == '.' && block[1] == ' ' && block[32] == '.' && block[33] == '.';
+                result.Add(new DeletedEntry(path, true, 0, DecodeDateTime(dir, i + 22), cluster, looksLikeDir ? new List<int> { cluster } : null));
+                if (looksLikeDir) ScanDeleted(block, path, true, result, visited, depth + 1);
+                continue;
+            }
+            result.Add(new DeletedEntry(path, false, size, DecodeDateTime(dir, i + 22), cluster, RecoverChain(cluster, size)));
+        }
+    }
+
+    private List<int>? RecoverChain(int first, long size)
+    {
+        long need = (size + _clusterSize - 1) / _clusterSize;
+        if (need == 0) return new List<int>();
+        if (first < 2 || first >= _clusterCount + 2 || IsClusterUsed(first)) return null;
+        var list = new List<int>();
+        for (int c = first; c < _clusterCount + 2 && list.Count < need; c++)
+            if (!IsClusterUsed(c)) list.Add(c);
+        return list.Count == need ? list : null;
+    }
+
     /// <summary>Přečte řetězec clusterů. maxBytes &lt; 0 = celý řetězec.</summary>
     private byte[] ReadChain(int cluster, long maxBytes)
     {
@@ -170,7 +276,7 @@ public sealed class Fat12Volume
         return output.ToArray();
     }
 
-    private static string DecodeName(byte[] d, int i)
+    internal static string DecodeName(byte[] d, int i)
     {
         string baseName = Latin(d, i, 8).TrimEnd();
         string ext = Latin(d, i + 8, 3).TrimEnd();

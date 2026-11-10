@@ -991,6 +991,38 @@ internal sealed class Jobs
         Dim(Tr.T("Původní soubor zůstal beze změny."));
     }
 
+    /// <summary>Kontrola všech obrazů ve složce (i v podsložkách a v .zip) — seznam těch, které nejsou v pořádku.</summary>
+    public void CheckFolder(string folder)
+    {
+        Title(Tr.F("Kontrola složky: {0}", folder));
+        var files = FolderCheck.FindImages(folder);
+        if (files.Count == 0) { Warn(Tr.T("Ve složce nejsou žádné obrazy disket.")); return; }
+        int ok = 0, bad = 0, unreadable = 0, skipped = 0, done = 0;
+        foreach (var f in files)
+        {
+            Ct.ThrowIfCancellationRequested();
+            P(done++, files.Count, Path.GetFileName(f));
+            foreach (var c in FolderCheck.Check(f, folder))
+            {
+                switch (c.Status)
+                {
+                    case ImageCheckStatus.Ok: ok++; Ok(c.Name + " — " + c.Summary); break;
+                    case ImageCheckStatus.Problems:
+                        bad++;
+                        Warn(c.Name + " — " + c.Summary);
+                        foreach (var d in c.Details.Take(5)) Dim("    " + d);
+                        if (c.Details.Count > 5) Dim("    " + Tr.F("… a dalších {0}", c.Details.Count - 5));
+                        break;
+                    case ImageCheckStatus.Unreadable: unreadable++; Err(c.Name + " — " + c.Summary); break;
+                    default: skipped++; Dim(c.Name + " — " + c.Summary); break;
+                }
+            }
+        }
+        P(files.Count, files.Count, "");
+        Info(Tr.F("Zkontrolováno obrazů: {0} — v pořádku {1}, s problémy {2}, nejde načíst {3}, nezkontrolováno {4}.", ok + bad + unreadable + skipped, ok, bad, unreadable, skipped));
+        if (bad > 0) Dim(Tr.T("Obraz s problémy oprav přes Kontrola a oprava obrazu — opravená kopie vznikne vedle něj, původní zůstane."));
+    }
+
     /// <summary>Obrazy na USB flashku pro Gotek (FlashFloppy) — viz <see cref="Gotek.Copy"/>.</summary>
     public void GotekCopy(string root, IList<string> files, GotekMachine machine, bool indexed)
     {

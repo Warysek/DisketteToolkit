@@ -52,7 +52,7 @@ internal sealed class MainForm : Form, IJobHost
     private readonly FlowLayoutPanel _actions = new();
     private readonly Label _secDisk = new(), _secImages = new(), _secHelp = new();
     private readonly ActionButton _aRead = new(), _aWrite = new(), _aFormat = new(), _aTest = new(), _aErase = new(), _aSetup = new(), _aBoot = new(), _aBatch = new(), _aDiag = new(), _aRescue = new(), _aQuick = new(), _iGotek = new();
-    private readonly ActionButton _iOpen = new(), _iCheck = new(), _iConvert = new(), _iNew = new();
+    private readonly ActionButton _iOpen = new(), _iCheck = new(), _iConvert = new(), _iNew = new(), _iFolder = new();
     private readonly ActionButton _hFormats = new(), _hAbout = new(), _hDonate = new();
     private readonly ToolTip _tips = new();
 
@@ -271,6 +271,7 @@ internal sealed class MainForm : Form, IJobHost
         Section(_secImages);
         Add(_iOpen, "🗀", (_, _) => DoOpenImage(null), minor);
         Add(_iCheck, "✔", (_, _) => DoCheckImage(), minor);
+        Add(_iFolder, "≡", (_, _) => DoCheckFolder(), minor);
         Add(_iConvert, "⇄", (_, _) => DoConvert(), minor);
         Add(_iNew, "✦", (_, _) => DoNewImage(), minor);
         Add(_iGotek, "▣", (_, _) => DoGotek(), minor);
@@ -430,6 +431,8 @@ internal sealed class MainForm : Form, IJobHost
         _iOpen.Subtitle = Tr.T("obsah, formát, mapa sektorů");
         _iCheck.Text = Tr.T("Kontrola a oprava obrazu");
         _iCheck.Subtitle = Tr.T("FAT12 — oprava do kopie");
+        _iFolder.Text = Tr.T("Kontrola složky obrazů…");
+        _iFolder.Subtitle = Tr.T("všechny obrazy najednou, i v .zip");
         _iConvert.Text = Tr.T("Převést formát…");
         _iConvert.Subtitle = "ST ⇄ MSA ⇄ IMG ⇄ DIM";
         _iNew.Text = Tr.T("Nový prázdný obraz…");
@@ -869,7 +872,7 @@ internal sealed class MainForm : Form, IJobHost
     /// přetahování, které Windows z Průzkumníku do okna správce zablokují — tu registraci zrušíme, aby se použila
     /// povolená WM_DROPFILES.
     /// </summary>
-    private void EnableFileDrop(Control c)
+    internal static void EnableFileDrop(Control c)
     {
         try
         {
@@ -891,14 +894,24 @@ internal sealed class MainForm : Form, IJobHost
         public bool PreFilterMessage(ref Message m)
         {
             if (m.Msg != WM_DROPFILES) return false;
-            string? file = null;
+            var files = new List<string>();
             try
             {
                 var sb = new System.Text.StringBuilder(1024);
-                if (DragQueryFile(m.WParam, 0xFFFFFFFF, null, 0) > 0 && DragQueryFile(m.WParam, 0, sb, (uint)sb.Capacity) > 0) file = sb.ToString();
+                uint count = DragQueryFile(m.WParam, 0xFFFFFFFF, null, 0);
+                for (uint i = 0; i < count; i++)
+                {
+                    sb.Clear();
+                    if (DragQueryFile(m.WParam, i, sb, (uint)sb.Capacity) > 0) files.Add(sb.ToString());
+                }
             }
             finally { DragFinish(m.WParam); }
-            if (file != null) _form.BeginInvoke(new Action(() => _form.OnFileDropped(file)));
+            if (files.Count == 0) return true;
+            // okno obrazu bere soubory do obrazu, jinak se přetažený soubor otevře jako obraz
+            if (Control.FromChildHandle(m.HWnd)?.FindForm() is Dialogs.IFileDropTarget target)
+                ((Form)target).BeginInvoke(new Action(() => target.FilesDropped(files.ToArray())));
+            else
+                _form.BeginInvoke(new Action(() => _form.OnFileDropped(files[0])));
             return true;
         }
     }
@@ -980,6 +993,15 @@ internal sealed class MainForm : Form, IJobHost
         var files = dlg.Files;
         Remember(path);
         RunJob(j => j.RescueFromFlux(files, path));
+    }
+
+    private void DoCheckFolder()
+    {
+        using var f = new FolderBrowserDialog { Description = Tr.T("Složka s obrazy disket (prohledají se i podsložky a archivy .zip)"), SelectedPath = InitialFolder() };
+        if (f.ShowDialog(this) != DialogResult.OK) return;
+        string folder = f.SelectedPath;
+        _settings.LastFolder = folder;
+        RunJob(j => j.CheckFolder(folder));
     }
 
     private void DoCheckImage()
@@ -1513,6 +1535,23 @@ internal sealed class MainForm : Form, IJobHost
                     BeginInvoke(new Action(() => DoOpenImage(f)));
                     break;
                 }
+            case "imageedit":
+                {
+                    // obraz se soubory, složkou a jedním smazaným souborem
+                    string f = Path.Combine(tmp, "hry.st");
+                    var img = FormatProfiles.Find("atari")!.Build!("HRY");
+                    var w = new Fat12Writer(img.Data);
+                    w.AddFile("AUTO\\START.PRG", new byte[12000]);
+                    w.AddFile("README.TXT", new byte[1800]);
+                    w.AddFile("STARA.TXT", new byte[900]);
+                    w.AddFile("HRA.PRG", new byte[64000]);
+                    w.Delete("STARA.TXT");
+                    ImageFile.Save(img, f);
+                    BeginInvoke(new Action(() => DoOpenImage(f)));
+                    break;
+                }
+            case "gotek": BeginInvoke(new Action(() => { using var g = new GotekDialog(tmp); g.ShowDialog(this); })); break;
+            case "zippick": BeginInvoke(new Action(() => { using var z = new ZipPickDialog("hry.zip", new[] { "Disk 1.st", "Disk 2.st", "Bonus/Disk 3.msa" }); z.ShowDialog(this); })); break;
         }
     }
 }

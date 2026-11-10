@@ -55,8 +55,9 @@ Vpravo:   akce. Když akce s touto mechanikou nebo disketou nejde, je šedá a p
    DISKETA        Záloha do obrazu, Zapsat obraz na disketu, Formátovat…,
                   Test povrchu a kontrola (volitelně zápisový test a oprava),
                   Magneticky smazat (jen Greaseweazle)
-   OBRAZY DISKET  Otevřít obraz (formát, systém, soubory, rozbalení, mapa s daty),
-                  Kontrola a oprava obrazu (oprava vždy do kopie), Převést formát,
+   OBRAZY DISKET  Otevřít obraz (formát, systém, soubory — přidat, smazat, rozbalit,
+                  zachránit — mapa s daty), Kontrola a oprava obrazu (oprava vždy do
+                  kopie), Kontrola složky obrazů, Převést formát,
                   Nový prázdný obraz (všechny systémy), Flashka pro Gotek
    PŘEHLED        Formáty všech systémů — co jde přes USB, interní mechaniku
                   s fdrawcmd.sys a Greaseweazle
@@ -120,6 +121,25 @@ Obrazy ze .zip a flashka pro Gotek
    Platí pro Gotek s firmwarem FlashFloppy. V běžném režimu Gotek ukazuje pořadí obrazu na flashce,
    takže čísla v názvech sedí, dokud na flashce nejsou jiné obrazy a v číslech nejsou díry (třeba
    po smazání obrazu); s „nav-mode = indexed“ sedí vždy.
+
+Úpravy obrazů a záchrana souborů
+ • Přidat a smazat soubory v obrazu (FAT12 — Atari, PC, MSX; formáty .st, .msa, .dim, .img):
+   Otevřít obraz… → „Přidat soubory…“, nebo soubory i celé složky přetáhni z Průzkumníku do okna.
+   Když je v seznamu vybraná složka, přidává se do ní. „Smazat“ (nebo klávesa Delete) smaže vybrané
+   soubory, složky i s obsahem. Jména se zkrátí na 8.3 (DLOUHYNA.TXT, DLOUHY~2.TXT); soubor, který
+   v obrazu už je, program nahradí jen když řekneš. Obraz se uloží hned. Před první změnou vznikne
+   vedle kopie původního obrazu, např. hra (před úpravou).st — další úpravy ji nepřepíšou.
+ • Smazané soubory jsou v seznamu šedě, s poznámkou „jde zachránit“ nebo „přepsaný“ (místo už
+   zabral jiný soubor). Smazanému jménu chybí první písmeno — je místo něj „_“.
+ • Zachránit soubory… uloží do nové složky všechno, co z obrazu jde přečíst: běžné soubory a do
+   podsložky _smazane i smazané soubory, které ještě nikdo nepřepsal. Obraz se nemění. Do složky
+   přidá _zachrana.txt: kolik se uložilo, kterým souborům něco chybí a co už obnovit nejde. Když
+   vedle obrazu leží stav Záchrany vadné diskety (.rescue.txt), ví i to, ve kterých souborech jsou
+   nečitelné sektory.
+ • Kontrola složky obrazů… (OBRAZY DISKET): vyber složku a program zkontroluje všechny obrazy v ní,
+   i v podsložkách a v archivech .zip. Ve výpisu je každý obraz: zeleně v pořádku, oranžově
+   s problémy (a s jakými), červeně ty, které nejdou načíst. Nic nemění; opravu udělá Kontrola
+   a oprava obrazu.
 
 
 NOVÉ VE VERZI 0.9.1 — OPRAVY
