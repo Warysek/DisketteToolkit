@@ -30,6 +30,7 @@ internal static class Program
         Tr.SetLanguage(lang);
         settings.Language = Tr.Code;
         AtariFloppy.Core.Boot.WindowsMsDos.CustomPath = settings.DiskcopyPath;
+        AtariFloppy.Core.Formats.ZipImages.CleanTemp();   // obrazy rozbalené ze .zip při minulých spuštěních
 
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);

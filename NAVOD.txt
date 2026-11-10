@@ -57,7 +57,7 @@ Vpravo:   akce. Když akce s touto mechanikou nebo disketou nejde, je šedá a p
                   Magneticky smazat (jen Greaseweazle)
    OBRAZY DISKET  Otevřít obraz (formát, systém, soubory, rozbalení, mapa s daty),
                   Kontrola a oprava obrazu (oprava vždy do kopie), Převést formát,
-                  Nový prázdný obraz (všechny systémy)
+                  Nový prázdný obraz (všechny systémy), Flashka pro Gotek
    PŘEHLED        Formáty všech systémů — co jde přes USB, interní mechaniku
                   s fdrawcmd.sys a Greaseweazle
 
@@ -100,6 +100,26 @@ Záloha se záznamem
    dostane do názvu „(NEUPLNA)“, např. disketa (NEUPLNA).st. Přerušená záloha se neuloží vůbec;
    přerušené čtení toku (.scp) přes Greaseweazle se přejmenuje stejně.
  • Greaseweazle: do výpisu se šedě píše každý příkaz gw, který program spouští.
+
+Obrazy ze .zip a flashka pro Gotek
+ • Obrazy zabalené v .zip (hry z internetu) jde otevřít rovnou: Otevřít obraz…, Kontrola a oprava
+   obrazu, Převést formát… i Zapsat obraz na disketu. Program obraz rozbalí do dočasné složky (po
+   dni se sama smaže); když je v archivu víc disket, zeptá se, kterou chceš. Opravená kopie se uloží
+   do složky s archivem, archiv sám se nemění.
+ • Flashka pro Gotek… (OBRAZY DISKET): vyber obrazy (ze .zip se vezmou všechny diskety), flashku
+   a počítač. Obrazy se zkopírují jako DSKA0000_nazev.st, DSKA0001_… — číslo je pozice na displeji
+   Goteku, nové obrazy jdou za ty, které už na flashce jsou. Program přitom:
+     – převede .MSA a .DIM na .ST (Gotek je nečte); .SCP, .STX a .IPF vynechá a napíše proč,
+     – zapíše FF.CFG: pro PC „interface = ibmpc“, pro MSX „host = msx“, pro Gotek s třímístným
+       displejem (zaškrtávátko) „nav-mode = indexed“; Atari ST a Amiga nastavení nepotřebují.
+       FF.CFG, který už na flashce je, nepřepíše — jen napíše, co do něj patří,
+     – obraz, jehož geometrii by Gotek podle velikosti souboru odhadl špatně (např. jednostranná
+       Atari disketa uložená jako .img), popíše v IMG.CFG,
+     – uloží na flashku seznam-pozic.txt se všemi pozicemi (dá se vytisknout),
+     – upozorní na flashku ve formátu NTFS (Gotek potřebuje FAT32) a na režim HxC (HXCSDFE.CFG).
+   Platí pro Gotek s firmwarem FlashFloppy. V běžném režimu Gotek ukazuje pořadí obrazu na flashce,
+   takže čísla v názvech sedí, dokud na flashce nejsou jiné obrazy a v číslech nejsou díry (třeba
+   po smazání obrazu); s „nav-mode = indexed“ sedí vždy.
 
 
 NOVÉ VE VERZI 0.9.1 — OPRAVY

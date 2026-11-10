@@ -2273,4 +2273,137 @@ internal static class Tests
         var s3 = AtariFloppy.Core.App.Backups.Finish(game, bad, Save);
         Eq(Path.Combine(dir, $"game ({tag} 2).st"), s3.Path, "druhá neúplná záloha nepřepíše první");
     }
+
+    private static void MakeZip(string path, params (string name, byte[] data)[] entries)
+    {
+        if (File.Exists(path)) File.Delete(path);
+        using var z = System.IO.Compression.ZipFile.Open(path, System.IO.Compression.ZipArchiveMode.Create);
+        foreach (var (name, data) in entries)
+        {
+            using var s = z.CreateEntry(name).Open();
+            s.Write(data, 0, data.Length);
+        }
+    }
+
+    private static void T_Zip_ListAndExtract()
+    {
+        string dir = Path.Combine(_tmp, "zip");
+        Directory.CreateDirectory(dir);
+        var st = DiskFormatter.CreateBlank(DiskGeometry.Dd720, FormatStyle.Atari, "ZIP", new Random(3)).Data;
+        string zip = Path.Combine(dir, "game.zip");
+        MakeZip(zip, ("Game/disk1.st", st), ("Game/Disk2.MSA", new byte[] { 1, 2, 3 }), ("readme.txt", new byte[10]),
+                ("__MACOSX/Game/._disk1.st", new byte[5]), ("Game/", new byte[0]), ("../../evil.st", new byte[] { 9 }));
+
+        var names = ZipImages.List(zip);
+        Eq("../../evil.st|Game/disk1.st|Game/Disk2.MSA", string.Join("|", names), "obrazy v archivu (bez textu, složek a smetí z macOS)");
+
+        string file = ZipImages.Extract(zip, "Game/disk1.st");
+        Eq("disk1.st", Path.GetFileName(file), "rozbalený obraz má původní název");
+        Assert(file.StartsWith(ZipImages.TempRoot), "rozbaluje se do dočasné složky");
+        Assert(File.ReadAllBytes(file).SequenceEqual(st), "obsah rozbaleného obrazu");
+        Eq(DiskGeometry.Dd720, ImageFile.Load(file).Image?.Geometry, "rozbalený obraz jde otevřít");
+
+        string evil = ZipImages.Extract(zip, "../../evil.st");
+        Assert(Path.GetDirectoryName(Path.GetDirectoryName(evil)) == ZipImages.TempRoot, "„..\\“ v archivu nesmí vést ven z dočasné složky: " + evil);
+
+        string big = Path.Combine(dir, "big.zip");
+        MakeZip(big, ("huge.img", new byte[ZipImages.MaxEntryBytes + 512]));
+        bool refused = false;
+        try { ZipImages.Extract(big, "huge.img"); } catch (OperationException) { refused = true; }
+        Assert(refused, "příliš velkou položku nerozbalí");
+
+        string notZip = Path.Combine(dir, "fake.zip");
+        File.WriteAllText(notZip, "tohle není zip");
+        refused = false;
+        try { ZipImages.List(notZip); } catch (OperationException) { refused = true; }
+        Assert(refused, "poškozený archiv = srozumitelná chyba, ne pád");
+    }
+
+    private static void T_Gotek_GeometryAndNames()
+    {
+        Eq(DiskGeometry.Dd720, Gotek.FlashFloppyGeometry(737280, true), "720 KB .st");
+        Eq(new DiskGeometry(80, 2, 10), Gotek.FlashFloppyGeometry(819200, true), "800 KB .st");
+        Eq(DiskGeometry.Hd1440, Gotek.FlashFloppyGeometry(1474560, false), "1,44 MB .img");
+        Eq(new DiskGeometry(80, 1, 9), Gotek.FlashFloppyGeometry(368640, true), "360 KB .st = Atari jednostranná");
+        Eq(new DiskGeometry(40, 2, 9), Gotek.FlashFloppyGeometry(368640, false), "360 KB .img = PC 5,25\"");
+        Eq(null, Gotek.FlashFloppyGeometry(12345, false), "neznámá velikost");
+
+        Eq("Priserne zlutoucky kun_v2", Gotek.SafeName("Příšerně žluťoučký kůň.v2"), "bez diakritiky a teček");
+        Eq("a_b_c", Gotek.SafeName("a/b:c"), "znaky, které FAT nesnese");
+        Eq("disk", Gotek.SafeName("..."), "prázdný název");
+        Eq(40, Gotek.SafeName(new string('x', 60)).Length, "nejvýš 40 znaků");
+        Eq("nav-mode = indexed|interface = ibmpc", string.Join("|", Gotek.FfCfgLines(GotekMachine.Pc, true)), "FF.CFG pro PC");
+        Eq(0, Gotek.FfCfgLines(GotekMachine.AtariSt, false).Count, "Atari ST nic nastavovat nemusí");
+    }
+
+    private static void T_Gotek_CopyToStick()
+    {
+        string src = Path.Combine(_tmp, "gotek-src"), root = Path.Combine(_tmp, "gotek-usb");
+        Directory.CreateDirectory(src);
+        Directory.CreateDirectory(root);
+        File.WriteAllBytes(Path.Combine(root, "DSKA0000_old.st"), new byte[737280]);
+        File.WriteAllBytes(Path.Combine(root, "DSKA0003_x.img"), new byte[737280]);
+        Eq(4, Gotek.NextSlot(root), "nové obrazy jdou za ty, co už na flashce jsou");
+
+        var atari = DiskFormatter.CreateBlank(DiskGeometry.Dd720, FormatStyle.Atari, "GOTEK", new Random(5));
+        string msa = Path.Combine(src, "hra.msa");
+        File.WriteAllBytes(msa, MsaFormat.Save(atari));
+        string st10 = Path.Combine(src, "deset.st");
+        File.WriteAllBytes(st10, DiskFormatter.CreateBlank(new DiskGeometry(80, 2, 10), FormatStyle.Atari, null, new Random(6)).Data);
+        var ss = DiskFormatter.CreateBlank(new DiskGeometry(80, 1, 9), FormatStyle.Atari, null, new Random(7));
+        string ssImg = Path.Combine(src, "jednostranna.img");
+        File.WriteAllBytes(ssImg, ss.Data);
+        string zip = Path.Combine(src, "kolekce.zip");
+        MakeZip(zip, ("g1.st", atari.Data), ("g2.scp", new byte[] { 1, 2, 3 }));
+        string hfe = Path.Combine(src, "x.hfe");
+        File.WriteAllBytes(hfe, new byte[] { 7, 7, 7 });
+        string adf = Path.Combine(src, "amiga.adf");
+        File.WriteAllBytes(adf, new byte[901120]);
+
+        var r = Gotek.Copy(root, new[] { msa, st10, ssImg, zip, hfe, adf }, GotekMachine.Pc, true);
+
+        Assert(File.ReadAllBytes(Path.Combine(root, "DSKA0004_hra.st")).SequenceEqual(atari.Data), ".MSA převedeno na .ST se stejnými sektory");
+        Assert(File.Exists(Path.Combine(root, "DSKA0005_deset.st")), "800 KB .st zkopírováno pod svým číslem");
+        Assert(File.Exists(Path.Combine(root, "DSKA0006_jednostranna.dtk80x1x9.img")), "jednostranný .img dostane značku geometrie");
+        Assert(File.Exists(Path.Combine(root, "DSKA0007_g1.st")), "obraz ze .zip");
+        Assert(!Directory.GetFiles(root, "*g2*").Any(), ".scp z archivu se nekopíruje");
+        Assert(r.Skipped.Any(s => s.Contains("g2.scp")), "o vynechaném .scp se uživatel dozví");
+        Assert(File.ReadAllBytes(Path.Combine(root, "DSKA0008_x.hfe")).SequenceEqual(new byte[] { 7, 7, 7 }), ".hfe beze změny");
+        Assert(File.Exists(Path.Combine(root, "DSKA0009_amiga.adf")), ".adf");
+        Eq(6, r.Copied.Count, "zkopírováno obrazů");
+        Assert(r.Copied[0].StartsWith("004  DSKA0004_hra.st") && r.Copied[0].Contains(".MSA"), "řádek o převodu: " + r.Copied[0]);
+
+        string ffCfg = File.ReadAllText(Path.Combine(root, "FF.CFG"));
+        Assert(ffCfg.Contains("nav-mode = indexed") && ffCfg.Contains("interface = ibmpc"), "FF.CFG pro PC s číselným displejem:\n" + ffCfg);
+        string imgCfg = File.ReadAllText(Path.Combine(root, "IMG.CFG"));
+        Assert(imgCfg.Contains("[dtk80x1x9::368640]") && imgCfg.Contains("cyls = 80") && imgCfg.Contains("heads = 1") && imgCfg.Contains("secs = 9"),
+               "IMG.CFG popíše jednostrannou geometrii:\n" + imgCfg);
+        Assert(!imgCfg.Contains("dtk80x2x10"), "800 KB .st FlashFloppy pozná sám, do IMG.CFG nepatří");
+
+        string list = File.ReadAllText(r.SlotList!);
+        Assert(list.Contains("000  DSKA0000_old.st") && list.Contains("003  DSKA0003_x.img") && list.Contains("009  DSKA0009_amiga.adf"),
+               "seznam pozic obsahuje staré i nové obrazy:\n" + list);
+
+        // druhé kopírování: FF.CFG se nepřepíše, jen upozorní
+        File.WriteAllText(Path.Combine(root, "FF.CFG"), "# vlastní\r\n");
+        var r2 = Gotek.Copy(root, new[] { msa }, GotekMachine.Pc, false);
+        Eq("# vlastní\r\n", File.ReadAllText(Path.Combine(root, "FF.CFG")), "existující FF.CFG zůstane");
+        Assert(r2.FfCfg == null && r2.Notes.Any(n => n.Contains("interface = ibmpc")), "upozornění, co do FF.CFG patří");
+        Assert(File.Exists(Path.Combine(root, "DSKA0010_hra.st")), "další pozice");
+
+        // složka FF\ na flashce: konfigurace patří do ní
+        string root2 = Path.Combine(_tmp, "gotek-usb2");
+        Directory.CreateDirectory(Path.Combine(root2, "FF"));
+        Gotek.Copy(root2, new[] { ssImg }, GotekMachine.Msx, false);
+        Assert(File.Exists(Path.Combine(root2, "FF", "FF.CFG")) && !File.Exists(Path.Combine(root2, "FF.CFG")), "FF.CFG ve složce FF");
+        Assert(File.ReadAllText(Path.Combine(root2, "FF", "FF.CFG")).Contains("host = msx"), "FF.CFG pro MSX");
+        Assert(!File.Exists(Path.Combine(root2, "FF", "IMG.CFG")), "MSX bere geometrii z boot sektoru — IMG.CFG netřeba");
+        Assert(File.Exists(Path.Combine(root2, "DSKA0000_jednostranna.img")), "u MSX bez značky geometrie");
+
+        string hd = Path.Combine(src, "amiga-hd.adf");
+        File.WriteAllBytes(hd, new byte[80 * 2 * 22 * 512]);
+        var r3 = Gotek.Copy(root2, new[] { hd }, GotekMachine.Amiga, false);
+        Assert(r3.Notes.Any(n => n.Contains("interface = amiga")), "HD .adf: upozornění na nastavení Goteku");
+        Assert(r.Notes.All(n => !n.Contains("interface = amiga")), "DD .adf upozornění nedostane");
+    }
 }
