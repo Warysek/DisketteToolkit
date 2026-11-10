@@ -312,8 +312,8 @@ One PR per step, in this order; no hardware risk except where noted:
    the image before any change; .adf later), 32 undelete + "save everything readable to a folder" (FAT),
    13 check a whole folder of images.
 4. **56 Report for forum** button.
-Status 2026-11-10: steps 1–4 and 38 DMS done (PRs #28 → #29 → #30 → #32 → #33, stacked; release PR #31 on top),
-all go into 0.10. DMS tests use two public-domain games from the IF Archive (CI downloads them).
+Status 2026-11-10: steps 1–4 and 38 DMS done and squash-merged into main (PRs #28, #29, #30, #32, #33, release
+PR #31), all in 0.10. DMS tests use two public-domain games from the IF Archive (CI downloads them).
 Outside the code: GitHub Discussions enabled 2026-11-08; README / NAVOD link to it since 0.10.
 
 Order of work (proposed to Wary 2026-10-13; groups = one release each, by importance x ease):
