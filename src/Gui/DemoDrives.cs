@@ -49,6 +49,16 @@ internal static class DemoDrives
         return list;
     }
 
+    /// <summary>Zpráva pro fórum v ukázce: řadič a „gw info“ jako ze skutečného počítače (sériové číslo zpráva vynechá).</summary>
+    public static AtariFloppy.Core.App.ForumReport.HardwareInfo ReportInfo()
+    {
+        var hw = new AtariFloppy.Core.App.ForumReport.HardwareInfo();
+        hw.Controllers["B:"] = Tr.F("{0}, rychlosti {1}", "Intel 82077AA", "250K/300K/500K/1M");
+        hw.Gw["COM5"] = new List<string> { "Host Tools: 1.21", "Device:", "  Port:     COM5", "  Model:    Greaseweazle F7 Plus",
+                                            "  Firmware: 1.6", "  Serial:   GW00000000000000", "  USB Rate: Full Speed (12 Mbit/s)" };
+        return hw;
+    }
+
     public static ISectorDevice Open(DetectedDrive d, bool write, DiskGeometry? g) =>
         new SimDevice(DiskFor(d.Letter ?? "A"), d.Kind == DriveKind.Internal && d.FdrawcmdInstalled, d.Id + " (" + Tr.T("ukázka") + ")");
 

@@ -2548,4 +2548,28 @@ internal static class Tests
         Eq(ImageCheckStatus.Unreadable, results.Single(r => r.Name == "junk.st").Status, "nesmysl místo obrazu");
         Eq(ImageCheckStatus.Ok, results.Single(r => r.Name == "pack.zip → a.st").Status, "obraz v .zip");
     }
+
+    private static void T_ForumReport_HidesPersonalData()
+    {
+        var usb = new DetectedDrive { Kind = DriveKind.Usb, Letter = "A", Name = "TEAC FD-05PUB", Details = "firmware 3000", Media = InsertedMedia.HD };
+        usb.ComputeFeatures();
+        var fd = new DetectedDrive { Kind = DriveKind.Internal, Letter = "B", Name = "Floppy", FdrawcmdInstalled = true };
+        var gw = new DetectedDrive { Kind = DriveKind.Greaseweazle, Port = "COM3", Name = "Greaseweazle", GwToolPath = @"C:\gw\gw.exe" };
+        var hw = new ForumReport.HardwareInfo();
+        hw.Controllers["B:"] = "Intel 82077AA, 250K/300K/500K/1M";
+        hw.Gw["COM3"] = new List<string> { "Host Tools: 1.21", "  Firmware: 1.6", "  Serial:   GW1234567890", "" };
+        string log = string.Join("\n", Enumerable.Range(1, 60).Select(i => "line " + i))
+                     + "\nSaved C:\\Users\\Jan.Novak\\Documents\\game.st\nPC JANUV-PC, user jan.novak, jan.novak@example.cz\n\n";
+        string r = ForumReport.Anonymize(ForumReport.Build(new[] { usb, fd, gw }, hw, "✓ OK", log, "Windows 11 Pro 24H2, build 26100"),
+                                         @"C:\Users\Jan.Novak", "jan.novak", "JANUV-PC");
+        var lines = r.Split('\n').Select(l => l.TrimEnd('\r')).ToList();
+        Assert(lines[0].StartsWith("Diskette Toolkit "), "první řádek: " + lines[0]);
+        Assert(r.Contains("TEAC FD-05PUB") && r.Contains("Intel 82077AA") && r.Contains("gw: Firmware: 1.6") && r.Contains("gw: Host Tools: 1.21") && r.Contains("✓ OK"),
+               "mechaniky, řadič, gw a výsledek:\n" + r);
+        Assert(!r.Contains("GW1234567890"), "sériové číslo Greaseweazle do zprávy nepatří");
+        Assert(r.Contains(@"Saved %USERPROFILE%\Documents\game.st"), "domovská složka → %USERPROFILE%:\n" + r);
+        Assert(!r.ToLowerInvariant().Contains("novak") && !r.Contains("JANUV"), "jméno uživatele a počítače:\n" + r);
+        Assert(r.Contains("PC %COMPUTERNAME%, user %USERNAME%, <e-mail>"), "zástupná slova:\n" + r);
+        Assert(lines.Contains("line 23") && !lines.Contains("line 22"), "jen posledních 40 řádků výpisu");
+    }
 }
