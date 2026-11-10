@@ -58,6 +58,15 @@ Every backup gets a record next to the image (disk.st.log.txt): date, drive, how
 read, format, sectors that could not be read, and MD5 / SHA-1 / SHA-256 checksums. A backup
 with unreadable sectors is saved as "disk (INCOMPLETE).st", never under the normal name.
 Drag an image file from Explorer onto the window to open it.
+Images inside a .zip (as games are usually downloaded) open directly in Open image...,
+Check and repair image, Convert format... and Write image to disk; when the archive holds
+several disks, the program asks which one.
+
+Gotek USB stick ("Gotek USB stick..." button, FlashFloppy firmware): copies images to a USB
+stick as DSKA0000_name.st, DSKA0001_... (the number is the slot on the Gotek display, new
+images go after the ones already there), converts .MSA and .DIM to .ST, writes FF.CFG for PC
+(interface = ibmpc), MSX (host = msx) or a 3-digit display (nav-mode = indexed), describes odd
+geometries in IMG.CFG and saves slot-list.txt with all slots on the stick.
 
 Drive diagnostics ("Drive diagnostics..." button; internal drive with fdrawcmd.sys or
 Greaseweazle, not USB drives): speed (rpm) with wobble and a live gauge for adjusting

@@ -963,7 +963,8 @@ internal sealed class Jobs
 
     // ================================================================ obrazy
 
-    public void CheckImage(string path)
+    /// <param name="outputFolder">Kam uložit opravenou kopii (obraz rozbalený ze .zip leží v dočasné složce); null = vedle obrazu.</param>
+    public void CheckImage(string path, string? outputFolder = null)
     {
         var loaded = ImageFile.Load(path);
         Title(Tr.F("Kontrola obrazu: {0}", Path.GetFileName(path)));
@@ -982,11 +983,32 @@ internal sealed class Jobs
         Title(Tr.T("Oprava"));
         foreach (var a in done.Actions) Info("• " + a);
         string output = Repair.RepairedImagePath(path, loaded.Kind);
+        if (outputFolder != null) output = Path.Combine(outputFolder, Path.GetFileName(output));
         if (File.Exists(output) && !_h.Confirm(Tr.F("Soubor {0} už existuje. Přepsat?", output))) return;
         ImageFile.Save(new DiskImage(img.Geometry, repaired), output);
         var after = FatDoctor.Check(repaired);
         Ok(Tr.F("Opravený obraz: {0}", output) + (after.HasRepairable ? Tr.T(" (kontrola pořád něco hlásí)") : Tr.T(" — souborový systém je v pořádku.")));
         Dim(Tr.T("Původní soubor zůstal beze změny."));
+    }
+
+    /// <summary>Obrazy na USB flashku pro Gotek (FlashFloppy) — viz <see cref="Gotek.Copy"/>.</summary>
+    public void GotekCopy(string root, IList<string> files, GotekMachine machine, bool indexed)
+    {
+        Title(Tr.F("Flashka pro Gotek: {0}", root));
+        try
+        {
+            if (Path.GetPathRoot(Path.GetFullPath(root)) is { } drive && new DriveInfo(drive).DriveFormat == "NTFS")
+                Warn(Tr.T("Flashka je naformátovaná jako NTFS — Gotek ji nepřečte. Naformátuj ji ve Windows na FAT32."));
+        }
+        catch (Exception e) when (e is IOException or ArgumentException or UnauthorizedAccessException) { }
+        var r = Gotek.Copy(root, files, machine, indexed, P);
+        foreach (var c in r.Copied) Ok(c);
+        foreach (var s in r.Skipped) Warn(s);
+        if (r.FfCfg != null) Dim(Tr.F("Nastavení Goteku: {0}", r.FfCfg));
+        if (r.ImgCfg != null) Dim(Tr.F("Popis geometrií: {0}", r.ImgCfg));
+        foreach (var n in r.Notes) Warn(n);
+        Info(Tr.F("Zkopírováno obrazů: {0}. Seznam všech pozic je na flashce v {1} — můžeš si ho vytisknout.", r.Copied.Count, Path.GetFileName(r.SlotList)));
+        Ok(Tr.T("Flashku před vytažením bezpečně odeber (ikona v oznamovací oblasti), ať se všechno zapíše."));
     }
 
     // ================================================================ doplňky (gw.exe, fdrawcmd.sys, firmware)

@@ -1351,3 +1351,48 @@ Greaseweazle nepotvrdil, že se přečetl = Greaseweazle did not confirm that it
 Rychlá záloha = Quick backup
 jedním klikem do složky záloh = one click, into the backup folder
 Bez ptaní uloží disketu do složky záloh: {0} = Saves the disk to the backup folder without asking: {0}
+
+# ---------------------------------------------------------------- 0.10: images in .zip, Gotek USB stick
+Složka {0} neexistuje. = Folder {0} does not exist.
+{0}: v archivu není žádný obraz diskety. = {0}: the archive contains no disk image.
+{0}: formát {1} Gotek (FlashFloppy) nečte — vynecháno. = {0}: Gotek (FlashFloppy) cannot read the {1} format — skipped.
+převedeno z {0} na .ST (Gotek {0} nečte) = converted from {0} to .ST (Gotek cannot read {0})
+geometrii {0} by Gotek podle velikosti souboru nepoznal — popsaná v IMG.CFG = Gotek would not recognise geometry {0} from the file size — described in IMG.CFG
+FF.CFG už na flashce je — nechal jsem ho beze změny. Pro tento počítač do něj patří: {0} = FF.CFG is already on the stick — left unchanged. For this computer it should contain: {0}
+Na flashce je HXCSDFE.CFG — Gotek může běžet v režimu kompatibility s HxC, kde pozice určuje výběr v programu na počítači (AUTOBOOT.HFE), ne čísla v názvech. Po kopírování v něm obrazy vyber znovu. = HXCSDFE.CFG is on the stick — the Gotek may run in HxC compatibility mode, where the slots are chosen in the selector program on the computer (AUTOBOOT.HFE), not by the numbers in the file names. Select the images there again after copying.
+Pro jiné počítače bývá potřeba vlastní nastavení (host \= …, interface \= …) — viz wiki FlashFloppy, stránka Host Platforms. = Other computers often need their own settings (host \= …, interface \= …) — see the FlashFloppy wiki, page Host Platforms.
+seznam-pozic.txt = slot-list.txt
+Obrazy na flashce pro Gotek (pozice \= číslo na displeji) = Images on the Gotek USB stick (slot \= number on the display)
+V archivu {0} není {1}. = {1} is not in archive {0}.
+{0} je v archivu příliš velký ({1:N0} B) — obraz diskety to nebude. = {0} in the archive is too large ({1:N0} B) — it cannot be a disk image.
+{0} není platný ZIP archiv (nebo je poškozený). = {0} is not a valid ZIP archive (or it is damaged).
+Flashka pro Gotek = Gotek USB stick
+Obrazy se na flashku zkopírují jako DSKA0000_název.st, DSKA0001_… — číslo je pozice, kterou Gotek ukáže na displeji, v pořadí podle seznamu (za obrazy, které už na flashce jsou). Formáty .MSA a .DIM Gotek nečte, převedou se na .ST; obrazy ze .ZIP se rozbalí. Platí pro Gotek s firmwarem FlashFloppy — s firmwarem HxC je potřeba formát .HFE. = Images are copied to the stick as DSKA0000_name.st, DSKA0001_… — the number is the slot the Gotek shows on its display, in the order of the list (after the images already on the stick). Gotek cannot read .MSA and .DIM, so they are converted to .ST; images inside a .ZIP are unpacked. This applies to a Gotek with FlashFloppy firmware — with HxC firmware the .HFE format is needed.
+Obrazy = Images
+Obrazy pro Gotek = Images for Gotek
+Flashka = USB stick
+{0} {1} ({2}, volno {3:N0} MB) = {0} {1} ({2}, {3:N0} MB free)
+Jiná složka… = Other folder…
+Kořen flashky pro Gotek (nebo složka, kam obrazy připravit) = Root of the Gotek USB stick (or a folder to prepare the images in)
+Počítač s Gotekem = Computer with the Gotek
+PC (IBM a kompatibilní) = PC (IBM and compatibles)
+jiný = other
+Gotek s třímístným číselným displejem — přepínat jen číslované obrazy (FF.CFG: nav-mode \= indexed) = Gotek with a 3-digit numeric display — switch only between numbered images (FF.CFG: nav-mode \= indexed)
+Zkopírovat na flashku = Copy to USB stick
+Není vybraná žádná flashka — zapoj ji, nebo zvol složku. = No USB stick selected — plug one in or choose a folder.
+Na flashce zatím nejsou žádné číslované obrazy — první dostane pozici 000. = There are no numbered images on the stick yet — the first one gets slot 000.
+Číslovaných obrazů na flashce: {0} — nové dostanou pozice od {1:D3}. = Numbered images on the stick: {0} — new ones get slots from {1:D3}.
+Archiv {0} = Archive {0}
+V archivu je víc obrazů disket. Který chceš použít? = The archive contains several disk images. Which one do you want to use?
+Vybrat = Select
+Flashka pro Gotek: {0} = Gotek USB stick: {0}
+Flashka je naformátovaná jako NTFS — Gotek ji nepřečte. Naformátuj ji ve Windows na FAT32. = The USB stick is formatted as NTFS — the Gotek cannot read it. Format it as FAT32 in Windows.
+Nastavení Goteku: {0} = Gotek settings: {0}
+Popis geometrií: {0} = Geometry descriptions: {0}
+Zkopírováno obrazů: {0}. Seznam všech pozic je na flashce v {1} — můžeš si ho vytisknout. = Images copied: {0}. The list of all slots is on the stick in {1} — you can print it.
+Flashku před vytažením bezpečně odeber (ikona v oznamovací oblasti), ať se všechno zapíše. = Before unplugging the USB stick, remove it safely (icon in the notification area) so that everything gets written.
+Flashka pro Gotek… = Gotek USB stick…
+obrazy na USB flashku, číslované pozice = images to a USB stick, numbered slots
+V archivu {0} není žádný obraz diskety. = Archive {0} contains no disk image.
+Obraz {0} z archivu {1} = Image {0} from archive {1}
+HD obraz Amigy (1760 KB) Gotek přečte jen s interface \= amiga v FF.CFG a zapnutou identifikací HD mechaniky — viz wiki FlashFloppy, stránka Host Platforms. = The Gotek reads an Amiga HD image (1760 KB) only with interface \= amiga in FF.CFG and the HD drive ID enabled — see the FlashFloppy wiki, page Host Platforms.

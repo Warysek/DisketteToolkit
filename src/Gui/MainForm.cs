@@ -51,7 +51,7 @@ internal sealed class MainForm : Form, IJobHost
     private readonly Panel _right = new();
     private readonly FlowLayoutPanel _actions = new();
     private readonly Label _secDisk = new(), _secImages = new(), _secHelp = new();
-    private readonly ActionButton _aRead = new(), _aWrite = new(), _aFormat = new(), _aTest = new(), _aErase = new(), _aSetup = new(), _aBoot = new(), _aBatch = new(), _aDiag = new(), _aRescue = new(), _aQuick = new();
+    private readonly ActionButton _aRead = new(), _aWrite = new(), _aFormat = new(), _aTest = new(), _aErase = new(), _aSetup = new(), _aBoot = new(), _aBatch = new(), _aDiag = new(), _aRescue = new(), _aQuick = new(), _iGotek = new();
     private readonly ActionButton _iOpen = new(), _iCheck = new(), _iConvert = new(), _iNew = new();
     private readonly ActionButton _hFormats = new(), _hAbout = new(), _hDonate = new();
     private readonly ToolTip _tips = new();
@@ -273,6 +273,7 @@ internal sealed class MainForm : Form, IJobHost
         Add(_iCheck, "✔", (_, _) => DoCheckImage(), minor);
         Add(_iConvert, "⇄", (_, _) => DoConvert(), minor);
         Add(_iNew, "✦", (_, _) => DoNewImage(), minor);
+        Add(_iGotek, "▣", (_, _) => DoGotek(), minor);
         Section(_secHelp);
         Add(_hFormats, "☰", (_, _) => { using var f = new FormatsDialog(); f.ShowDialog(this); }, 44);
         Add(_hAbout, "ⓘ", (_, _) => ShowAbout(), 44);
@@ -433,6 +434,8 @@ internal sealed class MainForm : Form, IJobHost
         _iConvert.Subtitle = "ST ⇄ MSA ⇄ IMG ⇄ DIM";
         _iNew.Text = Tr.T("Nový prázdný obraz…");
         _iNew.Subtitle = Tr.T("Atari, PC, Amiga, Mac a další");
+        _iGotek.Text = Tr.T("Flashka pro Gotek…");
+        _iGotek.Subtitle = Tr.T("obrazy na USB flashku, číslované pozice");
         _hFormats.Text = Tr.T("Formáty všech systémů");
         _hAbout.Text = Tr.T("O programu");
         _hDonate.Text = Tr.T("Podpořit vývoj");
@@ -750,6 +753,7 @@ internal sealed class MainForm : Form, IJobHost
             path = open.FileName;
             Remember(path);
         }
+        if (ZipImages.IsZip(path) && (path = Unzip(path, out _)) == null) return;
         using var w = new WriteDialog(d, path, _settings.VerifyAfterWrite);
         if (w.ShowDialog(this) != DialogResult.OK) return;
         _settings.VerifyAfterWrite = w.Verify;
@@ -917,15 +921,54 @@ internal sealed class MainForm : Form, IJobHost
             path = open.FileName;
             Remember(path);
         }
+        string? folder = null;
+        if (ZipImages.IsZip(path) && (path = Unzip(path, out folder)) == null) return;
         LoadedImage loaded;
         try { loaded = ImageFile.Load(path); }
         catch (Exception e) { Error(e.Message); return; }
         if (loaded.Image != null && !_busy) ShowImageOnMap(loaded.Image, Path.GetFileName(path));
-        using var dlg = new ImageDialog(path, loaded, InitialFolder());
+        using var dlg = new ImageDialog(path, loaded, folder ?? InitialFolder());
         var result = dlg.ShowDialog(this);
-        if (result == DialogResult.Yes && Selected != null) DoWrite(path);
-        else if (result == DialogResult.Retry) RunJob(j => j.CheckImage(path));
-        else if (result == DialogResult.Ignore) DoFluxRescue(path);
+        string file = path;
+        if (result == DialogResult.Yes && Selected != null) DoWrite(file);
+        else if (result == DialogResult.Retry) RunJob(j => j.CheckImage(file, folder));
+        else if (result == DialogResult.Ignore) DoFluxRescue(file);
+    }
+
+    /// <summary>
+    /// Obraz ze .zip: když je v archivu víc obrazů, zeptá se který; rozbalí ho do dočasné složky a vrátí cestu
+    /// (null = zrušeno nebo chyba). folder = složka s archivem — tam patří, co z obrazu vznikne (opravená kopie).
+    /// </summary>
+    private string? Unzip(string zip, out string folder)
+    {
+        folder = Path.GetDirectoryName(Path.GetFullPath(zip)) ?? InitialFolder();
+        try
+        {
+            var names = ZipImages.List(zip);
+            if (names.Count == 0) { Error(Tr.F("V archivu {0} není žádný obraz diskety.", Path.GetFileName(zip))); return null; }
+            string entry = names[0];
+            if (names.Count > 1)
+            {
+                using var pick = new ZipPickDialog(zip, names);
+                if (pick.ShowDialog(this) != DialogResult.OK) return null;
+                entry = pick.Selected;
+            }
+            string file = ZipImages.Extract(zip, entry);
+            Log(Tr.F("Obraz {0} z archivu {1}", entry, Path.GetFileName(zip)), LogKind.Dim);
+            return file;
+        }
+        catch (Exception e) when (e is OperationException or IOException or UnauthorizedAccessException) { Error(e.Message); return null; }
+    }
+
+    private void DoGotek()
+    {
+        using var dlg = new GotekDialog(InitialFolder());
+        if (dlg.ShowDialog(this) != DialogResult.OK || dlg.Folder == null) return;
+        string root = dlg.Folder;
+        var files = dlg.Files;
+        var machine = dlg.MachineValue;
+        bool indexed = dlg.Indexed;
+        RunJob(j => j.GotekCopy(root, files, machine, indexed));
     }
 
     private void DoFluxRescue(string scp)
@@ -944,14 +987,21 @@ internal sealed class MainForm : Form, IJobHost
         using var open = new OpenFileDialog { Title = Tr.T("Který obraz zkontrolovat"), Filter = ImageFilters.Open(false), InitialDirectory = InitialFolder() };
         if (open.ShowDialog(this) != DialogResult.OK) return;
         Remember(open.FileName);
+        string file = open.FileName;
+        string? folder = null;
+        if (ZipImages.IsZip(file))
+        {
+            var u = Unzip(file, out var zipFolder);
+            if (u == null) return;
+            (file, folder) = (u, zipFolder);
+        }
         try
         {
-            var loaded = ImageFile.Load(open.FileName);
-            if (loaded.Image != null) ShowImageOnMap(loaded.Image, Path.GetFileName(open.FileName));
+            var loaded = ImageFile.Load(file);
+            if (loaded.Image != null) ShowImageOnMap(loaded.Image, Path.GetFileName(file));
         }
         catch { }
-        string file = open.FileName;
-        RunJob(j => j.CheckImage(file));
+        RunJob(j => j.CheckImage(file, folder));
     }
 
     private void DoConvert()
@@ -959,22 +1009,30 @@ internal sealed class MainForm : Form, IJobHost
         using var open = new OpenFileDialog { Title = Tr.T("Který obraz převést"), Filter = ImageFilters.Open(false), InitialDirectory = InitialFolder() };
         if (open.ShowDialog(this) != DialogResult.OK) return;
         Remember(open.FileName);
+        string src = open.FileName;
+        string folder = Path.GetDirectoryName(src) ?? InitialFolder();
+        if (ZipImages.IsZip(src))
+        {
+            var u = Unzip(src, out folder);
+            if (u == null) return;
+            src = u;
+        }
         LoadedImage loaded;
-        try { loaded = ImageFile.Load(open.FileName); }
+        try { loaded = ImageFile.Load(src); }
         catch (Exception e) { Error(e.Message); return; }
         if (loaded.Image == null) { Error(loaded.NotLoadedReason ?? Tr.T("Obraz nejde načíst.")); return; }
         using var save = new SaveFileDialog
         {
             Title = Tr.T("Uložit jako"),
             Filter = ImageFilters.Save(false),
-            FileName = Path.GetFileNameWithoutExtension(open.FileName),
-            InitialDirectory = Path.GetDirectoryName(open.FileName),
+            FileName = Path.GetFileNameWithoutExtension(src),
+            InitialDirectory = folder,
         };
         if (save.ShowDialog(this) != DialogResult.OK) return;
         try
         {
             ImageFile.Save(loaded.Image, save.FileName);
-            Log(Tr.F("Převedeno: {0} ({1}) → {2}, {3:N0} B", Path.GetFileName(open.FileName), ImageFile.Describe(loaded.Kind),
+            Log(Tr.F("Převedeno: {0} ({1}) → {2}, {3:N0} B", Path.GetFileName(src), ImageFile.Describe(loaded.Kind),
                      Path.GetFileName(save.FileName), new FileInfo(save.FileName).Length), LogKind.Ok);
         }
         catch (Exception e) { Error(e.Message); }
@@ -1463,8 +1521,8 @@ internal sealed class MainForm : Form, IJobHost
 internal static class ImageFilters
 {
     public static string Open(bool withFlux) =>
-        Tr.T("Obrazy disket") + (withFlux ? " (*.st;*.msa;*.dim;*.img;*.ima;*.adf;*.dsk;*.d81;*.scp;*.hfe;*.ipf)|*.st;*.msa;*.dim;*.img;*.ima;*.adf;*.dsk;*.d81;*.scp;*.hfe;*.ipf"
-                                              : " (*.st;*.msa;*.dim;*.img;*.ima;*.adf;*.dsk)|*.st;*.msa;*.dim;*.img;*.ima;*.adf;*.dsk") +
+        Tr.T("Obrazy disket") + (withFlux ? " (*.st;*.msa;*.dim;*.img;*.ima;*.adf;*.dsk;*.d81;*.scp;*.hfe;*.ipf;*.zip)|*.st;*.msa;*.dim;*.img;*.ima;*.adf;*.dsk;*.d81;*.scp;*.hfe;*.ipf;*.zip"
+                                              : " (*.st;*.msa;*.dim;*.img;*.ima;*.adf;*.dsk;*.zip)|*.st;*.msa;*.dim;*.img;*.ima;*.adf;*.dsk;*.zip") +
         "|" + Tr.T("Všechny soubory") + " (*.*)|*.*";
 
     public static string Save(bool withFlux) =>
