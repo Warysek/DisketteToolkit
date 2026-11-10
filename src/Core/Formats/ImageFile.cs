@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using AtariFloppy.Core.I18n;
@@ -27,6 +28,8 @@ public enum ImageKind
     RawImg,
     /// <summary>Amstrad CPC / ZX Spectrum +3 .DSK s hlavičkou (3" diskety).</summary>
     CpcDsk,
+    /// <summary>Amiga .DMS (Disk Masher) — zabalený ADF.</summary>
+    Dms,
 }
 
 public sealed class LoadedImage
@@ -36,6 +39,12 @@ public sealed class LoadedImage
     /// <summary>Proč Image chybí (formát zatím jen rozpoznaný).</summary>
     public string? NotLoadedReason { get; init; }
     public long FileSize { get; init; }
+    /// <summary>Obraz se načetl, ale není celý (poškozený archiv DMS…) — patří do výpisu a okna obrazu.</summary>
+    public IReadOnlyList<string> Warnings { get; init; } = Array.Empty<string>();
+    /// <summary>Text přibalený k obrazu (banner a FILE_ID.DIZ v DMS).</summary>
+    public string? Text { get; init; }
+    /// <summary>Obraz Amigy podle typu souboru — i disketa bez AmigaDOS (hra s vlastním zavaděčem).</summary>
+    public bool IsAmiga => Kind is ImageKind.Adf or ImageKind.Dms;
 }
 
 public static class ImageFile
@@ -53,6 +62,7 @@ public static class ImageFile
         ImageKind.Adf => ".ADF (Amiga)",
         ImageKind.RawImg => Tr.T("holý obraz (.IMG / .IMA / .VFD / .DSK / .D81)"),
         ImageKind.CpcDsk => ".DSK Amstrad CPC / Spectrum +3",
+        ImageKind.Dms => Tr.T(".DMS (Disk Masher — zabalený obraz Amigy)"),
         _ => Tr.T("neznámý formát"),
     };
 
@@ -64,6 +74,7 @@ public static class ImageFile
         if (StartsWith(head, "SCP")) return ImageKind.Scp;
         if (StartsWith(head, "HXCPICFE") || StartsWith(head, "HXCHFEV3")) return ImageKind.Hfe;
         if (StartsWith(head, "MV - CPC") || StartsWith(head, "EXTENDED CPC DSK")) return ImageKind.CpcDsk;
+        if (DmsFormat.IsDms(head)) return ImageKind.Dms;
         if (MsaFormat.IsMsa(head) && ext == ".msa") return ImageKind.Msa;
         if (DimFormat.IsDim(head) && ext == ".dim") return ImageKind.Dim;
         return ext switch
@@ -77,6 +88,7 @@ public static class ImageFile
             ".hfe" => ImageKind.Hfe,
             ".raw" => ImageKind.KryoFlux,
             ".adf" => ImageKind.Adf,
+            ".dms" => ImageKind.Dms,
             ".img" or ".ima" or ".vfd" or ".dsk" or ".d81" or ".flp" => ImageKind.RawImg,
             _ => MsaFormat.IsMsa(head) ? ImageKind.Msa : ImageKind.Unknown,
         };
@@ -88,7 +100,8 @@ public static class ImageFile
         byte[] bytes = File.ReadAllBytes(path);
         var kind = Detect(path, bytes);
         DiskImage? img = null;
-        string? reason = null;
+        string? reason = null, text = null;
+        IReadOnlyList<string> warnings = Array.Empty<string>();
         switch (kind)
         {
             case ImageKind.St:
@@ -100,6 +113,16 @@ public static class ImageFile
                 break;
             case ImageKind.Msa: img = MsaFormat.Load(bytes); break;
             case ImageKind.Dim: img = DimFormat.Load(bytes); break;
+            case ImageKind.Dms:
+                try
+                {
+                    var dms = DmsFormat.Unpack(bytes);
+                    img = dms.Image;
+                    text = dms.Text;
+                    warnings = dms.Warnings;
+                }
+                catch (InvalidDataException e) { reason = e.Message; }
+                break;
             case ImageKind.Scp:
                 reason = Tr.T("Magnetický tok — seznam souborů z něj neukážu. Sektory PC / Atari / MSX diskety z něj vytáhne Záchrana sektorů…, na disketu ho zapíše Greaseweazle.");
                 break;
@@ -116,7 +139,7 @@ public static class ImageFile
                 else reason = Tr.T("Formát souboru se nepodařilo rozpoznat.");
                 break;
         }
-        return new LoadedImage { Kind = kind, Image = img, NotLoadedReason = reason, FileSize = bytes.Length };
+        return new LoadedImage { Kind = kind, Image = img, NotLoadedReason = reason, FileSize = bytes.Length, Warnings = warnings, Text = text };
     }
 
     public static void Save(DiskImage image, string path)

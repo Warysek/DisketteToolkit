@@ -15,7 +15,7 @@ namespace AtariFloppy.Core.Formats;
 public static class ZipImages
 {
     private static readonly string[] ImageExtensions =
-        { ".st", ".msa", ".dim", ".img", ".ima", ".vfd", ".flp", ".dsk", ".d81", ".adf", ".stx", ".ipf", ".scp", ".hfe" };
+        { ".st", ".msa", ".dim", ".img", ".ima", ".vfd", ".flp", ".dsk", ".d81", ".adf", ".dms", ".stx", ".ipf", ".scp", ".hfe" };
 
     /// <summary>Větší položku nerozbalíme — obraz diskety má nanejvýš desítky MB (tok), tohle by byl omyl nebo past.</summary>
     public const long MaxEntryBytes = 64L * 1024 * 1024;

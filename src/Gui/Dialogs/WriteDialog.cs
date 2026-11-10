@@ -68,15 +68,16 @@ internal sealed class WriteDialog : DialogBase
                     Line(Tr.T("Formát"), img.Geometry.ToString());
                     Line(Tr.T("Systém"), fs.Name + (fs.Details != null ? " — " + fs.Details : ""));
                     Line(Tr.T("K čemu"), fs.UsedFor, Theme.TextDim);
+                    foreach (var w in loaded.Warnings) flow.Controls.Add(Note(w, Theme.Warn));
                     if (gw)
                     {
-                        Line(Tr.T("Zápis přes"), GwFormat.ForImage(img).ToString());
+                        Line(Tr.T("Zápis přes"), GwFormat.ForImage(img, loaded.IsAmiga).ToString());
                         flow.Controls.Add(Note(img.Geometry.IsHighDensity ? Tr.T("Vlož HD disketu (bez pásky).") : Tr.T("Vlož DD disketu (nebo HD s přelepeným otvorem).")));
                     }
                     else
                     {
                         var a = ImageAnalysis.AssessForStandardDrive(loaded);
-                        bool viaFdraw = d.FdrawcmdInstalled && !ImageAnalysis.FitsStandardDrive(img.Geometry) && fs.Kind != FsKind.Amiga;
+                        bool viaFdraw = d.FdrawcmdInstalled && !ImageAnalysis.FitsStandardDrive(img.Geometry) && fs.Kind != FsKind.Amiga && !loaded.IsAmiga;
                         allowed = a.Verdict == Verdict.Writable || viaFdraw;
                         var color = a.Verdict == Verdict.Writable ? Theme.Ok : viaFdraw ? Theme.Accent : a.Verdict == Verdict.ContentOnly ? Theme.Warn : Theme.Danger;
                         flow.Controls.Add(Note(viaFdraw ? Tr.T("Zapíše se přes fdrawcmd.sys (nestandardní formát).") : a.Summary, color));

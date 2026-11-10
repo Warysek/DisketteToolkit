@@ -1050,6 +1050,7 @@ internal sealed class MainForm : Form, IJobHost
         {
             Title = Tr.T("Uložit jako"),
             Filter = ImageFilters.Save(false),
+            FilterIndex = loaded.IsAmiga ? 4 : 1,   // Amiga (*.adf)
             FileName = Path.GetFileNameWithoutExtension(src),
             InitialDirectory = folder,
         };
@@ -1059,6 +1060,7 @@ internal sealed class MainForm : Form, IJobHost
             ImageFile.Save(loaded.Image, save.FileName);
             Log(Tr.F("Převedeno: {0} ({1}) → {2}, {3:N0} B", Path.GetFileName(src), ImageFile.Describe(loaded.Kind),
                      Path.GetFileName(save.FileName), new FileInfo(save.FileName).Length), LogKind.Ok);
+            foreach (var w in loaded.Warnings) Log(w, LogKind.Warn);
         }
         catch (Exception e) { Error(e.Message); }
     }
@@ -1474,6 +1476,7 @@ internal sealed class MainForm : Form, IJobHost
             case "settings": BeginInvoke(new Action(() => { using var f = new SettingsDialog(_settings, _drives); f.ShowDialog(this); })); break;
             case "formats": BeginInvoke(new Action(() => new FormatsDialog().ShowDialog(this))); break;
             case "forumreport": BeginInvoke(new Action(DoForumReport)); break;
+            case var o when o.StartsWith("open=") && File.Exists(o.Substring(5)): BeginInvoke(new Action(() => DoOpenImage(o.Substring(5)))); break;
             case "format820" when _drives.Count > 1:
                 _driveBox.SelectedIndex = 1;
                 var b = Selected!;
@@ -1589,8 +1592,8 @@ internal sealed class MainForm : Form, IJobHost
 internal static class ImageFilters
 {
     public static string Open(bool withFlux) =>
-        Tr.T("Obrazy disket") + (withFlux ? " (*.st;*.msa;*.dim;*.img;*.ima;*.adf;*.dsk;*.d81;*.scp;*.hfe;*.ipf;*.zip)|*.st;*.msa;*.dim;*.img;*.ima;*.adf;*.dsk;*.d81;*.scp;*.hfe;*.ipf;*.zip"
-                                              : " (*.st;*.msa;*.dim;*.img;*.ima;*.adf;*.dsk;*.zip)|*.st;*.msa;*.dim;*.img;*.ima;*.adf;*.dsk;*.zip") +
+        Tr.T("Obrazy disket") + (withFlux ? " (*.st;*.msa;*.dim;*.img;*.ima;*.adf;*.dms;*.dsk;*.d81;*.scp;*.hfe;*.ipf;*.zip)|*.st;*.msa;*.dim;*.img;*.ima;*.adf;*.dms;*.dsk;*.d81;*.scp;*.hfe;*.ipf;*.zip"
+                                              : " (*.st;*.msa;*.dim;*.img;*.ima;*.adf;*.dms;*.dsk;*.zip)|*.st;*.msa;*.dim;*.img;*.ima;*.adf;*.dms;*.dsk;*.zip") +
         "|" + Tr.T("Všechny soubory") + " (*.*)|*.*";
 
     public static string Save(bool withFlux) =>

@@ -52,12 +52,20 @@ jobs:
           # gw není na PyPI — přímo z vydání na GitHubu
           pip3 install --user --break-system-packages amitools "git+https://github.com/keirf/greaseweazle@v1.23"
 
+      - name: Download DMS samples (public-domain games from the IF Archive)
+        run: |
+          mkdir -p dms-samples
+          for f in GoldenFleece.dms Gory_Story.dms; do
+            curl -fsSL -o "dms-samples/$f" "https://www.ifarchive.org/if-archive/games/amiga/$f"
+          done
+
       - name: Build tests
         run: dotnet build tests/Tests.csproj -c Release -nologo
 
       - name: Run tests
         env:
           DTK_TESTS_STRICT: "1"
+          DTK_DMS_SAMPLES: ${{ github.workspace }}/dms-samples
         run: mono tests/bin/Release/net48/AtariFloppy.Tests.exe
 
       - name: Check translations

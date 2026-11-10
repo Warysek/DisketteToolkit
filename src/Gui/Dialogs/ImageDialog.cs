@@ -73,6 +73,12 @@ internal sealed class ImageDialog : DialogBase, IFileDropTarget
 
         top.Controls.Add(Heading(Path.GetFileName(path)));
         Line(Tr.T("Typ souboru"), ImageFile.Describe(loaded.Kind));
+        foreach (var w in loaded.Warnings) Line(Tr.T("Pozor"), w, Theme.Warn);
+        if (loaded.Text != null)
+        {
+            var lines = loaded.Text.Split('\n');
+            Line(Tr.T("Text v archivu"), string.Join("\n", lines.Take(12)) + (lines.Length > 12 ? "\n…" : ""), Theme.TextDim);
+        }
         _sizeValue = Line(Tr.T("Velikost souboru"), Tr.F("{0:N0} B", loaded.FileSize));
         try
         {
