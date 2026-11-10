@@ -2406,4 +2406,146 @@ internal static class Tests
         Assert(r3.Notes.Any(n => n.Contains("interface = amiga")), "HD .adf: upozornění na nastavení Goteku");
         Assert(r.Notes.All(n => !n.Contains("interface = amiga")), "DD .adf upozornění nedostane");
     }
+
+    private static byte[] Bytes(int n, int seed) { var b = new byte[n]; new Random(seed).NextBytes(b); return b; }
+
+    private static void T_FatEdit_DeleteAndUndelete()
+    {
+        var img = DiskFormatter.CreateBlank(DiskGeometry.Dd720, FormatStyle.Atari, "EDIT", new Random(21));
+        var d = img.Data;
+        long free0 = Fat12Volume.TryOpen(d, out _)!.FreeBytes;
+        var hello = Bytes(3000, 1);
+        var game = Bytes(5000, 2);
+        var w = new Fat12Writer(d);
+        w.AddFile("HELLO.TXT", hello);
+        w.AddFile("AUTO\\GAME.PRG", game);
+        Assert(w.Exists("hello.txt") && w.Exists("AUTO\\GAME.PRG") && w.Exists("AUTO"), "soubory jsou na disketě");
+
+        w.Delete("HELLO.TXT");
+        var v = Fat12Volume.TryOpen(d, out _)!;
+        Assert(!w.Exists("HELLO.TXT") && v.ListAll().All(e => e.Path != "HELLO.TXT"), "smazaný soubor ve výpisu není");
+        Eq(0, FatDoctor.Check(d).Issues.Count(i => i.Severity != IssueSeverity.Info), "po smazání je FAT v pořádku");
+        var del =v.ListDeleted().Single(e => e.Path == "_ELLO.TXT");
+        Assert(del.Recoverable && del.Contiguous, "smazaný soubor jde obnovit");
+        Assert(v.ReadClusters(del.Clusters!, del.Size).SequenceEqual(hello), "obnovená data sedí");
+
+        w.Delete("AUTO");
+        v = Fat12Volume.TryOpen(d, out _)!;
+        Eq(free0, v.FreeBytes, "po smazání všeho je volno jako na začátku");
+        var deleted = v.ListDeleted();
+        Assert(deleted.Any(e => e.Path == "_UTO" && e.IsDirectory), "smazaná složka: " + string.Join(", ", deleted.Select(e => e.Path)));
+        var g = deleted.Single(e => e.Path == "_UTO\\_AME.PRG");   // soubory ve složce se mažou taky
+        Assert(g.Recoverable && v.ReadClusters(g.Clusters!, g.Size).SequenceEqual(game), "soubor ze smazané složky jde obnovit");
+
+        // nový soubor (v jiné složce, ať nezabere i položku adresáře) přepíše data smazaného → ten už obnovit nejde
+        var d2 = DiskFormatter.CreateBlank(DiskGeometry.Dd720, FormatStyle.Pc, "LOST", new Random(26)).Data;
+        var w2 = new Fat12Writer(d2);
+        w2.CreateDirectory("DIR");
+        w2.AddFile("APPLE.BIN", Bytes(3000, 11));
+        w2.Delete("APPLE.BIN");
+        w2.AddFile("DIR\\C.BIN", Bytes(5000, 12));
+        Assert(!Fat12Volume.TryOpen(d2, out _)!.ListDeleted().Single(e => e.Path == "_PPLE.BIN").Recoverable, "přepsaný smazaný soubor se nabízí jako ztracený");
+    }
+
+    private static void T_ImageEdit_PlanSaveAndBackup()
+    {
+        string dir = Path.Combine(_tmp, "edit");
+        string src = Path.Combine(dir, "src");
+        Directory.CreateDirectory(Path.Combine(src, "moje slozka"));
+        File.WriteAllBytes(Path.Combine(src, "dlouhynazev1.txt"), Bytes(100, 4));
+        File.WriteAllBytes(Path.Combine(src, "dlouhynazev2.txt"), Bytes(200, 5));
+        File.WriteAllBytes(Path.Combine(src, "moje slozka", "readme.md"), Bytes(50, 6));
+
+        var plan = ImageEdit.Plan(new[] { Path.Combine(src, "dlouhynazev1.txt"), Path.Combine(src, "dlouhynazev2.txt"), Path.Combine(src, "moje slozka") }, null);
+        Eq("DLOUHYNA.TXT|DLOUHY~2.TXT|MOJE_SLO|MOJE_SLO\\README.MD", string.Join("|", plan.Select(i => i.Target)), "jména 8.3 bez kolizí");
+
+        string msa = Path.Combine(dir, "hra.msa");
+        var blank = DiskFormatter.CreateBlank(DiskGeometry.Dd720, FormatStyle.Atari, "EDIT", new Random(22));
+        File.WriteAllBytes(msa, MsaFormat.Save(blank));
+        var original = File.ReadAllBytes(msa);
+        var img = ImageFile.Load(msa).Image!;
+
+        var (after, backup) = ImageEdit.Apply(msa, img, w => ImageEdit.AddFiles(w, plan, false));
+        Eq(ImageEdit.BackupPath(msa), backup, "před první změnou vznikne kopie");
+        Assert(File.ReadAllBytes(backup!).SequenceEqual(original), "kopie = původní obraz");
+        var reloaded = Fat12Volume.TryOpen(ImageFile.Load(msa).Image!.Data, out _)!;
+        var readme = reloaded.ListAll().Single(e => e.Path == "MOJE_SLO\\README.MD");
+        Assert(reloaded.ReadFile(readme).SequenceEqual(File.ReadAllBytes(Path.Combine(src, "moje slozka", "readme.md"))), "soubor je v uloženém .msa");
+
+        // stejný soubor znovu: bez nahrazení se přeskočí, s nahrazením se přepíše
+        File.WriteAllBytes(Path.Combine(src, "dlouhynazev1.txt"), Bytes(300, 7));
+        var again = ImageEdit.Plan(new[] { Path.Combine(src, "dlouhynazev1.txt") }, "MOJE_SLO");
+        Eq("MOJE_SLO\\DLOUHYNA.TXT", again[0].Target, "do vybrané složky");
+        var again2 = ImageEdit.Plan(new[] { Path.Combine(src, "dlouhynazev1.txt") }, null);
+        Eq("DLOUHYNA.TXT", string.Join("|", ImageEdit.Existing(after, again2)), "co už v obrazu je");
+        var (keep, b2) = ImageEdit.Apply(msa, after, w => ImageEdit.AddFiles(w, again2, false));
+        Eq(null, b2, "kopie původního obrazu se nepřepíše");
+        Eq(100L, Fat12Volume.TryOpen(keep.Data, out _)!.ListAll().Single(e => e.Path == "DLOUHYNA.TXT").Size, "bez nahrazení zůstane starý soubor");
+        var (repl, _) = ImageEdit.Apply(msa, keep, w => ImageEdit.AddFiles(w, again2, true));
+        Eq(300L, Fat12Volume.TryOpen(repl.Data, out _)!.ListAll().Single(e => e.Path == "DLOUHYNA.TXT").Size, "nahrazený soubor");
+
+        // když se nevejde, obraz zůstane beze změny
+        string huge = Path.Combine(src, "huge.bin");
+        File.WriteAllBytes(huge, new byte[800_000]);
+        var before = File.ReadAllBytes(msa);
+        bool refused = false;
+        try { ImageEdit.Apply(msa, repl, w => ImageEdit.AddFiles(w, ImageEdit.Plan(new[] { huge }, null), false)); }
+        catch (OperationException) { refused = true; }
+        Assert(refused && File.ReadAllBytes(msa).SequenceEqual(before), "soubor větší než volné místo: chyba, obraz beze změny");
+        Assert(!ImageEdit.CanSave("x.scp") && ImageEdit.CanSave("x.ST"), "do kterých formátů jde ukládat");
+    }
+
+    private static void T_FileRescue_SavesReadableAndDeleted()
+    {
+        var img = DiskFormatter.CreateBlank(DiskGeometry.Dd720, FormatStyle.Pc, "RESCUE", new Random(23));
+        var w = new Fat12Writer(img.Data);
+        var ok = Bytes(4000, 8);
+        var hit = Bytes(4000, 9);
+        var gone = Bytes(1500, 10);
+        w.AddFile("OK.BIN", ok);
+        w.AddFile("DOCS\\HIT.BIN", hit);
+        w.AddFile("GONE.TXT", gone);
+        w.Delete("GONE.TXT");
+        var v = Fat12Volume.TryOpen(img.Data, out _)!;
+        var hitEntry = v.ListAll().Single(e => e.Path == "DOCS\\HIT.BIN");
+        long badLba = v.ClusterSectors(v.Chain(hitEntry.FirstCluster, hitEntry.Size)[1]).First();
+
+        string folder = Path.Combine(_tmp, "rescued");
+        var r = FileRescue.SaveAll(img, folder, new HashSet<long> { badLba });
+        Eq(2, r.Saved, "uložené soubory");
+        Assert(File.ReadAllBytes(Path.Combine(folder, "OK.BIN")).SequenceEqual(ok), "nepoškozený soubor");
+        Assert(File.Exists(Path.Combine(folder, "DOCS", "HIT.BIN")), "poškozený soubor se uloží taky");
+        Assert(r.Damaged.Count == 1 && r.Damaged[0].Contains("HIT.BIN"), "poškozený soubor je v seznamu: " + string.Join(" | ", r.Damaged));
+        string deleted = Path.Combine(folder, Tr.T("_smazane"), "_ONE.TXT");
+        Assert(File.Exists(deleted) && File.ReadAllBytes(deleted).SequenceEqual(gone), "smazaný soubor obnovený do zvláštní složky");
+        Assert(!r.SystemAreaDamaged, "systémová oblast v pořádku");
+        string report = File.ReadAllText(r.ReportPath!);
+        Assert(report.Contains("HIT.BIN") && report.Contains("_ONE.TXT"), "záznam o záchraně:\n" + report);
+
+        var r2 = FileRescue.SaveAll(img, Path.Combine(_tmp, "rescued2"), new HashSet<long> { 1 });
+        Assert(r2.SystemAreaDamaged, "nečitelná FAT se v záznamu ohlásí");
+    }
+
+    private static void T_FolderCheck_FindsProblems()
+    {
+        string dir = Path.Combine(_tmp, "folder-check");
+        Directory.CreateDirectory(Path.Combine(dir, "sub"));
+        var good = DiskFormatter.CreateBlank(DiskGeometry.Dd720, FormatStyle.Atari, "GOOD", new Random(24));
+        File.WriteAllBytes(Path.Combine(dir, "good.st"), good.Data);
+        var broken = DiskFormatter.CreateBlank(DiskGeometry.Dd720, FormatStyle.Pc, "BAD", new Random(25)).Data;
+        FatTable.Set(broken, new BootSector(broken).ReservedSectors * 512, 300, 0xFFF);   // ztracený cluster
+        File.WriteAllBytes(Path.Combine(dir, "sub", "broken.img"), broken);
+        File.WriteAllBytes(Path.Combine(dir, "junk.st"), new byte[1000]);
+        File.WriteAllText(Path.Combine(dir, "notes.txt"), "není obraz");
+        MakeZip(Path.Combine(dir, "pack.zip"), ("a.st", good.Data));
+
+        var files = FolderCheck.FindImages(dir);
+        Eq(4, files.Count, "obrazy ve složce i podsložce (bez .txt)");
+        var results = files.SelectMany(f => FolderCheck.Check(f, dir)).ToList();
+        Eq(ImageCheckStatus.Ok, results.Single(r => r.Name == "good.st").Status, "dobrý obraz");
+        var b = results.Single(r => r.Name == Path.Combine("sub", "broken.img"));
+        Assert(b.Status == ImageCheckStatus.Problems && b.Details.Count > 0, "poškozená FAT: " + b.Summary);
+        Eq(ImageCheckStatus.Unreadable, results.Single(r => r.Name == "junk.st").Status, "nesmysl místo obrazu");
+        Eq(ImageCheckStatus.Ok, results.Single(r => r.Name == "pack.zip → a.st").Status, "obraz v .zip");
+    }
 }

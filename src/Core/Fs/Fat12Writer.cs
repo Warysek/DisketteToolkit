@@ -67,6 +67,75 @@ public sealed class Fat12Writer
         return dir;
     }
 
+    /// <summary>Je na disketě soubor nebo složka s touto cestou (jména tak, jak je vypisuje <see cref="Fat12Volume"/>)?</summary>
+    public bool Exists(string path) => Locate(path) >= 0;
+
+    /// <summary>
+    /// Smaže soubor, nebo složku i s obsahem: položka adresáře dostane značku smazání (0xE5) jako v DOSu a TOSu,
+    /// clustery se uvolní v obou FAT. Data v clusterech zůstanou, dokud je nepřepíše jiný soubor.
+    /// </summary>
+    public void Delete(string path)
+    {
+        int e = Locate(path);
+        if (e < 0) throw new OperationException(Tr.F("{0} na disketě není.", path));
+        DeleteEntry(e, 0);
+    }
+
+    /// <summary>Jméno, pod kterým soubor na disketě bude (8.3, velkými písmeny), ve tvaru výpisu: „HRA.PRG“.</summary>
+    public static string ShortNameText(string name)
+    {
+        var b = ShortName(name);
+        string n = Encoding.ASCII.GetString(b, 0, 8).TrimEnd(), x = Encoding.ASCII.GetString(b, 8, 3).TrimEnd();
+        return x.Length > 0 ? n + "." + x : n;
+    }
+
+    private int Locate(string path)
+    {
+        var parts = path.Split('\\', '/').Where(p => p.Length > 0).ToArray();
+        int dir = 0, found = -1;
+        for (int i = 0; i < parts.Length; i++)
+        {
+            found = -1;
+            foreach (int e in Slots(dir))
+            {
+                if (_d[e] == 0) break;
+                if (_d[e] == 0xE5 || _d[e + 11] == 0x0F || (_d[e + 11] & 0x08) != 0) continue;
+                if (Fat12Volume.DecodeName(_d, e).Equals(parts[i], StringComparison.OrdinalIgnoreCase)) { found = e; break; }
+            }
+            if (found < 0) return -1;
+            if (i < parts.Length - 1)
+            {
+                if ((_d[found + 11] & 0x10) == 0) return -1;
+                dir = _d[found + 26] | (_d[found + 27] << 8);
+                if (dir < 2) return -1;
+            }
+        }
+        return found;
+    }
+
+    private void DeleteEntry(int e, int depth)
+    {
+        int first = _d[e + 26] | (_d[e + 27] << 8);
+        if ((_d[e + 11] & 0x10) != 0 && first >= 2 && depth < 16)
+            foreach (int c in Slots(first).ToList())
+            {
+                if (_d[c] == 0) break;
+                if (_d[c] == 0xE5 || _d[c] == '.' || _d[c + 11] == 0x0F || (_d[c + 11] & 0x08) != 0) continue;
+                DeleteEntry(c, depth + 1);
+            }
+        var seen = new HashSet<int>();
+        for (int c = first; c >= 2 && c < _clusters + 2 && seen.Add(c);)
+        {
+            int next = GetFat(c);
+            SetFat(c, 0);
+            c = next;
+        }
+        _d[e] = 0xE5;
+        // dlouhé jméno z Windows (položky VFAT těsně před ní) taky smazat, ať po souboru nezůstane sirotek
+        int block = e < _dataOffset ? _rootOffset : _dataOffset + (e - _dataOffset) / _clusterSize * _clusterSize;
+        for (int p = e - 32; p >= block && _d[p + 11] == 0x0F && _d[p] != 0xE5; p -= 32) _d[p] = 0xE5;
+    }
+
     // ------------------------------------------------------------------ adresáře
 
     private int EnsureDirectory(int parent, string name, DateTime t)

@@ -68,6 +68,14 @@ images go after the ones already there), converts .MSA and .DIM to .ST, writes F
 (interface = ibmpc), MSX (host = msx) or a 3-digit display (nav-mode = indexed), describes odd
 geometries in IMG.CFG and saves slot-list.txt with all slots on the stick.
 
+Editing images (FAT12 - Atari, PC, MSX; .st, .msa, .dim, .img): in the Open image... window
+use "Add files..." or drag files and folders from Explorer; "Delete" removes the selected
+files. Before the first change a copy of the original is saved as "name (before edit).st".
+Deleted files are listed in grey. "Rescue files..." saves everything readable, including
+deleted files that were not overwritten yet, into a new folder with a _rescue.txt report.
+"Check a folder of images..." checks every image in a folder (subfolders and .zip files too)
+and lists the ones with problems.
+
 Drive diagnostics ("Drive diagnostics..." button; internal drive with fdrawcmd.sys or
 Greaseweazle, not USB drives): speed (rpm) with wobble and a live gauge for adjusting
 the speed trimmer, sensor check (track 0, write protect, disk, index), head to track 0 /
