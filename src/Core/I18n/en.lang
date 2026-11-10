@@ -1453,3 +1453,22 @@ Obraz s problémy oprav přes Kontrola a oprava obrazu — opravená kopie vznik
 Kontrola složky obrazů… = Check a folder of images…
 všechny obrazy najednou = all images at once
 Složka s obrazy disket (prohledají se i podsložky a archivy .zip) = Folder with disk images (subfolders and .zip archives are searched too)
+# ---------------------------------------------------------------- 0.10: report for forum
+Zpráva pro fórum = Report for forum
+shrnutí do schránky = summary to the clipboard
+Diskette Toolkit {0} — zpráva pro fórum = Diskette Toolkit {0} — report for forum
+Mechaniky: = Drives:
+žádná nenalezena = none found
+řadič: = controller:
+disketa: = disk:
+program gw.exe chybí = gw.exe is missing
+nepodařilo se zjistit — = could not be determined —
+Poslední výsledek: = Last result:
+Konec výpisu (posledních {0} řádků): = End of the log (last {0} lines):
+64bitové = 64-bit
+32bitové = 32-bit
+Zpráva je ve schránce. Vlož ji (Ctrl+V) do příspěvku na fóru, ve skupině na Facebooku nebo v GitHub Discussions — program sám nic neodesílá. = The report is on the clipboard. Paste it (Ctrl+V) into a post on a forum, in a Facebook group or in GitHub Discussions — the program sends nothing by itself.
+Do schránky se zprávu nepodařilo vložit. Označ text níže (Ctrl+A) a zkopíruj ho (Ctrl+C). = The report could not be put on the clipboard. Select the text below (Ctrl+A) and copy it (Ctrl+C).
+Jméno uživatele a počítače jsou ve zprávě nahrazené zástupnými slovy, domovská složka je %USERPROFILE%. = User and computer names are replaced with placeholders, the home folder is shown as %USERPROFILE%.
+Kopírovat znovu = Copy again
+Zprávu pro fórum se nepodařilo sestavit: = Could not build the report for forum:

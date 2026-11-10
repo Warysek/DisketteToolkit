@@ -77,6 +77,12 @@ deleted files that were not overwritten yet, into a new folder with a _rescue.tx
 "Check a folder of images..." checks every image in a folder (subfolders and .zip files too)
 and lists the ones with problems.
 
+"Report for forum" button: copies a short plain-text summary to the clipboard - program and
+Windows version, the drives found (controller type and data rates for an internal drive with
+fdrawcmd.sys; gw version, model and firmware for a Greaseweazle), the last result and the last
+40 lines of the log - ready to paste into a forum, a Facebook group or GitHub Discussions.
+The home folder shows as %USERPROFILE%, user and computer names are replaced; nothing is sent.
+
 Drive diagnostics ("Drive diagnostics..." button; internal drive with fdrawcmd.sys or
 Greaseweazle, not USB drives): speed (rpm) with wobble and a live gauge for adjusting
 the speed trimmer, sensor check (track 0, write protect, disk, index), head to track 0 /

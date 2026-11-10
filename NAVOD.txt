@@ -61,7 +61,8 @@ Vpravo:   akce. Když akce s touto mechanikou nebo disketou nejde, je šedá a p
                   kopie), Kontrola složky obrazů, Převést formát,
                   Nový prázdný obraz (všechny systémy), Flashka pro Gotek
    PŘEHLED        Formáty všech systémů — co jde přes USB, interní mechaniku
-                  s fdrawcmd.sys a Greaseweazle
+                  s fdrawcmd.sys a Greaseweazle; Zpráva pro fórum (shrnutí
+                  do schránky pro hlášení výsledků)
 
 Formátovat…: seznam formátů všech systémů (Atari, PC, MSX, Mac, Amiga, Amstrad,
 MINIX, Linux…). Formáty, které s vloženou disketou a mechanikou teď nejdou,
@@ -141,6 +142,16 @@ Obrazy ze .zip a flashka pro Gotek
    i v podsložkách a v archivech .zip. Ve výpisu je každý obraz: zeleně v pořádku, oranžově
    s problémy (a s jakými), červeně ty, které nejdou načíst. Nic nemění; opravu udělá Kontrola
    a oprava obrazu.
+
+Zpráva pro fórum
+ • Tlačítko „Zpráva pro fórum“ (PŘEHLED A NÁPOVĚDA) zkopíruje do schránky krátké shrnutí: verzi
+   programu a Windows, nalezené mechaniky (u interní s fdrawcmd.sys typ řadiče a rychlosti, které
+   umí — podle nich se pozná, co řadič zvládne, třeba 11 sektorů na stopu; u Greaseweazle verzi gw,
+   model a firmware), výsledek poslední operace a posledních 40 řádků výpisu. Vlož ho (Ctrl+V)
+   na fórum, do skupiny na Facebooku nebo do GitHub Discussions. Program sám nic neodesílá.
+ • Zpráva se po zkopírování ukáže v okně, ať vidíš, co vkládáš. Domovská složka je v ní jako
+   %USERPROFILE%, jméno uživatele a počítače jsou nahrazené zástupnými slovy; e-mail ani sériové
+   číslo Greaseweazle v ní nejsou.
 
 
 NOVÉ VE VERZI 0.9.1 — OPRAVY
