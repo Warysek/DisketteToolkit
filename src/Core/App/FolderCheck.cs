@@ -37,7 +37,7 @@ public static class FolderCheck
     /// <summary>Zkontroluje soubor; .zip dá jeden výsledek za každý obraz v archivu.</summary>
     public static List<ImageCheck> Check(string file, string root)
     {
-        string name = file.StartsWith(root, StringComparison.OrdinalIgnoreCase) ? file.Substring(root.Length).TrimStart('\\') : file;
+        string name = file.StartsWith(root, StringComparison.OrdinalIgnoreCase) ? file.Substring(root.Length).TrimStart('\\', '/') : file;
         if (!ZipImages.IsZip(file)) return new List<ImageCheck> { Safe(file, name) };
 
         var list = new List<ImageCheck>();
