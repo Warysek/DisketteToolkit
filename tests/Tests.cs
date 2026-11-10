@@ -2543,7 +2543,7 @@ internal static class Tests
         Eq(4, files.Count, "obrazy ve složce i podsložce (bez .txt)");
         var results = files.SelectMany(f => FolderCheck.Check(f, dir)).ToList();
         Eq(ImageCheckStatus.Ok, results.Single(r => r.Name == "good.st").Status, "dobrý obraz");
-        var b = results.Single(r => r.Name == "sub\\broken.img");
+        var b = results.Single(r => r.Name == Path.Combine("sub", "broken.img"));
         Assert(b.Status == ImageCheckStatus.Problems && b.Details.Count > 0, "poškozená FAT: " + b.Summary);
         Eq(ImageCheckStatus.Unreadable, results.Single(r => r.Name == "junk.st").Status, "nesmysl místo obrazu");
         Eq(ImageCheckStatus.Ok, results.Single(r => r.Name == "pack.zip → a.st").Status, "obraz v .zip");

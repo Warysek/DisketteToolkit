@@ -108,7 +108,8 @@ From UnifiedFloppyTool and DiskImageTool (github.com/Axel051171/UnifiedFloppyToo
     ignore the write-protect tab (unverified) — after a backup check whether such a folder appeared.
 From the "Copy That Floppy!" preservation guide, libdsk and fdformat-ng:
 15. **Combine several reads into one image** — read a bad disk several times (other settings / another drive) and
-    take the good sectors from each read; extends item 1.
+    take the good sectors from each read; extends item 1. RIDE ("Apply patch") merges good tracks from several
+    drives the same way and warns that the merge is not transactional — write the result into a new file.
 16. **Archive log next to each backup** — a small .txt beside the image: date, drive, controller, settings,
     retries, bad sectors, checksums. Also (Code4Lib article 11986, digipres.org): write-protect tab state,
     checksum computed right after the read, keep an image with bad sectors and list where they are, optional
@@ -247,7 +248,57 @@ gap values for 21 sectors are swapped against Linux — `FdrawDevice.Gap3` follo
     do not insert (mould residue damages the head and later disks); stop at once when the drive squeals; clean
     the head after a suspicious disk; clean even a "working" second-hand drive; nudge the head before the first
     power-up; a blank disk in the drive for transport. Then README.txt and the French LISEZ-MOI.txt too.
-Not read yet, possible next sources: Fluxfox (browser flux viewer), RecoveryWhiskers.
+    Also: an HD disk with the density hole taped over works as 2DD, but the data on it does not last (RIDE FAQ).
+
+From more rescue and imaging sources (2026-11-09: Cohen's 27.pdf, all.net FloppyRecovery, ImageDisk, OmniFlop,
+scarybeast blog, retrocomputing StackExchange 7844, Fluxfox; RecoveryWhiskers only its README — its author asks
+that the project not be fed to LLMs, so do not read its code):
+62. **IMD (ImageDisk) open / save** — public-domain format that keeps per-sector status (normal, deleted mark,
+    data error, unavailable, compressed) and the cylinder/head maps of each track, so a damaged or protected
+    disk survives as it is. DTK already parses IMD internally (`GwSession.ImdTracks`). TD0 (Teledisk) later.
+    Extends 37.
+63. **Repair lost flux transitions guided by the CRC** — weak bits only lose transitions, never create new ones
+    (Cohen): where a gap is too long, try inserting the missing transition and keep the variant whose CRC
+    matches. False matches grow beyond 4–6 changes per sector (scarybeast), so allow only a few and mark the
+    sector "unverified" in the log. Extends 28; experimental, group 11.
+64. **Move the head away between rescue retries** — Cohen: track 0 and back between attempts, so the head
+    settles anew. `Rescue.RetryMissing` retries in place today (default 30 tries, max 500). Small, group 3.
+65. **Controller capability test** — like TESTFDC / OmniFlop test formats: which data rates, sector sizes
+    (128 B), FM and Read Track this controller handles; show the result in Drive diagnostics. fdrawcmd.sys only.
+66. **"Send fingerprint" for an unknown format** — plain-text summary of geometry, sector IDs, sizes and
+    encoding to the clipboard, plus a guess of machines that used such a geometry. Extends 56.
+67. **Readable text from an unknown image** — list the ASCII strings (titles, copyright, names) even when no file
+    system is recognised. Extends 33.
+68. **Antivirus in the "drive in use" message** — en.lang line "is in use by another program (e.g. Explorer…)"
+    names only Explorer; an antivirus scanning a freshly inserted disk does the same. Tiny, group 1.
+
+From RIDE (Tomáš Nestorovič, nestorovic.eu/ride; public README, FAQ and changelog only — the author closed the
+source because of AI programming bots and states that no AI is used in RIDE: never fetch or read RIDE code, old
+versions included; if Wary contacts him, say openly that DTK is written by Claude) and his MDOS2PC:
+69. **Mine a bad track until a goal is met** — read one track again and again until every sector is healthy or
+    the user stops it, with a live sector map; meanwhile the user may press the disk gently or nudge it. RIDE
+    calls it mining. Extends 1, 15 and 64; group 3.
+70. **Track range dialog when the disk differs from its boot sector** — three choices: as the boot sector says
+    (for emulators), up to the last used track (faster, enough for own data), everything incl. extra tracks
+    (copy protection). Extends 44; group 6.
+71. **Each error message says what follows from it** — e.g. "the backup continues, the sector is filled with
+    zeros; file X will be damaged". With 26 and 45.
+72. **Choice on a bad sector: Retry / Accept / Abort** — formats that cannot store an error (.st, .img) can only
+    accept with filler bytes: say so and list the sector in the log (16, 45). RIDE dropped "Accept" for raw
+    images for this reason.
+73. **Full track analysis as an option** — hidden sectors, data in the gaps, unformatted areas, fuzzy areas.
+    Slow on the internal drive (every track is scanned), so off by default. Extends 27.
+74. **Archive flux raw** — save flux for archiving without jitter or other corrections; correct only when
+    decoding (RIDE's KryoFlux stream advice). With 5 and 53.
+75. **Internal drive extras (fdrawcmd.sys)** — "prefer relative head moves" (after an interrupted command the
+    controller resets and recalibrates on absolute seeks), motor off, measuring drive latencies, real-time
+    priority when the drive lags. Low priority, group 11.
+76. **Flippy disks** — side B read from the other side runs in reverse, offset by 8 tracks, and needs a second
+    index hole. Note only, group 11.
+77. **MDOS 1.0 (Didaktik) disks** — RIDE and MDOS2PC say they are "normally unreadable on PC", without saying
+    why. Find out with a real disk on Greaseweazle before planning (Czech/Slovak users). MDOS2PC also shows the
+    format found in the boot sector (e.g. "16x10") for confirmation and lets the user override the track count
+    (41 for a 40-track disk in an 80-track D80 drive). Extends 8 and 37.
 
 Next release 0.10 (chosen by Wary 2026-11-08: groups A + B + D of the "next version" options, plus 56).
 One PR per step, in this order; no hardware risk except where noted:
