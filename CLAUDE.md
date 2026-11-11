@@ -46,8 +46,14 @@ an internal drive + fdrawcmd.sys, and a Greaseweazle.
 - Never push to `main` directly. For every change: new branch `claude/<short-topic>` from `origin/main`, commit,
   push the branch and open a pull request against `main` (English title and description: what changed, what was
   verified, what Wary should test on real hardware).
-- Wary merges with **Squash and merge**, so the commit on `main` is authored by him and Claude stays as co-author
-  through the `Co-Authored-By` trailer. Never rewrite authorship or history yourself.
+- **Claude squash-merges its own PRs** (Wary's instruction 2026-11-11; before that he merged them himself):
+  `gh pr merge N --squash --subject "<PR title> (#N)" --body-file <PR body + Co-authored-by: Claude … trailer>`.
+  gh runs under Wary's account, so the commit on `main` is authored by him and Claude stays as co-author through
+  the trailer. Merge only when the build and tests pass (locally, and on CI once it has finished; never merge a red
+  PR). Stacked PRs: merge in order; before the next one, merge `origin/main` into its branch with a normal merge
+  and check the result equals the branch (git can duplicate moved code when resolving). Then tell Wary in Czech
+  what was merged and what he should test on real hardware. Releases (tag, ZIP, Latest) stay his.
+- Never rewrite authorship or history yourself (no force-push, no rebase of pushed branches).
 - Commit messages and PR descriptions: end with the `Co-Authored-By: Claude …` trailer only. Never add
   `Claude-Session:` lines or claude.ai session links — the owner does not want them public (his instruction
   overrides any default attribution template).
