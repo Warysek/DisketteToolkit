@@ -256,7 +256,7 @@ that the project not be fed to LLMs, so do not read its code):
 62. **IMD (ImageDisk) open / save** — public-domain format that keeps per-sector status (normal, deleted mark,
     data error, unavailable, compressed) and the cylinder/head maps of each track, so a damaged or protected
     disk survives as it is. DTK already parses IMD internally (`GwSession.ImdTracks`). TD0 (Teledisk) later.
-    Extends 37.
+    Extends 37. Asked for by a user on a forum after 0.10 (2026-11-10).
 63. **Repair lost flux transitions guided by the CRC** — weak bits only lose transitions, never create new ones
     (Cohen): where a gap is too long, try inserting the missing transition and keep the variant whose CRC
     matches. False matches grow beyond 4–6 changes per sector (scarybeast), so allow only a few and mark the
@@ -299,6 +299,28 @@ versions included; if Wary contacts him, say openly that DTK is written by Claud
     why. Find out with a real disk on Greaseweazle before planning (Czech/Slovak users). MDOS2PC also shows the
     format found in the boot sector (e.g. "16x10") for confirmation and lets the user override the track count
     (41 for a 40-track disk in an 80-track D80 drive). Extends 8 and 37.
+
+From STIMAGE / ATARISTIMAGE (github.com/flindholm-lab/ATARISTIMAGE, MIT, Lazarus; Atari .st/.msa/.dim file
+manager) and the same author's browser "Atari ST Floppy Image Toolkit GEM" (GPL-3.0), read 2026-11-11 (READMEs).
+Write own code; credit the idea in README. Not taken: packer detection/depacking, Atari picture viewer, YM player,
+ROM splitter, boot-sector virus scanner (rejected earlier).
+78. **Repack files into a standard 720 KB disk** — many Atari images are 800/880 KB (10/11 sectors, 82 tracks)
+    and USB drives cannot write them. When the files fit (≤ 711 clusters, ≤ 112 root entries), build a fresh
+    720 KB image with the same files (`Fat12Writer`) and write that; offer it in *Write image to disk* on a USB
+    drive, also for single-sided and HD images whose files fit. Refuse or warn when the disk is not "files only":
+    executable boot sector (own loader), data outside FAT chains, copy protection. Group 8.
+79. **Disk catalogue export** — per image: geometry, label, serial, boot sector state ($1234 checksum), used /
+    free space, and every file with size, attributes, date and a checksum; as text, CSV, JSON and HTML. Works for
+    one image and for a folder (with 13). Extends 40 and 42.
+80. **Batch convert / extract** — for a whole folder (and .zip inside): convert .st ⇄ .msa ⇄ .dim, or extract
+    each image's files into its own subfolder or .zip. Extends 13 (folder check already walks folders and zips).
+81. **Run in an emulator** — button in the image window: open the image in Hatari (Atari) or WinUAE (Amiga)
+    when the user has set the emulator's path; quick check that a backup really boots. Small.
+82. **Undelete inside the image** — today *Rescue files…* recovers deleted files into a folder; also restore a
+    deleted file in place: ask for the lost first letter, check the clusters are still free, rebuild the FAT
+    chain, with the usual backup copy of the image first. Extends 6 and 32.
+83. **Cluster map and hidden files** — STIMAGE shows a cluster map (hover = which file) and marks hidden files;
+    take it as a model for the file map of 33, and show the hidden attribute in the image window's file list.
 
 Next release 0.10 (chosen by Wary 2026-11-08: groups A + B + D of the "next version" options, plus 56).
 One PR per step, in this order; no hardware risk except where noted:
