@@ -212,6 +212,8 @@ are out of scope.
     for flux rescue, the histogram and conversion to an image. `gw convert` lists `.raw` (KryoFlux stream) among its
     formats, so the first step can be gw converting to .scp; an own reader later. Careful: index and flux blocks are
     interleaved in the stream in no fixed order, so the parser must place index marks by stream position.
+    Aufit (see 84) reads KryoFlux streams too, which shows they are common for Atari; write the reader from the
+    KryoFlux stream documentation, not from Aufit (no licence).
 54. **Tolerant .scp reading** — accept .scp files that bend the spec (wrong header flags, odd track offsets, a
     revolution count that does not match the data, missing checksum) and report each oddity in the log as
     "non-standard file: …" instead of failing or silently reading garbage. Collect sample files from users first.
@@ -321,6 +323,28 @@ ROM splitter, boot-sector virus scanner (rejected earlier).
     chain, with the usual backup copy of the image first. Extends 6 and 32.
 83. **Cluster map and hidden files** — STIMAGE shows a cluster map (hover = which file) and marks hidden files;
     take it as a model for the file map of 33, and show the hidden attribute in the image window's file list.
+
+From Aufit (github.com/DrCoolzic/Aufit, "Atari Universal FD Image Tool", C# WPF, by DrCoolzic of info-coach.fr,
+an expert on Atari copy protections and the Pasti .STX format), read 2026-11-11: README, Release.txt and the file
+list only. The repository has NO licence (all rights reserved): never read or reuse its code, ideas only. It does
+not drive hardware; it analyses .scp / KryoFlux .raw flux, detects protections and converts to .STX / .ST / .MSA,
+also in batch (command line: -save_image, -protections, -disk_view). If Wary contacts the author, say openly that
+DTK is written by Claude. Not taken: write splice detection, playing tracks as sound.
+84. **Hand protected Atari disks over to Aufit** — after a Greaseweazle flux backup (.scp) of an Atari disk that
+    looks protected, offer "Convert to .STX in Aufit" when the user has set Aufit's path (run it with the .scp),
+    otherwise say that emulators need .STX and Aufit makes it. Own STX writing is out of scope. Small.
+85. **Copy protection, not damage** — some games have weak bits on purpose (Dungeon Master, Chaos Strikes Back…):
+    the data differ on every read. Rescue a bad disk and Rescue sectors from flux treat them as damage today. Tell
+    a deliberate weak area from a damaged one (same spot on every revolution and every drive, typical sectors) and
+    say "probably copy protection, not damage — keep the flux backup (.scp)" instead of retrying. Extends 27 and 28.
+86. **Name the protection in the track layout** — from flux (.scp) or the fdrawcmd scan: long / short sectors
+    (±4 %), sector without ID, data over the index, no-flux areas, invalid sync marks, hidden data in gaps,
+    duplicate IDs; one plain sentence per track ("track 79: long sector — copy protection"). Extends 27 and 73.
+87. **Unformatted track by entropy** — measure how random a track's content is (Shannon entropy) to tell a track
+    that was never written from a damaged one; sharpens the rescue advice ("nothing was ever there" vs "signal
+    gone", `FluxRescueResult.Advice`). Small.
+88. **Whole-disk picture** — both sides drawn as circles (tracks, sectors, bad spots, protections), saved as an
+    image for forums and archives. Cosmetic, low priority, group 11.
 
 Next release 0.10 (chosen by Wary 2026-11-08: groups A + B + D of the "next version" options, plus 56).
 One PR per step, in this order; no hardware risk except where noted:
