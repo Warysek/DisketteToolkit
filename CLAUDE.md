@@ -265,6 +265,16 @@ that the project not be fed to LLMs, so do not read its code):
     data error, unavailable, compressed) and the cylinder/head maps of each track, so a damaged or protected
     disk survives as it is. DTK already parses IMD internally (`GwSession.ImdTracks`). TD0 (Teledisk) later.
     Extends 37. Asked for by a user on a forum after 0.10 (2026-11-10).
+    ImageDisk source, author's consent (2026-11-12): Dave Dunfield (DaveDDS), the author of ImageDisk, answered
+    Wary on the forum that he has always made the source available and encourages others to use it for other
+    preservation tools. It is on "Dave's Old Computers" (dunfield.classiccmp.org), "Download Software/Images":
+    ImageDisk, its source (with TESTFDC.C and the other utilities) and notes on drives. The code is C for his own
+    Micro-C/PC toolset plus assembly for direct hardware access, so use it as a reference for the IMD format and
+    the test formats and write DTK's own C#; do not port the assembly. Credit him in the About window, README and
+    the docs. Before taking larger parts, check the licence text in the archive and tell Wary what it says.
+    Test data: 600+ .IMD images of many systems (SD, DD, mixed density, odd sector sizes) in the same section;
+    his IMDA (analyser) and IMDV (viewer) show an image's format, use them to check DTK's results. Downloads only
+    with Wary's permission.
 63. **Repair lost flux transitions guided by the CRC** — weak bits only lose transitions, never create new ones
     (Cohen): where a gap is too long, try inserting the missing transition and keep the variant whose CRC
     matches. False matches grow beyond 4–6 changes per sector (scarybeast), so allow only a few and mark the
@@ -273,6 +283,7 @@ that the project not be fed to LLMs, so do not read its code):
     settles anew. `Rescue.RetryMissing` retries in place today (default 30 tries, max 500). Small, group 3.
 65. **Controller capability test** — like TESTFDC / OmniFlop test formats: which data rates, sector sizes
     (128 B), FM and Read Track this controller handles; show the result in Drive diagnostics. fdrawcmd.sys only.
+    TESTFDC.C is in the ImageDisk source archive, which its author lets us use (see 62).
 66. **"Send fingerprint" for an unknown format** — plain-text summary of geometry, sector IDs, sizes and
     encoding to the clipboard, plus a guess of machines that used such a geometry. Extends 56.
 67. **Readable text from an unknown image** — list the ASCII strings (titles, copyright, names) even when no file
